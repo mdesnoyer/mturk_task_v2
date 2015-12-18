@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+  <head>
+    <script src="js/jquery.min.js"></script>
+    <script src="js/jquery-ui.min.js"></script>
+    <script src="../jspsych.js"></script>
+    <script src="../plugins/jspsych-click-choice.js"></script>
+    <script src="../plugins/jspsych-instructions.js"></script>
+    <script src="../../progressbar.min.js"></script>
+    <link rel="stylesheet" href="css/jquery-ui.css"></link>
+    <link rel="stylesheet" href="../css/jspsych.css"></link>
+  </head>
+  <body>
+    <div id="jspsych-target"></div>
+  </body>
+  <script>
+
+  var instr1 = {
+    type: 'instructions',
+    pages: [
+        'Welcome to the experiment. Click next to begin.',
+        'Click which image is your favorite.',
+        'Click next to begin.'
+    ],
+    show_clickable_nav: true
+  }
+
+  var keep = {
+    type: 'click-choice',
+    stimuli: [[{'file':'img/happy_face_1.jpg', 'id':'happy_face_1',
+                'x':0,'y':0,'height':100,'width':100}, 
+                {'file':'img/happy_face_2.jpg', 'id':'happy_face_2',
+                'x':104,'y':0,'height':100,'width':100}, 
+                {'file':'img/happy_face_3.jpg', 'id':'happy_face_3',
+                'x':208,'y':0,'height':100,'width':100}]],
+    post_click_delay: 100,
+    response_ends_trial: true,
+    action_type: 'keep'
+  };
+
+  var instr2 = {
+    type: 'instructions',
+    pages: [
+        'Click which image is your least favorite.',
+        'Click next to begin.'
+    ],
+    show_clickable_nav: true
+  }
+
+  var reject = {
+    type: 'click-choice',
+    stimuli: [[{'file':'img/happy_face_1.jpg', 'id':'happy_face_1',
+                'x':0,'y':0,'height':100,'width':100}, 
+                {'file':'img/happy_face_2.jpg', 'id':'happy_face_2',
+                'x':104,'y':0,'height':100,'width':100}, 
+                {'file':'img/happy_face_3.jpg', 'id':'happy_face_3',
+                'x':208,'y':0,'height':100,'width':100}]],
+    post_click_delay: 100,
+    response_ends_trial: true,
+    action_type: 'reject'
+  };
+  
+  var images = [];
+
+  for(var i = 0; i < keep.stimuli.length; i++){
+    for(var j = 0; j < keep.stimuli[i].length; j++){
+      images.push(keep.stimuli[i][j].file);
+    }
+  }
+
+  for(var i = 0; i < reject.stimuli.length; i++){
+    for(var j = 0; j < reject.stimuli[i].length; j++){
+      images.push(reject.stimuli[i][j].file);
+    }
+  }
+
+  var circle = new ProgressBar.Circle('#jspsych-target', {
+    color: '#FCB03C',
+    strokeWidth: 3,
+    trailWidth: 1,
+    duration: 1500,
+    text: {
+        value: '0'
+    },
+    step: function(state, bar) {
+        bar.setText((bar.value() * 100).toFixed(0));
+    }
+  });
+
+  function updateLoadedCount(nLoaded){
+      var percentcomplete = nLoaded / images.length;
+
+      // could put something fancier here, like a progress bar
+      // or updating text in the DOM.
+      circle.animate(percentcomplete);
+  }
+
+  jsPsych.preloadImages(images, function(){ startExperiment(); }, function(nLoaded) { updateLoadedCount(nLoaded); });
+
+
+  function startExperiment(){
+    jsPsych.init({
+      display_element: $('#jspsych-target'),
+      experiment_structure: [instr1, keep, instr2, reject]
+    });
+  }
+
+
+  </script>
+</html>
