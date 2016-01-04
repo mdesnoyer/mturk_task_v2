@@ -53,7 +53,7 @@ template_dir = os.path.join(root, 'templates/')
 templateLoader = jinja2.FileSystemLoader( searchpath=template_dir )
 templateEnv = jinja2.Environment(loader = templateLoader)
 
-def make(blocks, preload_images=True, box_size=[800, 800], hit_size=[600, 600], pos_type='random'):
+def make(blocks, preload_images=True, box_size=[800, 800], hit_size=[600, 600], pos_type='random', attribute='interesting'):
     """
     Produces an experimental HTML document. By assembling blocks of html code into a single html document. Note that
     this will fill in missing values in place!
@@ -66,6 +66,7 @@ def make(blocks, preload_images=True, box_size=[800, 800], hit_size=[600, 600], 
                      centered or (b) randomly positioned. {def: [600, 600]}
     :param pos_type: Either 'random', in which the hit box is placed anywhere inside the box, or 'fixed', where it is
                      centered. [def: 'random']
+    :param attribute: The attribute that you want people to judge, e.g., 'interesting'
     :return The appropriate HTML for this experiment.
     """
     images = []
@@ -87,7 +88,7 @@ def make(blocks, preload_images=True, box_size=[800, 800], hit_size=[600, 600], 
         block['response_ends_trial'] = block.get('response_ends_trial', DEF_RESPONSE_ENDS_TRIAL)
         if block['instructions']:
             # get the filled instruction template
-            inst_block, inst_block_name = _make_instr_block(block)
+            inst_block, inst_block_name = _make_instr_block(block, attribute)
             rblocks.append(inst_block)
             blocknames.append(inst_block_name)
         # get the filled experimental template
@@ -99,7 +100,7 @@ def make(blocks, preload_images=True, box_size=[800, 800], hit_size=[600, 600], 
     base = templateEnv.get_template(BASE_TEMPLATE)
     # fill the preload template
     filled_preload = preload.render(images=images)
-    html = base.render(blocks=rblocks, preload=filled_preload, blocknames=blocknames)
+    html = base.render(blocks=rblocks, preload=filled_preload, blocknames=blocknames, attribute=attribute)
     return html
 
 def _make_exp_block(block, box_size, hit_size, pos_type):
@@ -205,7 +206,7 @@ def _get_im_dims(image):
     width, height = im.size
     return [width, height]
 
-def _make_instr_block(block):
+def _make_instr_block(block, attribute='interesting'):
     """
     Accepts a block dict (see readme) and returns an appropriate instruction block.
 
@@ -217,5 +218,5 @@ def _make_instr_block(block):
     rblock['name'] = block['name'] + '_instr'
     rblock['instructions'] = block['instructions']
     template = templateEnv.get_template(INSTRUCTION_TEMPLATE)
-    filled_template = template.render(block=rblock)
+    filled_template = template.render(block=rblock, attribute=attribute)
     return filled_template, rblock['name']
