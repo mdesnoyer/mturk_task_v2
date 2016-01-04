@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<head>
+  <script src="../jspsych-4.3/js/jquery.min.js"></script>
+  <script src="../jspsych-4.3//js/jquery-ui.min.js"></script>
+  <script src="../jspsych-4.3/jspsych.js"></script>
+  <script src="../jspsych-4.3/plugins/jspsych-click-choice.js"></script>
+  <script src="../jspsych-4.3/plugins/jspsych-instructions.js"></script>
+  <script src="../js/practice_debrief.js"></script>
+  <script src="../js/progressbar.min.js"></script>
+  <link rel="stylesheet" href="../jspsych-4.3/css/jspsych.css"></link>
+  <link rel="stylesheet" href="../jspsych-4.3/css/jquery-ui.css"></link>
+</head>
+<body>
+<div id="jspsych-target"></div>
+</body>
+<script>
+  /* FILTERS */
+  // these are currently imported
+  /* END FILTERS */
+  {% for block in blocks %}
+    {{ block }}
+  {% endfor %}
+
+  var debrief = {
+    type: 'instructions',
+    pages: [function() {return get_rt_string(300);},
+            function() {return get_missed_string(0.1);},
+            function() {return get_bias_string(0.9);},
+            function() {return get_contradictions_string(0.1, 'interesting');}],
+    show_clickable_nav: true
+  }
+
+  {{ preload }}
+  function clearBox(elementID){
+    document.getElementById(elementID).innerHTML = "";
+  }
+  function startExperiment(){
+    //clearBox("jspsych-target");
+    jsPsych.init({
+      display_element: $('#jspsych-target'),
+      experiment_structure: [
+            {% for blockname in blocknames %}
+                {{ blockname }},
+            {% endfor %}
+            debrief
+        ],
+      on_finish: function() {
+            jsPsych.data.displayData('csv');
+       }
+    });
+  }
+</script>
+</html>

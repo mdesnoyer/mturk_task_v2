@@ -1,0 +1,24 @@
+var {{ block.name }} = {
+    type: 'click-choice',
+    stimuli: [
+            {% for stimuli in block.stimset %}
+                [
+                    {% for stimulus in stimuli %}
+                    {
+                        'file':'{{ stimulus.file }}',
+                        'id':'{{ stimulus.id }}',
+                        'x':{{ stimulus.x }},
+                        'y':{{ stimulus.y }},
+                        'height':{{ stimulus.height }},
+                        'width':{{ stimulus.width }}
+                    },
+                    {% endfor %}
+                ],
+            {% endfor %}
+        ],
+    post_click_delay: {{ block.feedback_time }},
+    response_ends_trial: {{ block.response_ends_trial }},
+    action_type: '{{ block.type }}',
+    prompt: '{{ block.prompt }}',
+    trial_time: {{ block.trial_time }}
+}

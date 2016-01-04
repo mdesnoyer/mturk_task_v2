@@ -1,0 +1,10 @@
+function startExperiment(){
+    jsPsych.init({
+      display_element: $('#jspsych-target'),
+      experiment_structure: [
+            {% for block in blocks %}
+                {{ block.name }},
+            {% endfor %}
+        ]
+    });
+}

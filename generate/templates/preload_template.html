@@ -1,0 +1,26 @@
+var images = [
+        {% for image in images %}
+            '{{ image }}',
+        {% endfor %}
+    ];
+
+var circle = new ProgressBar.Circle('#jspsych-target', {
+color: '#FCB03C',
+strokeWidth: 3,
+trailWidth: 1,
+duration: 1000,
+text: {
+    value: '0'
+},
+step: function(state, bar) {
+    bar.setText((bar.value() * 100).toFixed(0));
+}
+});
+
+function updateLoadedCount(nLoaded){
+  var percentcomplete = nLoaded / images.length;
+  circle.animate(percentcomplete);
+}
+
+jsPsych.preloadImages(images, function(){ startExperiment(); }, function(nLoaded) { updateLoadedCount(nLoaded); });
+

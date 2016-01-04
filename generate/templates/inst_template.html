@@ -1,0 +1,9 @@
+var {{ block.name }} = {
+    type: 'instructions',
+    pages: [
+            {% for instr in block.instructions %}
+                '{{ instr }}',
+            {% endfor %}
+            ],
+    show_clickable_nav: true
+}

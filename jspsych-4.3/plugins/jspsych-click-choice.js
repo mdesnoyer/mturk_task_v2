@@ -1,17 +1,17 @@
 /**
  * Nick Dufour
  * December 2015
- * 
+ *
  * This adapts an existing plugin (free-sort) to permit presentation of images
  * arranged into trials (K images per trial, N trials). The images are
  * presented for some amount of time, and the user is asked to select one
  * image (by clicking) according to the instructions, which are presented
  * first. After each click, the trial ends and the next one begins.
  * Additionally, the trial will auto-advance if too much time elapses.
- * 
- * 
+ *
+ *
  */
- 
+
 (function( $ ) {
 	jsPsych["click-choice"] = (function(){
 
@@ -44,7 +44,7 @@
 				};
 				trials[i].type = "click-choice";
                 // other information needed for the trial method can be added here
-                
+
                 // supporting the generic data object with the following line
                 // is always a good idea. it allows people to pass in the data
                 // parameter, but if they don't it gracefully adds an empty object
@@ -56,7 +56,7 @@
 
 		plugin.trial = function(display_element, trial) {
             trial = jsPsych.pluginAPI.evaluateFunctionParameters(trial);
-			
+            var trial_ended = false;
 			// store the response
 			var response = {rt: -1, choice: -1}
 
@@ -89,6 +89,7 @@
                 $("#jspsych-click-choice-arena").append($('<img>', {
                     "src": trial.stimuli[i].file,
                     "id": trial.stimuli[i].id,
+                    "alt":i,
                     "class": "jspsych-click-choice-clickable",
                     "css": {
                         "position": "absolute",
@@ -100,13 +101,13 @@
                 }));
             }
 
-            function after_response(choice) {
+            function after_response(choice, choice_idx) {
             	// measure the RT
             	var end_time = Date.now();
             	response.rt = end_time - start_time;
-            	
+                response.choice_idx = choice_idx;
             	response.choice = choice;
-            	
+
             	// highlight the image
             	if (trial.action_type == 'keep'){
             		$("#" + choice).addClass("click-choice-responded-keep");
@@ -119,7 +120,7 @@
 
             	if (trial.response_ends_trial){
             		//console.log("Waiting for " + trial.post_click_delay);
-            		setTimeout(function(){end_trial();}, 
+            		setTimeout(function(){end_trial();},
             			trial.post_click_delay);
             		//end_trial();
             	}
@@ -134,9 +135,10 @@
 
 				// data saving
 				var trial_data = {
-				    type: trial.action_type,
+				    action_type: trial.action_type,
 				    trial_images: trial.stimuli,
 				    choice: response.choice,
+				    choice_idx: response.choice_idx,
 				    stims: trial.stimuli,
 				    rt: response.rt
 				};
@@ -153,10 +155,17 @@
             $('.jspsych-click-choice-clickable').click(
             	function(event){
             		//var choice = $("#" + this.id);
+            		if (trial_ended){
+                        // this will help us avoid those irritating concurrency issues that I'm getting.
+                        // for instance, if they click twice, or click after the trial is ended.
+				        return;
+				    } else {
+				        trial_ended = true;
+				    }
             		var choice = this.id;
-
+                    var choice_idx = parseInt(this.alt);
             		// update the response
-            		after_response(choice);
+            		after_response(choice, choice_idx);
 
             	}
             	)
@@ -164,10 +173,16 @@
 
 			// get the start time
 			var start_time = Date.now();
-			
+
 			// end trial if time limit is set
 			if (trial.trial_time > 0){
 				var timer = setTimeout(function() {
+				    console.log("Trial has timed out!")
+				    if (trial_ended){
+				        return;
+				    } else {
+				        trial_ended = true;
+				    }
 					end_trial();
 				}, trial.trial_time);
 				setTimeoutHandlers.push(timer);
