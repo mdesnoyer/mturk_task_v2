@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+<head>
+  <script src="js/jquery.min.js"></script>
+  <script src="js/jquery-ui.min.js"></script>
+  <script src="../jspsych.js"></script>
+  <script src="../plugins/jspsych-click-choice.js"></script>
+  <script src="../plugins/jspsych-instructions.js"></script>
+  <script src="../../generate/templates/practice_debrief.js"></script>
+  <script src="../../progressbar.min.js"></script>
+  <link rel="stylesheet" href="css/jquery-ui.css"></link>
+  <link rel="stylesheet" href="../css/jspsych.css"></link>
+</head>
+<body>
+<div id="jspsych-target"></div>
+</body>
+<script>
+  /* FILTERS */
+  // these are currently imported
+  /* END FILTERS */
+  
+    var keep_1_instr = {
+    type: 'instructions',
+    pages: [
+            
+                'ready?',
+            
+                'go!',
+            
+            ],
+    show_clickable_nav: true
+}
+  
+    var keep_1 = {
+    type: 'click-choice',
+    stimuli: [
+            
+                [
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0011_43444_1.23_0.41_0.51_accepted_replacing_0.jpg',
+                        'id':'0011_43444_1',
+                        'x':25,
+                        'y':256,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0099_53236_1.93_0.47_0.91_accepted_replacing_3.jpg',
+                        'id':'0099_53236_1',
+                        'x':227,
+                        'y':256,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0003_103614_1.57_0.30_0.47_accepted_replacing_2.jpg',
+                        'id':'0003_103614_1',
+                        'x':429,
+                        'y':256,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                ],
+            
+                [
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0097_91682_2.20_0.18_0.40_accepted_replacing_3.jpg',
+                        'id':'0097_91682_2',
+                        'x':67,
+                        'y':302,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0063_15648_1.47_0.46_0.67_accepted_replacing_2.jpg',
+                        'id':'0063_15648_1',
+                        'x':269,
+                        'y':302,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0039_88696_1.66_0.38_0.63_accepted_replacing_2.jpg',
+                        'id':'0039_88696_1',
+                        'x':471,
+                        'y':302,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                ],
+            
+        ],
+    post_click_delay: 100,
+    response_ends_trial: true,
+    action_type: 'keep',
+    prompt: '',
+    trial_time: 1500
+}
+  
+
+  var debrief = {
+    type: 'instructions',
+    pages: [function() {return get_bias_string();}],
+    show_clickable_nav: true
+  }
+
+  var images = [
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0011_43444_1.23_0.41_0.51_accepted_replacing_0.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0099_53236_1.93_0.47_0.91_accepted_replacing_3.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0003_103614_1.57_0.30_0.47_accepted_replacing_2.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0097_91682_2.20_0.18_0.40_accepted_replacing_3.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0063_15648_1.47_0.46_0.67_accepted_replacing_2.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0039_88696_1.66_0.38_0.63_accepted_replacing_2.jpg',
+        
+    ];
+
+var circle = new ProgressBar.Circle('#jspsych-target', {
+color: '#FCB03C',
+strokeWidth: 3,
+trailWidth: 1,
+duration: 1500,
+text: {
+    value: '0'
+},
+step: function(state, bar) {
+    bar.setText((bar.value() * 100).toFixed(0));
+}
+});
+
+function updateLoadedCount(nLoaded){
+  var percentcomplete = nLoaded / images.length;
+  circle.animate(percentcomplete);
+}
+
+jsPsych.preloadImages(images, function(){ startExperiment(); }, function(nLoaded) { updateLoadedCount(nLoaded); });
+
+  function startExperiment(){
+    jsPsych.init({
+      display_element: $('#jspsych-target'),
+      experiment_structure: [
+            
+                keep_1_instr,
+            
+                keep_1,
+            
+            debrief
+        ],
+      on_finish: function() {
+            jsPsych.data.displayData('csv');
+       }
+    });
+  }
+</script>
+</html>

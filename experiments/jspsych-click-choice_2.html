@@ -1,0 +1,277 @@
+<!doctype html>
+<html>
+<head>
+  <script src="../jspsych-4.3/js/jquery.min.js"></script>
+  <script src="../jspsych-4.3//js/jquery-ui.min.js"></script>
+  <script src="../jspsych-4.3/jspsych.js"></script>
+  <script src="../jspsych-4.3/plugins/jspsych-click-choice.js"></script>
+  <script src="../jspsych-4.3/plugins/jspsych-instructions.js"></script>
+  <script src="../js/practice_debrief.js"></script>
+  <script src="../js/progressbar.min.js"></script>
+  <link rel="stylesheet" href="../jspsych-4.3/css/jspsych.css"></link>
+  <link rel="stylesheet" href="../jspsych-4.3/css/jquery-ui.css"></link>
+</head>
+<body>
+<div id="jspsych-target"></div>
+</body>
+<script>
+  /* FILTERS */
+  // these are currently imported
+  /* END FILTERS */
+  
+    var keep_1_instr = {
+    type: 'instructions',
+    pages: [
+            
+                'KEEP ROUND',
+            
+                'go!',
+            
+            ],
+    show_clickable_nav: true
+}
+  
+    var keep_1 = {
+    type: 'click-choice',
+    stimuli: [
+            
+                [
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0012_58752_1.22_0.30_0.37_accepted_replacing_2.jpg',
+                        'id':'0012_58752_1',
+                        'x':89,
+                        'y':156,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0090_51846_3.54_0.45_1.58_accepted_replacing_2.jpg',
+                        'id':'0090_51846_3',
+                        'x':291,
+                        'y':156,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0016_47842_1.46_0.62_0.90_accepted_replacing_0.jpg',
+                        'id':'0016_47842_1',
+                        'x':493,
+                        'y':156,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                ],
+            
+                [
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0043_61856_1.61_0.19_0.30_accepted_replacing_3.jpg',
+                        'id':'0043_61856_1',
+                        'x':197,
+                        'y':170,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0095_87930_3.08_0.69_2.12_accepted_replacing_4.jpg',
+                        'id':'0095_87930_3',
+                        'x':399,
+                        'y':170,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0029_95982_1.72_0.31_0.54_accepted_replacing_3.jpg',
+                        'id':'0029_95982_1',
+                        'x':601,
+                        'y':170,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                ],
+            
+        ],
+    post_click_delay: 100,
+    response_ends_trial: true,
+    action_type: 'keep',
+    prompt: '',
+    trial_time: 1500
+}
+  
+    var reject_1_instr = {
+    type: 'instructions',
+    pages: [
+            
+                'REJECT ROUND',
+            
+                'go!',
+            
+            ],
+    show_clickable_nav: true
+}
+  
+    var reject_1 = {
+    type: 'click-choice',
+    stimuli: [
+            
+                [
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0012_58752_1.22_0.30_0.37_accepted_replacing_2.jpg',
+                        'id':'0012_58752_1',
+                        'x':195,
+                        'y':206,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0090_51846_3.54_0.45_1.58_accepted_replacing_2.jpg',
+                        'id':'0090_51846_3',
+                        'x':397,
+                        'y':206,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0016_47842_1.46_0.62_0.90_accepted_replacing_0.jpg',
+                        'id':'0016_47842_1',
+                        'x':599,
+                        'y':206,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                ],
+            
+                [
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0043_61856_1.61_0.19_0.30_accepted_replacing_3.jpg',
+                        'id':'0043_61856_1',
+                        'x':157,
+                        'y':143,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0095_87930_3.08_0.69_2.12_accepted_replacing_4.jpg',
+                        'id':'0095_87930_3',
+                        'x':359,
+                        'y':143,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                    {
+                        'file':'/Users/ndufour/mturk_task_v2/generate/test/images/0029_95982_1.72_0.31_0.54_accepted_replacing_3.jpg',
+                        'id':'0029_95982_1',
+                        'x':561,
+                        'y':143,
+                        'height':132,
+                        'width':198
+                    },
+                    
+                ],
+            
+        ],
+    post_click_delay: 150000,
+    response_ends_trial: true,
+    action_type: 'reject',
+    prompt: '',
+    trial_time: 150000
+}
+  
+
+  var debrief = {
+    type: 'instructions',
+    pages: [function() {return get_rt_string(300);},
+            function() {return get_missed_string(0.1);},
+            function() {return get_bias_string(0.9);},
+            function() {return get_contradictions_string(0.1, 'interesting');}],
+    show_clickable_nav: true
+  }
+
+  var images = [
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0012_58752_1.22_0.30_0.37_accepted_replacing_2.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0090_51846_3.54_0.45_1.58_accepted_replacing_2.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0016_47842_1.46_0.62_0.90_accepted_replacing_0.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0043_61856_1.61_0.19_0.30_accepted_replacing_3.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0095_87930_3.08_0.69_2.12_accepted_replacing_4.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0029_95982_1.72_0.31_0.54_accepted_replacing_3.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0012_58752_1.22_0.30_0.37_accepted_replacing_2.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0090_51846_3.54_0.45_1.58_accepted_replacing_2.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0016_47842_1.46_0.62_0.90_accepted_replacing_0.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0043_61856_1.61_0.19_0.30_accepted_replacing_3.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0095_87930_3.08_0.69_2.12_accepted_replacing_4.jpg',
+        
+            '/Users/ndufour/mturk_task_v2/generate/test/images/0029_95982_1.72_0.31_0.54_accepted_replacing_3.jpg',
+        
+    ];
+
+var circle = new ProgressBar.Circle('#jspsych-target', {
+color: '#FCB03C',
+strokeWidth: 3,
+trailWidth: 1,
+duration: 1000,
+text: {
+    value: '0'
+},
+step: function(state, bar) {
+    bar.setText((bar.value() * 100).toFixed(0));
+}
+});
+
+function updateLoadedCount(nLoaded){
+  var percentcomplete = nLoaded / images.length;
+  circle.animate(percentcomplete);
+}
+
+jsPsych.preloadImages(images, function(){ startExperiment(); }, function(nLoaded) { updateLoadedCount(nLoaded); });
+
+  function clearBox(elementID){
+    document.getElementById(elementID).innerHTML = "";
+  }
+  function startExperiment(){
+    //clearBox("jspsych-target");
+    jsPsych.init({
+      display_element: $('#jspsych-target'),
+      experiment_structure: [
+            
+                keep_1_instr,
+            
+                keep_1,
+            
+                reject_1_instr,
+            
+                reject_1,
+            
+            debrief
+        ],
+      on_finish: function() {
+            jsPsych.data.displayData('csv');
+       }
+    });
+  }
+</script>
+</html>
