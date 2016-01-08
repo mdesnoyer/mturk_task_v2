@@ -7,7 +7,8 @@ These take the form of dictionaries, called 'blocks':
     block['type'] = 'accept' or 'reject', depending on the trial type. [def: 'accept']
     block['name'] = The block name. If absent, will be dynamically named.
     block['instructions'] = A list of strings, the instructions to be displayed before the trial begins. This uses the
-                            format of JsPsych, i.e., each element of the list is a separate page. [def: None]
+                            format of JsPsych, i.e., each element of the list is a separate page. Alternatively, each
+                            of these may be files that point to jinja templates. [def: None]
     block['feedback_time'] = an int, how long (in ms) to display selection feedback. [def: 100]
     block['trial_time'] = the time for each trial (in ms). [def: 1500]
     block['response_ends_trial'] = boolean, whether or not a click causes the trial to advance. [def: True]
@@ -27,6 +28,7 @@ from PIL import Image
 import numpy as np
 import os
 import jinja2
+from jinja2 import meta
 
 # set the defaults
 DEF_FEEDBACK_TIME = 100
@@ -41,19 +43,50 @@ BASE_TEMPLATE = 'base.html'
 PRELOAD_TEMPATE = 'preload_template.html'
 INSTRUCTION_TEMPLATE = 'inst_template.html'
 TRIAL_BLOCK_TEMPLATE = 'trial_block_template.html'
+PRACTICE_IM_DIR = 'instr_screenshots/'
 
 # formatting defaults
 MARGIN_SIZE = 2
 
 # determine the root of the templates
-root = os.path.dirname(os.path.abspath(__file__))
-template_dir = os.path.join(root, 'templates/')
+ROOT = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE_DIR = os.path.join(ROOT, 'templates/')
 
 # create the jinja template environment
-templateLoader = jinja2.FileSystemLoader( searchpath=template_dir )
-templateEnv = jinja2.Environment(loader = templateLoader)
+templateLoader = jinja2.FileSystemLoader(searchpath=TEMPLATE_DIR)
+templateEnv = jinja2.Environment(loader=templateLoader)
 
-def make(blocks, preload_images=True, box_size=[800, 800], hit_size=[600, 600], pos_type='random', attribute='interesting'):
+# --------------------------------
+# Perform Jinja2 Escapes
+_js_escapes = {
+        '\\': '\\u005C',
+        '\'': '\\u0027',
+        '"': '\\u0022',
+        '>': '\\u003E',
+        '<': '\\u003C',
+        '&': '\\u0026',
+        '=': '\\u003D',
+        '-': '\\u002D',
+        ';': '\\u003B',
+        u'\u2028': '\\u2028',
+        u'\u2029': '\\u2029'
+}
+# Escape every ASCII character with a value less than 32.
+_js_escapes.update(('%c' % z, '\\u%04X' % z) for z in xrange(32))
+def jinja2_escapejs_filter(value):
+        retval = []
+        for letter in value:
+                if _js_escapes.has_key(letter):
+                        retval.append(_js_escapes[letter])
+                else:
+                        retval.append(letter)
+
+        return jinja2.Markup("".join(retval))
+templateEnv.filters['escapejs'] = jinja2_escapejs_filter
+# --------------------------------
+
+def make(blocks, preload_images=True, box_size=[800, 500], hit_size=[600, 400], pos_type='random',
+         attribute='interesting', instruction_sequence=[], practice=False):
     """
     Produces an experimental HTML document. By assembling blocks of html code into a single html document. Note that
     this will fill in missing values in place!
@@ -67,12 +100,22 @@ def make(blocks, preload_images=True, box_size=[800, 800], hit_size=[600, 600], 
     :param pos_type: Either 'random', in which the hit box is placed anywhere inside the box, or 'fixed', where it is
                      centered. [def: 'random']
     :param attribute: The attribute that you want people to judge, e.g., 'interesting'
+    :param instruction_sequence: The sequence of instruction pages to display at the outset of the experiment.
+    :param practice: Boolean. If True, will display (a) the demographics form and (b) the the debrief.
     :return The appropriate HTML for this experiment.
     """
     images = []
     counts = {'keep': 0, 'reject': 0}
     rblocks = []
     blocknames = []
+    if practice:
+        p_val = 'true'
+    else:
+        p_val = 'false'
+    if instruction_sequence:
+        block, start_inst_name = _make_start_block(instruction_sequence, attribute)
+        rblocks.append(block)
+        blocknames.append(start_inst_name)
     for n, block in enumerate(blocks):
         # fill in any missing values
         block['type'] = block.get('type', DEF_TRIAL_TYPE)
@@ -100,8 +143,10 @@ def make(blocks, preload_images=True, box_size=[800, 800], hit_size=[600, 600], 
     base = templateEnv.get_template(BASE_TEMPLATE)
     # fill the preload template
     filled_preload = preload.render(images=images)
-    html = base.render(blocks=rblocks, preload=filled_preload, blocknames=blocknames, attribute=attribute)
+    html = base.render(blocks=rblocks, preload=filled_preload, blocknames=blocknames, attribute=attribute,
+                       practice=p_val)
     return html
+
 
 def _make_exp_block(block, box_size, hit_size, pos_type):
     """
@@ -141,6 +186,7 @@ def _make_exp_block(block, box_size, hit_size, pos_type):
     template = templateEnv.get_template(TRIAL_BLOCK_TEMPLATE)
     filled_template = template.render(block=rblock)
     return filled_template, images
+
 
 def _fit_images(images, hit_size):
     """
@@ -186,11 +232,12 @@ def _fit_images(images, hit_size):
         cdict['x'] = cur_x_pos
         cdict['width'] = int(x)
         cdict['height'] = int(y)
-        cdict['y'] = int(float(max_height) / 2 - float(y) / 2 ) + height_offset
+        cdict['y'] = int(float(max_height) / 2 - float(y) / 2) + height_offset
         cdict['file'] = images[n]
         cur_x_pos += cdict['width'] + 2 * MARGIN_SIZE
         res.append(cdict)
     return res
+
 
 def _get_im_dims(image):
     """
@@ -206,7 +253,8 @@ def _get_im_dims(image):
     width, height = im.size
     return [width, height]
 
-def _make_instr_block(block, attribute='interesting'):
+
+def _make_instr_block(block, attribute):
     """
     Accepts a block dict (see readme) and returns an appropriate instruction block.
 
@@ -216,7 +264,66 @@ def _make_instr_block(block, attribute='interesting'):
     """
     rblock = dict()
     rblock['name'] = block['name'] + '_instr'
-    rblock['instructions'] = block['instructions']
+    rblock['instructions'] = [_create_instruction_page(x, attribute) for x in block['instructions']]
     template = templateEnv.get_template(INSTRUCTION_TEMPLATE)
     filled_template = template.render(block=rblock, attribute=attribute)
     return filled_template, rblock['name']
+
+
+def _create_instruction_page(instruction, attribute):
+    """
+    Creates a single instruction page, and attempts to intelligently define the items that require filling. Note that
+    if a template file (or one that does not exist) is not provided, then it will simply return whatever is passed in
+    as the instructions.
+
+    :param template: The template filename, or a string that will be the instructions.
+    :param attribute: The study attribute.
+    :return: The instruction page as a filled template.
+    """
+    try:
+        template_class = templateEnv.get_template(instruction)
+    except:
+        return instruction
+    vars = _get_template_variables(instruction)
+    var_dict = dict()
+    # create a dict of variables to set in the template
+    if 'attribute' in vars:
+        var_dict['attribute'] = attribute
+    if 'image_dir' in vars:
+        var_dict['image_dir'] = os.path.join(ROOT, PRACTICE_IM_DIR)
+    filled_template = template_class.render(**var_dict)\
+    # perform replacements
+    filled_template = filled_template.replace('\n', '')  # must eliminate the carriage returns!
+    filled_template = filled_template.replace('"', '\"')  # escape quotes!
+    filled_template = filled_template.replace("'", "\'")  # escape quotes!
+    return filled_template
+
+
+def _make_start_block(instruction_sequence, attribute):
+    """
+    Accepts the attribute that we will be scoring, a sequence of instruction templates, and converts them into an
+    instruction block.
+
+    :param instruction_sequence: A list of filenames, in order, which points to template files.
+    :param attribute: The attribute that will be scored.
+    :return: An instruction block as a filled template.
+    """
+    pages = []
+    for ist in instruction_sequence: # ist = instruction template
+        pages.append(_create_instruction_page(ist, attribute))
+    block = {'instructions':pages, 'name': 'start_block'}
+    template = templateEnv.get_template('inst_template.html')
+    filled_template = template.render(block=block)
+    return filled_template, 'start_block'
+
+
+def _get_template_variables(template):
+    """
+    Accepts a template file, returns the undeclared variables.
+
+    :param template: A template file, from which we will extract the variables.
+    :return: The undeclared variables (i.e., those that still need to be defined) as a set
+    """
+    src = templateEnv.loader.get_source(templateEnv, template)
+    vars = meta.find_undeclared_variables(templateEnv.parse(src))
+    return vars

@@ -1,15 +1,16 @@
 <!doctype html>
 <html>
 <head>
-  <script src="../jspsych-4.3/js/jquery.min.js"></script>
-  <script src="../jspsych-4.3//js/jquery-ui.min.js"></script>
-  <script src="../jspsych-4.3/jspsych.js"></script>
-  <script src="../jspsych-4.3/plugins/jspsych-click-choice.js"></script>
-  <script src="../jspsych-4.3/plugins/jspsych-instructions.js"></script>
+  <script src="../js/jspsych-4.3/js/jquery.min.js"></script>
+  <script src="../js/jspsych-4.3/js/jquery-ui.min.js"></script>
+  <script src="../js/jspsych-4.3/jspsych.js"></script>
+  <script src="../js/jspsych-4.3/plugins/jspsych-click-choice.js"></script>
+  <script src="../js/jspsych-4.3/plugins/jspsych-instructions.js"></script>
+  <script src="../js/jspsych-4.3/plugins/jspsych-html.js"></script>
   <script src="../js/practice_debrief.js"></script>
   <script src="../js/progressbar.min.js"></script>
-  <link rel="stylesheet" href="../jspsych-4.3/css/jspsych.css"></link>
-  <link rel="stylesheet" href="../jspsych-4.3/css/jquery-ui.css"></link>
+  <link rel="stylesheet" href="../js/jspsych-4.3/css/jspsych.css"></link>
+  <link rel="stylesheet" href="../js/jspsych-4.3/css/jquery-ui.css"></link>
 </head>
 <body>
 <div id="jspsych-target"></div>
@@ -22,32 +23,87 @@
     {{ block }}
   {% endfor %}
 
+    var practice = {{ practice }};
+
   var debrief = {
     type: 'instructions',
     pages: [function() {return get_rt_string(300);},
             function() {return get_missed_string(0.1);},
             function() {return get_bias_string(0.9);},
-            function() {return get_contradictions_string(0.1, {{ attribute }});}],
+            function() {return get_contradictions_string(0.1, '{{ attribute }}');}],
     show_clickable_nav: true
   }
 
+  var check_demographics = function(elem) {
+    if (!$("input:radio[name=gender]").is(":checked")){
+      alert("You must indicate your gender.");
+      return false;
+    }
+    if (!$("input:radio[name=age]").is(":checked")){
+      alert("You must indicate your age.");
+      return false;
+    }
+    if (!$("input:radio[name=location]").is(":checked")){
+      alert("You must indicate your location.");
+      return false;
+    }
+    jsPsych.data.write({
+      "gender":$('input[name=gender]:checked').val(),
+      "age":$('input[name=age]:checked').val(),
+      "location":$('input[name=location]:checked').val()
+      });
+    return true
+  }
+
+  var demo = {
+    type:'html',
+    pages: [{url: "external_html/demographics.html", cont_btn: "start", check_fn: check_demographics}]
+  }
+
   {{ preload }}
+
   function clearBox(elementID){
     document.getElementById(elementID).innerHTML = "";
   }
+
+var experiment_structure = [
+    {% for blockname in blocknames %}
+        {{ blockname }},
+    {% endfor %}
+];
+
+if (practice) {
+    experiment_structure.splice(0, 0, demo);
+    experiment_structure.push(debrief);
+}
+
   function startExperiment(){
     //clearBox("jspsych-target");
     jsPsych.init({
       display_element: $('#jspsych-target'),
-      experiment_structure: [
-            {% for blockname in blocknames %}
-                {{ blockname }},
-            {% endfor %}
-            debrief
-        ],
+      experiment_structure: experiment_structure,
       on_finish: function() {
+            if (practice){
+                jsPsych.data.addProperties({
+                    "is_practice":practice,
+                    "passed_practice":passed_practice
+                })
+            } else {
+                jsPsych.data.addProperties({
+                    "is_practice":practice,
+                    "passed_practice":true
+                })
+            }
+            var turk_info = jsPsych.turk.turkInfo();
+            jsPsych.data.addProperties({
+                "assignmentId": turk_info.assignmentId,
+                "hitId": turk_info.hitId,
+                "workerId": turk_info.workerId,
+                "previewMode": turk_info.previewMode,
+                "outsideTurk": turk_info.outsideTurk
+            })
             jsPsych.data.displayData('csv');
-       }
+      }
     });
   }
 </script>

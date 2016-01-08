@@ -9,9 +9,27 @@ def get_design(n, t, j):
     """
     Creates an experimental design by creating a series of fixed-length subsets of N elements such that each element
     appears at least some number of times and no pairs of elements occurs in any subset more than once. The number of
-    subsets is minimized. Each subest can be appropriately conceptualized as a "trial"
+    subsets is minimized. Each subset can be appropriately conceptualized as a "trial."
+
+    This constitutes an incomplete t-Design. It effectively extends t-Designs to a new type of design,
+    t_min-(v, k, lambda, x), which is an incidence structure such that:
+        - (1) There are v points.
+        - (2) Each block contains k points.
+        - (3) For any t points there are exactly lambda blocks that contain all these points.
+        - (4) Each point occurs in at least x blocks.
+        - (5) No block can be removed without violating 1-4, i.e., it is 'minimal' in a sense.
+
+    See:
+        --- The general format is a T-design: http://mathworld.wolfram.com/t-Design.html
+        --- In our case, because pairs must occur precisely once, it is a Steiner System:
+            http://mathworld.wolfram.com/SteinerSystem.html
 
     If no such design is possible, returns None.
+
+    This generates a Steiner system deterministically--due to the hypergeometric rate of expansion, it is not possible
+    to generate unique Steiner systems each time without using a random component, which makes things so much messier.
+    I may introduce such a method later on. It is not clear if this determinism will introduce a bias in the responses.
+    My guess is that, under random assignment of images to indices, no bias is possible--but I'm not sure if thats true.
 
     :param n: The number of distinct elements involved in the experiment.
     :param t: The number of elements to present each trial.
