@@ -194,7 +194,7 @@ def _fit_images(images, hit_size):
     constraints are obeyed:
         - No image exceeds the height of the hit box.
         - Every image has an equal size.
-        - The images, layed side-by-side, occupy as much of the hit box's width as possible.
+        - The images, laid side-by-side, occupy as much of the hit box's width as possible.
 
     :param images: A list of image filenames or URLs.
     :param hit_size: The size of the hitbox, see make()
@@ -249,7 +249,7 @@ def _get_im_dims(image):
     :return: A list, the dimensions of the image in pixels, as [width, height].
     """
     file = cStringIO.StringIO(urllib.urlopen(image).read())
-    im=Image.open(file)
+    im = Image.open(file)
     width, height = im.size
     return [width, height]
 
