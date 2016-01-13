@@ -45,18 +45,18 @@ def get_design(n, t, j):
             if np.min(occ) == j:
                 return combs # you're done
             cvio = 0 # the current count of violations
-        for x1, x2 in comb(c, 2):
-            if obs[x1, x2]:
+            for x1, x2 in comb(c, 2):
+                if obs[x1, x2]:
+                    continue
+            for i in c:
+                cvio += max(0, occ[i] - j + 1)
+            if cvio > allvio:
                 continue
-        for i in c:
-            cvio += max(0, occ[i] - j + 1)
-        if cvio > allvio:
-            continue
-        for x1, x2 in comb(c, 2):
-            obs[x1, x2] += 1
-        for i in c:
-            occ[i] += 1
-        combs.append(c)
+            for x1, x2 in comb(c, 2):
+                obs[x1, x2] += 1
+            for i in c:
+                occ[i] += 1
+            combs.append(c)
     if not np.min(occ) >= j:
         return None
     return combs
