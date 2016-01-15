@@ -39,15 +39,17 @@ Handles all update events for the database. The following events are possible, w
     Create/recreate wins table
 """
 
-from conf import *
+from ..conf import *
 import urllib, cStringIO
 from PIL import Image
 import happybase as hb
 import logger
-from get import table_exists, table_has_row, image_is_active
+import get as dbget
 from dill import dumps, loads
 from itertools import combinations as comb
 from datetime import datetime
+import time
+
 
 #  LOGGING ##############################
 
@@ -55,11 +57,13 @@ _log = logger.setup_logger(__name__)
 
 # /LOGGING ##############################
 
+"""
+Global Variables - Now defined in conf.py
+"""
 
 """
 PRIVATE FUNCTIONS
 """
-
 
 def _create_table(conn, table, families, clobber):
     """
@@ -71,14 +75,14 @@ def _create_table(conn, table, families, clobber):
     :param clobber: Boolean, if true will erase old workers table if it exists. [def: False]
     :return: True if table was created. False otherwise.
     """
-    if table_exists(conn, table):
+    if dbget.table_exists(conn, table):
         if not clobber:
             # it exists and you can't do anything about it.
             return False
         # delete the table
         conn.delete_table(table, disable=True)
     conn.create_table(table, families)
-    return table_exists(conn, table)
+    return dbget.table_exists(conn, table)
 
 
 def _get_im_dims(imageUrl):
@@ -112,7 +116,9 @@ def _conv_dict_vals(data):
     :return: The converted dictionary.
     """
     for k, v in data.iteritems():
-        if type(v) is bool:
+        if v is None:
+            data[k] = ''
+        elif type(v) is bool:
             if v:
                 data[k] = TRUE
             else:
@@ -169,6 +175,9 @@ def _get_pair_key(image1, image2):
 def _get_pair_dict(image1, image2, taskId, attribute):
     """
     Creates a dictionary appropriate for the creation of a pair entry in the Pairs table.
+
+    NOTE:
+        In the table, imId1 is always the lexicographically first image.
 
     :param image1: Image 1 ID.
     :param image2: Image 2 ID.
@@ -303,7 +312,7 @@ ADDING DATA
 """
 
 
-def register_task(conn, taskId, filename, expSeq, attribute, isPractice=False, checkIms=False):
+def register_task(conn, taskId, expSeq, attribute, blocks=None, isPractice=False, checkIms=False):
     """
     Registers a new task to the database.
 
@@ -319,10 +328,10 @@ def register_task(conn, taskId, filename, expSeq, attribute, isPractice=False, c
         dill.
 
     :param conn: The HappyBase connection object.
-    :param taskId: A string, the task ID.
     :param filename: A string, the filename holding the task.
     :param expSeq: A list of lists, in order of presentation, one for each segment. See Notes.
     :param attribute: The image attribute this task pertains to, e.g., 'interesting.'
+    :param blocks: The experimental blocks (fit for being placed into make_html)
     :param isPractice: A boolean, indicating if this task is a practice or not. [def: False]
     :param checkIms: A boolean. If True, it will check that every image required is in the database.
     :return: None.
@@ -335,6 +344,7 @@ def register_task(conn, taskId, filename, expSeq, attribute, isPractice=False, c
     task_dict['metadata:filename'] = filename
     task_dict['metadata:attribute'] = attribute
     images = set()
+    image_list = [] # we also need to store the images as a list incase some need to be incremented more than once
     im_tuples = []
     im_tuple_types = []
     table = conn.table(IMAGE_TABLE)
@@ -342,20 +352,26 @@ def register_task(conn, taskId, filename, expSeq, attribute, isPractice=False, c
         for im_tuple in segment:
             for im in im_tuple:
                 if checkIms:
-                    if not image_is_active(im, table=table):
+                    if not dbget.image_is_active(conn, im):
                         _log.warning('Image %s is not active or does not exist.' % im)
                         continue
                 # TODO: Check that pair does not exist - function should be in get.xxx
                 images.add(im)
+                image_list.append(im)
             for imPair in comb(im_tuple, 2):
                 pair_list.add(tuple(sorted(imPair)))
             im_tuples.append(im_tuple)
             im_tuple_types.append(seg_type)
-    for img in images:
+    for img in image_list:
         table.counter_inc(img, 'stats:numTimesSeen')
     task_dict['metadata:images'] = dumps(images)  # note: not in order of presentation!
     task_dict['metadata:tuples'] = dumps(im_tuples)
     task_dict['metadata:tupleTypes'] = dumps(im_tuple_types)
+    task_dict['status:awaitingServe'] = TRUE
+    if blocks is None:
+        _log.error('No block structure defined for this task - will not be able to load it.')
+    else:
+        task_dict['blocks:c1'] = dumps(blocks)
     # TODO: Compute forbidden workers?
     # Input the data for the task table
     table = conn.table(TASK_TABLE)
@@ -371,6 +387,19 @@ def register_task(conn, taskId, filename, expSeq, attribute, isPractice=False, c
     b.send()
 
 
+def set_task_html(conn, taskId, html):
+    """
+    Stores the task HTML in the database, for future reference.
+
+    :param conn: The HappyBase connection object.
+    :param taskId: The task ID, as a string.
+    :param html: The task HTML, as a string. [this might need to be pickled?]
+    :return: None
+    """
+    table = conn.table(TASK_TABLE)
+    table.put(taskId, {'html:c1': html})
+
+
 def register_worker(conn, workerId):
     """
     Registers a new worker to the database.
@@ -384,7 +413,7 @@ def register_worker(conn, workerId):
     """
     _log.info('Registering worker %s' % workerId)
     table = conn.table(WORKER_TABLE)
-    if table_has_row(table, workerId):
+    if dbget.table_has_row(table, workerId):
         _log.warning('User %s already exists, aborting.' % workerId)
     table.put(workerId, {'status:passedPractice': FALSE, 'status:isLegacy': FALSE, 'status:isBanned': FALSE,
                          'status:randomSeed': str(int((datetime.now()-datetime(2016, 1, 1)).total_seconds()))})
@@ -423,11 +452,29 @@ def activate_images(conn, imageIds):
     table = conn.table(IMAGE_TABLE)
     b = table.batch()
     for iid in imageIds:
-        if not table_has_row(table, iid):
+        if not dbget.table_has_row(table, iid):
             _log.warning('No data for image %s'%(iid))
             continue
         b.put(iid, {'metadata:isActive': TRUE})
     b.send()
+
+
+def activate_n_images(conn, n):
+    """
+    Activates N new images.
+
+    :param conn: The HappyBase connection object.
+    :param n: The number of new images to activate.
+    :return: None.
+    """
+    table = conn.table(IMAGE_TABLE)
+    scanner = table.scan(columns=['metadata:isActive'], filter=ACTIVE_FILTER)
+    to_activate = []
+    for rowKey, rowData in scanner:
+        to_activate.append(rowKey)
+        if len(to_activate) == n:
+            break
+    activate_images(conn, to_activate)
 
 
 def practice_served(conn, taskId, workerId):
@@ -442,7 +489,8 @@ def practice_served(conn, taskId, workerId):
     _log.info('Serving practice %s to worker %s' % taskId, workerId)
     # TODO: Check that worker exists
     table = conn.table(WORKER_TABLE)
-    table.counter_inc(workerId, 'stats:numPracticeAttempts')
+    table.counter_inc(workerId, 'stats:numPracticesAttempted')
+    table.counter_inc(workerId, 'stats:numPracticesAttemptedThisWeek')
 
 
 def task_served(conn, taskId, workerId, assignmentId=None, hitId=None, payment=None):
@@ -458,11 +506,12 @@ def task_served(conn, taskId, workerId, assignmentId=None, hitId=None, payment=N
     table = conn.table(TASK_TABLE)
     table.put(taskId, _conv_dict_vals({'metadata:workerId': workerId, 'metadata:assignmentId': assignmentId,
                                        'metadata:hitId': hitId, 'metadata:payment': payment,
-                                       'status:pendingCompletion': TRUE}))
+                                       'status:pendingCompletion': TRUE, 'status:awaitingServe': FALSE}))
     table = conn.table(WORKER_TABLE)
     # increment the number of incomplete trials for this worker.
     table.counter_inc(workerId, 'stats:numIncomplete')
     table.counter_inc(workerId, 'stats:numAttempted')
+    table.counter_inc(workerId, 'stats:numAttemptedThisWeek')
 
 
 def worker_demographics(conn, workerId, gender, age, location):
@@ -497,7 +546,7 @@ def task_finished(conn, taskId, choices, choiceIdxs, reactionTimes):
     _log.info('Saving complete data for task %s worker %s'%(taskId, workerId))
     table = conn.table(TASK_TABLE)
     # check that we have task information for this task
-    if not table_has_row(table, taskId):
+    if not dbget.table_has_row(table, taskId):
         # issue a warning, but do not discard the data
         _log.warning('No task data for finished task %s' % taskId)
     # update the data
@@ -510,6 +559,10 @@ def task_finished(conn, taskId, choices, choiceIdxs, reactionTimes):
     if workerId is None:
         # store as much data as you can, but do not attempt to update anything about the worker
         _log.warning('Finished task %s is not associated with a worker.' % taskId)
+        return
+    if workerId == '':
+        _log.warning('Worker %s attempted to submit task after expiration' % workerId)
+        # TODO: Decide on the behavior here?
         return
     # increment the worker counts
     table = conn.table(WORKER_TABLE)
@@ -527,7 +580,7 @@ def practice_pass(conn, taskId):
     """
     table = conn.table(TASK_TABLE)
     # check if the table exists
-    if not table_has_row(table, taskId):
+    if not dbget.table_has_row(table, taskId):
         _log.warning('No practice data for finished practice %s' % taskId)
         return
     workerId = table.row(taskId, columns=['task_meta:workerId']).get('task_meta:workerId', None)
@@ -567,7 +620,7 @@ def accept_task(conn, taskId):
     # update task table, get task data
     _log.info('Task %s has been accepted.' % taskId)
     table = conn.table(TASK_TABLE)
-    task_status = get_task_status(taskId, table=table)
+    task_status = get_task_status(conn, taskId)
     if task_status == DOES_NOT_EXIST:
         _log.error('No such task exists!')
         return
@@ -627,7 +680,7 @@ def reject_task(conn, taskId, reason=None):
     # update task table, get task data
     _log.info('Task %s has been rejected.' % taskId)
     table = conn.table(TASK_TABLE)
-    task_status = get_task_status(taskId, table=table)
+    task_status = get_task_status(conn, taskId)
     if task_status == DOES_NOT_EXIST:
         _log.error('No such task exists!')
         return
@@ -639,4 +692,101 @@ def reject_task(conn, taskId, reason=None):
     # update worker table
     table = conn.table(WORKER_TABLE)
     table.counter_dec(workerId, 'stats:numPendingEval')  # decrement pending evaluation count
-    table.counter_inc(workerId, 'stats:numRejected')  # increment accepted count
+    table.counter_inc(workerId, 'stats:numRejected')  # increment rejected count
+    table.counter_inc(workerId, 'stats:numRejectedThisWeek')
+
+
+def reset_worker_counts(conn):
+    """
+    Resets the weekly counters back to 0.
+
+    NOTES:
+        The weekly count approach is probably
+    :param conn: The HappyBase connection object.
+    :return: None.
+    """
+    table = conn.table(WORKER_TABLE)
+    scanner = table.scan(filter=b'KeyOnlyFilter() AND FirstKeyOnlyFilter()')
+    for rowKey, data in scanner:
+        table.counter_set(rowKey, 'stats:numPraticesAttemptedThisWeek', value=0)
+        table.counter_set(rowKey, 'stats:numAttemptedThisWeek', value=0)
+        table.counter_set(rowKey, 'stats:numRejectedThisWeek', value=0)
+
+
+def worker_autoban_check(conn, workerId, duration=None):
+    """
+    Checks that the worker should be autobanned, and bans them if appropriate.
+
+    :param conn: The HappyBase connection object.
+    :param workerId: The worker ID, as a string.
+    :return: True if the worker should be autobanned, False otherwise.
+    """
+    if dbget.worker_weekly_rejected(conn, workerId) > MIN_REJECT_AUTOBAN_ELIGIBLE:
+        if dbget.worker_weekly_reject_accept_ratio(conn, workerId) > AUTOBAN_REJECT_ACCEPT_RATIO:
+            ban_worker(conn, workerId, reason='You have been rejected too often.')
+            return True
+    return False
+
+
+def ban_worker(conn, workerId, duration=DEFAULT_BAN_LENGTH, reason=DEFAULT_BAN_REASON):
+    """
+    Bans a worker for some amount of time.
+
+    :param conn: The HappyBase connection object.
+    :param workerId: The worker ID, as a string.
+    :param duration: The amount of time to ban the worker for, in seconds [default: 1 week]
+    :param reason: The reason for the ban.
+    :return: None.
+    """
+    table = conn.table(WORKER_TABLE)
+    table.put(workerId, _conv_dict_vals({'status:isBanned': TRUE, 'status:banDuration': duration,
+                                         'status:banReason': reason}))
+
+
+def worker_expire_ban(conn, workerId):
+    """
+    Checks whether or not a worker's ban has expired; if so, it changes the ban status and returns 0. Otherwise, it
+    returns the amount of time left in the ban.
+
+    :param conn: The HappyBase connection object.
+    :param workerId: The worker ID, as a string.
+    :return: 0 if the subject is not or is no longer banned, otherwise returns the time until the ban expires.
+    """
+    table = conn.table(WORKER_TABLE)
+    data = table.row(workerId, include_timestamp=True)
+    ban_data = data.get('status:isBanned', (FALSE, 0))
+    if ban_data[0] == FALSE:
+        return 0
+    ban_date = time.mktime(time.localtime(float(ban_data[1])/1000))
+    cur_date = time.mktime(time.localtime())
+    ban_dur = float(data.get('status:banLength', ('0', 0))[0])
+    if (cur_date - ban_date) > ban_dur:
+        table.set(workerId, {'status:isBanned': FALSE, 'status:banLength': '0'})
+        return 0
+    else:
+        return (cur_date - ban_date) - ban_dur
+
+
+def reset_timed_out_tasks(conn):
+    """
+    Checks if a task has been pending for too long without completion; if so, it resets it.
+
+    :param conn: The HappyBase connection object.
+    :return: None
+    """
+    table = conn.table(TASK_TABLE)
+    to_reset = []  # a list of task IDs to reset.
+    scanner = table.scan(columns=['status:pendingCompletion'], filter=PENDING_COMPLETION_FILTER, include_timestamp=True)
+    for rowKey, rowData in scanner:
+        start_timestamp = rowData.get('status:pendingCompletion', (FALSE, '0'))[1]
+        start_date = time.mktime(time.localtime(float(start_timestamp)/1000))
+        cur_date = time.mktime(time.localtime())
+        if (cur_date - start_date) > TASK_COMPLETION_TIMEOUT:
+            to_reset.append(rowKey)
+    # Now, un-serve all those tasks
+    b = table.batch()
+    b.put(taskId, _conv_dict_vals({'metadata:workerId': '', 'metadata:assignmentId': '',
+                                   'metadata:hitId': '', 'metadata:payment': '',
+                                   'status:pendingCompletion': FALSE, 'status:awaitingServe': TRUE}))
+    b.send()
+    _log.info('Found %i incomplete tasks to be reset.' % len(to_reset))

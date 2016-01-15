@@ -32,12 +32,22 @@ ims = list(np.random.choice(images, n_images, replace=False))
 im_ids = [x.split('/')[-1].split('.')[0] for x in ims] # get the image ids
 _log.info('Registering images...')
 dbset.register_images(conn, im_ids, ims)
+_log.info('Activating first 100 images...')
+dbset.activate_images(conn, im_ids[:100])
 
 table = conn.table(IMAGE_TABLE)
-x = table.scan(filter=b'KeyOnlyFilter() AND FirstKeyOnlyFilter()')
-tot_ims = 0
-for key, d in x:
-    tot_ims += 1
 
-_log.info('Found %i images in database' % tot_ims)
+total_count = dbget.get_num_items(table)
+active_count = dbget.get_n_active_images(conn=conn)
+
+_log.info('Found %i images total in database' % total_count)
+_log.info('Found %i active images in database' % active_count)
+
+#scanner = table.scan(columns=['stats:numTimesSeen', 'metadata:isActive'], filter=dbget.ACTIVE_FILTER)
+
+_log.info('Attempting to generate design')
+design = dbget.get_design(conn, 20, 3, 1)
+
+print design
+
 conn.close()

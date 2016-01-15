@@ -20,7 +20,9 @@
     {{ block }}
   {% endfor %}
 
-    var practice = {{ practice }};
+  var practice = {{ practice }};
+  var collect_demo = {{ collect_demo }};
+  var task_id = {{ taskId }};
 
   var debrief = {
     type: 'instructions',
@@ -69,8 +71,11 @@ var experiment_structure = [
     {% endfor %}
 ];
 
-if (practice) {
+if (collect_demo) {
     experiment_structure.splice(0, 0, demo);
+}
+
+if (practice) {
     experiment_structure.push(debrief);
 }
 
@@ -97,7 +102,8 @@ if (practice) {
                 "hitId": turk_info.hitId,
                 "workerId": turk_info.workerId,
                 "previewMode": turk_info.previewMode,
-                "outsideTurk": turk_info.outsideTurk
+                "outsideTurk": turk_info.outsideTurk,
+                "taskId": task_id
             })
             jsPsych.data.displayData('csv');
       }

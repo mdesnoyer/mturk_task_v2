@@ -4,23 +4,19 @@ Generates an html file for an experiment, using jsPsych and the custom plugin I 
 Similar to JsPsych, this script accepts a list of data structures that each represent a portion of the experiment.
 These take the form of dictionaries, called 'blocks':
     block['images'] = a list of lists, where each sublist is of the form [image1, ...].
-    block['type'] = 'accept' or 'reject', depending on the trial type. [def: 'accept']
+    block['type'] = 'keep' or 'reject', depending on the trial type. [def: DEF_TRIAL_TYPE]
     block['name'] = The block name. If absent, will be dynamically named.
     block['instructions'] = A list of strings, the instructions to be displayed before the trial begins. This uses the
                             format of JsPsych, i.e., each element of the list is a separate page. Alternatively, each
-                            of these may be files that point to jinja templates. [def: None]
-    block['feedback_time'] = an int, how long (in ms) to display selection feedback. [def: 100]
-    block['trial_time'] = the time for each trial (in ms). [def: 1500]
-    block['response_ends_trial'] = boolean, whether or not a click causes the trial to advance. [def: True]
-    block['prompt'] = a string, the prompt to display during the trial, above the image block. [def: ''] (this should
-                      be used for testing).
+                            of these may be files that point to jinja templates. [def: DEF_INSTRUCTIONS]
+    block['feedback_time'] = an int, how long (in ms) to display selection feedback. [def: DEF_FEEDBACK_TIME]
+    block['trial_time'] = the time for each trial (in ms). [def: DEF_TRIAL_TIME]
+    block['response_ends_trial'] = boolean, whether or not a click causes the trial to advance.
+                                   [def: DEF_RESPONSE_ENDS_TRIAL]
+    block['prompt'] = a string, the prompt to display during the trial, above the image block. The default prompt will
+                      vary based on whether or not this is a practice task, see the configuration python file.
 
-Additionally, there are a few global parameters:
-    preload_images = boolean, whether or not to fetch images ahead of time. [def: True]
-    box_size = the size of the images to display in pixels, [w, h]. {def: [800, 800]}
-    hit_size = the size of the box that contains the images, [w, h]. This is a subbox that will either be (a) centered
-               or (b) randomly positioned. {def: [600, 600]}
-    pos_type = either random or fixed, see block()
+For configuration details, see conf.py.
 """
 
 import urllib, cStringIO
@@ -29,28 +25,7 @@ import numpy as np
 import os
 import jinja2
 from jinja2 import meta
-
-# set the defaults
-DEF_FEEDBACK_TIME = 100
-DEF_TRIAL_TIME = 1500
-DEF_INSTRUCTIONS = None
-DEF_RESPONSE_ENDS_TRIAL = 'true'
-DEF_TRIAL_TYPE = 'keep'
-DEF_PROMPT = ''
-
-# set the templates to be used
-BASE_TEMPLATE = 'base.html'
-PRELOAD_TEMPATE = 'preload_template.html'
-INSTRUCTION_TEMPLATE = 'inst_template.html'
-TRIAL_BLOCK_TEMPLATE = 'trial_block_template.html'
-PRACTICE_IM_DIR = 'instr_screenshots/'
-
-# formatting defaults
-MARGIN_SIZE = 2
-
-# determine the root of the templates
-ROOT = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE_DIR = os.path.join(ROOT, 'templates/')
+from ..conf import *
 
 # create the jinja template environment
 templateLoader = jinja2.FileSystemLoader(searchpath=TEMPLATE_DIR)
@@ -85,8 +60,9 @@ def jinja2_escapejs_filter(value):
 templateEnv.filters['escapejs'] = jinja2_escapejs_filter
 # --------------------------------
 
-def make(blocks, preload_images=True, box_size=[800, 500], hit_size=[600, 400], pos_type='random',
-         attribute='interesting', instruction_sequence=[], practice=False):
+
+def make(blocks, taskId=None, preload_images=PRELOAD_IMAGES, box_size=BOX_SIZE, hit_size=HIT_SIZE, pos_type=POS_TYPE,
+         attribute=ATTRIBUTE, instruction_sequence=TASK_INSTRUCTION_SEQUENCE, practice=False, collect_demo=False):
     """
     Produces an experimental HTML document. By assembling blocks of html code into a single html document. Note that
     this will fill in missing values in place!
@@ -101,17 +77,22 @@ def make(blocks, preload_images=True, box_size=[800, 500], hit_size=[600, 400], 
                      centered. [def: 'random']
     :param attribute: The attribute that you want people to judge, e.g., 'interesting'
     :param instruction_sequence: The sequence of instruction pages to display at the outset of the experiment.
-    :param practice: Boolean. If True, will display (a) the demographics form and (b) the the debrief.
+    :param practice: Boolean. If True, will display the debrief pages.
+    :param collect_demo: Boolean. If True, will collect demographic information.
     :return The appropriate HTML for this experiment.
     """
     images = []
-    counts = {'keep': 0, 'reject': 0}
+    counts = {KEEP_BLOCK: 0, REJECT_BLOCK: 0}
     rblocks = []
     blocknames = []
     if practice:
         p_val = 'true'
     else:
         p_val = 'false'
+    if collect_demo:
+        d_val = 'true'
+    else:
+        d_val = 'false'
     if instruction_sequence:
         block, start_inst_name = _make_start_block(instruction_sequence, attribute)
         rblocks.append(block)
@@ -144,7 +125,7 @@ def make(blocks, preload_images=True, box_size=[800, 500], hit_size=[600, 400], 
     # fill the preload template
     filled_preload = preload.render(images=images)
     html = base.render(blocks=rblocks, preload=filled_preload, blocknames=blocknames, attribute=attribute,
-                       practice=p_val)
+                       practice=p_val, collect_demo=d_val, taskId=str(taskId))
     return html
 
 
