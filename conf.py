@@ -6,12 +6,20 @@ configuration + global parameters file.
 import numpy as np
 import string
 import random
+import sys
+import os
+
+
+base_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
+if base_path not in sys.path:
+    sys.path.insert(0,base_path)
+
 
 """
 WORKER OPTIONS
 """
 MAX_PRACTICES_PER_WEEK = 5  # The number of times you can attempt a practice per week.
-MAX_ATTEMPTS_PER_WEEK = np.inf # the maximum number of tasks a worker can complete per week
+MAX_ATTEMPTS_PER_WEEK = np.inf  # the maximum number of tasks a worker can complete per week
 DEFAULT_BAN_REASON = 'Reason not provided.'  # the default reason for a ban
 MIN_REJECT_AUTOBAN_ELIGIBLE = 3  # the minimum number of rejections (in a week) to be eligible for a ban
 AUTOBAN_REJECT_ACCEPT_RATIO = 0.33  # the ratio of rejections / acceptances to be eligible for a ban

@@ -39,7 +39,7 @@ Handles all update events for the database. The following events are possible, w
     Create/recreate wins table
 """
 
-from ..conf import *
+from conf import *
 import urllib, cStringIO
 from PIL import Image
 import happybase as hb

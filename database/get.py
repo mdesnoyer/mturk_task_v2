@@ -3,7 +3,7 @@ Handles general query events for the task. These are more abstract than the 'set
 variety of possibilities here.
 """
 
-from ..conf import *
+from conf import *
 import numpy as np
 from itertools import combinations as comb
 import logger

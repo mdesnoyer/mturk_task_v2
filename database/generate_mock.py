@@ -4,10 +4,10 @@ Rebuilds the database, and inserts some mock data, from AVA
 from glob import glob
 import numpy as np
 import happybase
-from database import set as dbset
-from database import get as dbget
-from database.conf import *
-from database import logger
+from mturk_task_v2.database import set as dbset
+from mturk_task_v2.database import get as dbget
+from mturk_task_v2.database.conf import *
+from mturk_task_v2.database import logger
 import ipdb
 #import logger
 import logging
