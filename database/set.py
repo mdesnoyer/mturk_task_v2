@@ -341,7 +341,6 @@ def register_task(conn, taskId, expSeq, attribute, blocks=None, isPractice=False
     task_dict = dict()
     pair_list = set()  # set of pairs
     task_dict['metadata:isPractice'] = isPractice
-    task_dict['metadata:filename'] = filename
     task_dict['metadata:attribute'] = attribute
     images = set()
     image_list = [] # we also need to store the images as a list incase some need to be incremented more than once

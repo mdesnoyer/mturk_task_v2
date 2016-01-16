@@ -57,12 +57,18 @@ DEF_RESPONSE_ENDS_TRIAL = 'true'  # whether or not a response ends a trial
 DEF_TRIAL_TYPE = KEEP_BLOCK  # the default trial type
 DEF_PROMPT = ''  # the default prompt to display
 DEF_PRACTICE_PROMPT = '<font color="red">PRACTICE</font>'  # the default prompt to display during practice tasks
+
+"""
+TASK GENERATION
+"""
 MARGIN_SIZE = 2  # the default margin size, for formatting.
 DEF_KEEP_BLOCKS = 1  # the default number of keep blocks for a task
 DEF_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
 DEF_PRACTICE_KEEP_BLOCKS = 1  # the default number of keep blocks for a practice task
 DEF_PRACTICE_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
-RANDOMIZE_SEGMENT_ORDER = False
+RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized within task.
+DEF_IMAGES_PER_TASK = None  # TODO: decide on this
+DEF_IMAGES_PER_PRACTICE = None  # TODO: decide on this too
 
 """
 TEMPLATES
@@ -77,7 +83,7 @@ PRACTICE_IM_DIR = 'instr_screenshots/'
 DIRECTORIES
 """
 ROOT = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE_DIR = os.path.join(ROOT, 'templates/')  # The template location
+TEMPLATE_DIR = os.path.join(ROOT, 'generate/templates/')  # The template location
 EXPERIMENT_DIR = os.path.join(ROOT, 'experiments/')  # The destination of experiments
 
 
@@ -123,6 +129,7 @@ WIN_TABLE = 'wins'
 """
 COLUMN NAMES, BY FAMILY
 """
+# See the readme on the database schema.
 WORKER_FAMILIES = {'status': dict(max_versions=1),
                    'stats': dict(max_versions=1),
                    'demographics': dict(max_versions=1),
@@ -146,8 +153,8 @@ WIN_FAMILIES = {'data': dict(max_versions=1)}
 """
 DATA INPUT FORMATTING
 """
-TRUE = '1'
-FALSE = '0'
+TRUE = '1'  # how True is represented in the database
+FALSE = '0'  # how False is represented in the database
 FLOAT_STR = '%.4g'  # how to format strings / integers
 
 
@@ -172,7 +179,7 @@ def _rand_id_gen(n):
     :param n: The number of characters in the random ID
     :return: A raw ID string, composed of n upper- and lowercase letters as well as digits.
     """
-    ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(n))
+    return ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(n))
 
 
 def task_id_gen():
@@ -197,10 +204,10 @@ VARIOUS IMPORTANT FILTERS
 # Finds active images.
 ACTIVE_FILTER = ("SingleColumnValueFilter ('metadata','isActive',=,'regexstring:^%s$')" % TRUE)
 # Finds tasks that are awaiting serving.
-AWAITING_SERVE_FILTER = ("SingleColumnValueFilter ('status', 'awaitingServe', =, 'regexstring:^%s$'" % TRUE)
+AWAITING_SERVE_FILTER = ("SingleColumnValueFilter ('status', 'awaitingServe', =, 'regexstring:^%s$')" % TRUE)
 # Finds practice tasks.
-IS_PRACTICE_FILTER = ("SingleColumnValueFilter ('metadata', 'isPractice', =, 'regexstring:^%s$'" % TRUE)
+IS_PRACTICE_FILTER = ("SingleColumnValueFilter ('metadata', 'isPractice', =, 'regexstring:^%s$')" % TRUE)
 # Finds inactive images.
 INACTIVE_FILTER = ("SingleColumnValueFilter ('metadata','isActive',=,'regexstring:^%s$')" % FALSE)
 # Finds tasks that are pending completion
-PENDING_COMPLETION_FILTER = ("SingleColumnValueFilter ('status', 'pendingCompletion', =, 'regexstring:^%s$'" % TRUE)
+PENDING_COMPLETION_FILTER = ("SingleColumnValueFilter ('status', 'pendingCompletion', =, 'regexstring:^%s$')" % TRUE)

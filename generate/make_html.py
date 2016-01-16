@@ -25,7 +25,7 @@ import numpy as np
 import os
 import jinja2
 from jinja2 import meta
-from ..conf import *
+from conf import *
 
 # create the jinja template environment
 templateLoader = jinja2.FileSystemLoader(searchpath=TEMPLATE_DIR)

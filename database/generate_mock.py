@@ -1,5 +1,9 @@
 """
 Rebuilds the database, and inserts some mock data, from AVA
+
+remember, it requires
+>> /hbase/hbase-1.1.2/bin/start-hbase.sh
+>> hbase thrift start
 """
 from glob import glob
 import numpy as np
@@ -8,6 +12,7 @@ from mturk_task_v2.database import set as dbset
 from mturk_task_v2.database import get as dbget
 from mturk_task_v2.database.conf import *
 from mturk_task_v2.database import logger
+from mturk_task_v2.generate.request_for_task import build_task
 import ipdb
 #import logger
 import logging
@@ -43,10 +48,16 @@ active_count = dbget.get_n_active_images(conn=conn)
 _log.info('Found %i images total in database' % total_count)
 _log.info('Found %i active images in database' % active_count)
 
-#scanner = table.scan(columns=['stats:numTimesSeen', 'metadata:isActive'], filter=dbget.ACTIVE_FILTER)
+# # scanner = table.scan(columns=['stats:numTimesSeen', 'metadata:isActive'], filter=dbget.ACTIVE_FILTER)
 
 _log.info('Attempting to generate design')
-design = dbget.get_design(conn, 20, 3, 1)
+
+# attempts to make a task
+dbget.get_task(conn, 40, 3, 1, 1, 1)
+html = build_task(conn, 'w_89jhfkj981')
+
+#design = dbget.get_design(conn, 20, 3, 1)
+
 
 print design
 

@@ -195,7 +195,7 @@ def worker_need_practice(conn, workerId):
     """
     table = conn.table(WORKER_TABLE)
     rowData = table.row(workerId)
-    return rowData.get('status:passedPractice', FALSE) == TRUE
+    return rowData.get('status:passedPractice', FALSE) != TRUE
 
 
 def current_worker_practices_number(conn, workerId):
@@ -601,8 +601,8 @@ def get_task(conn, n, t, j, n_keep_blocks=None, n_reject_blocks=None, prompt=Non
     # get the tuples
     image_tuples = get_design(conn, n, t, j)
     # arrange them into blocks
-    keep_tuples = [image_tuples[i:i+n] for i in xrange(0, len(l), n_keep_blocks)]
-    reject_tuples = [image_tuples[i:i+n] for i in xrange(0, len(l), n_reject_blocks)]
+    keep_tuples = [image_tuples[i:i+n] for i in xrange(0, len(image_tuples), n_keep_blocks)]
+    reject_tuples = [image_tuples[i:i+n] for i in xrange(0, len(image_tuples), n_reject_blocks)]
     keep_blocks = []
     reject_blocks = []
     for kt in keep_tuples:
