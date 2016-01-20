@@ -20,7 +20,7 @@ def build_task(conn, workerId):
         dbset.register_worker(conn, workerId)
     # check if the worker is banned
     if dbget.worker_is_banned(conn, workerId):
-        if dbset.worker_expire_ban(conn, workerId):
+        if dbset.worker_ban_expires_in(conn, workerId):
             # TODO: display ban page
             return None
     # check if the worker has completed too many tasks for this week

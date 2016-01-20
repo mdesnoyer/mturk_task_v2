@@ -16,6 +16,11 @@ if base_path not in sys.path:
 
 
 """
+For debugging
+"""
+TESTING = False
+
+"""
 WORKER OPTIONS
 """
 MAX_PRACTICES_PER_WEEK = 5  # The number of times you can attempt a practice per week.
@@ -104,6 +109,12 @@ TASK_COMPLETION_TIMEOUT = float(60*60*24)  # the amount of time a task may be pe
 
 
 """
+DATABASE FLAGS
+"""
+ANY = 'OR'  # used in filter generators, to indicate whether or not it must pass ANY filters
+ALL = 'AND'  # used in filter generators, to indicate whether or not it must pass ALL filters
+
+"""
 TASK STATUSES
 """
 DOES_NOT_EXIST = '-2'  # the task does not exist
@@ -126,6 +137,14 @@ IMAGE_TABLE = 'images'
 PAIR_TABLE = 'pairs'
 WIN_TABLE = 'wins'
 
+if TESTING:
+    WORKER_TABLE = 'TEST_workers'
+    TASK_TABLE = 'TEST_tasks'
+    IMAGE_TABLE = 'TEST_images'
+    PAIR_TABLE = 'TEST_pairs'
+    WIN_TABLE = 'TEST_wins'
+
+
 """
 COLUMN NAMES, BY FAMILY
 """
@@ -143,7 +162,8 @@ TASK_FAMILIES = {'metadata': dict(max_versions=1),
 IMAGE_FAMILIES = {'metadata': dict(max_versions=1),
                   'stats': dict(max_versions=1),
                   'phash': dict(max_versions=1),
-                  'colorname': dict(max_versions=1)}
+                  'colorname': dict(max_versions=1),
+                  'attributes': dict(max_versions=1)}
 PAIR_FAMILIES = {'metadata': dict(max_versions=1),
                  'legacy_trials': dict(max_versions=1),
                  'legacy_workers': dict(max_versions=1)}

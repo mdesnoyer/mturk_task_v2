@@ -36,11 +36,19 @@ ims = list(np.random.choice(images, n_images, replace=False))
 
 im_ids = [x.split('/')[-1].split('.')[0] for x in ims] # get the image ids
 _log.info('Registering images...')
-dbset.register_images(conn, im_ids, ims)
+dbset.register_images(conn, im_ids[:295], ims[:295])
+dbset.register_images(conn, im_ids[295:], ims[295:], attributes=['test'])
+
+# check to see if you can obtain the test images
+#f = "SingleColumnValueExcludeFilter ('attributes', 'test', =, 'regexstring:^%s$', true, true)" % TRUE
+f = "SingleColumnValueFilter ('attributes', 'test', =, 'regexstring:^%s$', true, true)" % TRUE
+table = conn.table(IMAGE_TABLE)
+s = table.scan(filter=f)
+s.next()
+
 _log.info('Activating first 100 images...')
 dbset.activate_images(conn, im_ids[:100])
 
-table = conn.table(IMAGE_TABLE)
 
 total_count = dbget.get_num_items(table)
 active_count = dbget.get_n_active_images(conn=conn)

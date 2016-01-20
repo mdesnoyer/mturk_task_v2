@@ -39,15 +39,12 @@ Handles all update events for the database. The following events are possible, w
     Create/recreate wins table
 """
 
-from conf import *
-import urllib, cStringIO
-from PIL import Image
-import happybase as hb
 import logger
 import get as dbget
 from dill import dumps, loads
 from itertools import combinations as comb
 from datetime import datetime
+from utils import *
 import time
 
 
@@ -57,13 +54,11 @@ _log = logger.setup_logger(__name__)
 
 # /LOGGING ##############################
 
-"""
-Global Variables - Now defined in conf.py
-"""
 
 """
 PRIVATE FUNCTIONS
 """
+
 
 def _create_table(conn, table, families, clobber):
     """
@@ -83,29 +78,6 @@ def _create_table(conn, table, families, clobber):
         conn.delete_table(table, disable=True)
     conn.create_table(table, families)
     return dbget.table_exists(conn, table)
-
-
-def _get_im_dims(imageUrl):
-    """
-    Returns the dimensions of an image file in pixels as [width, height]. This is unfortunately somewhat time
-    consuming as the images have to be loaded in order to determine their dimensions. Its likely that this can be
-    accomplished in pure javascript, however I (a) don't know enough javascript and (b) want more explicit control.
-
-    :param image: The filename or URL of an image.
-    :return: A list, the dimensions of the image in pixels, as (width, height).
-    """
-    try:
-        file = cStringIO.StringIO(urllib.urlopen(imageUrl).read())
-    except IOError:
-        _log.error('Could not fetch image at: %s' % imageUrl)
-        return None, None
-    try:
-        im = Image.open(file)
-    except:
-        _log.error('Could not convert image to PIL at: %s' % imageUrl)
-        return None, None
-    width, height = im.size
-    return width, height
 
 
 def _conv_dict_vals(data):
@@ -148,7 +120,7 @@ def _get_image_dict(imageUrl):
     :param imageUrl: The URL of the image, as a string.
     :return: If the image can be found and opened, a dictionary. Otherwise None.
     """
-    width, height = _get_im_dims(imageUrl)
+    width, height = get_im_dims(imageUrl)
     if width == None:
         return None
     aspect_ratio = '%.3f'%(float(width) / height)
@@ -312,7 +284,7 @@ ADDING DATA
 """
 
 
-def register_task(conn, taskId, expSeq, attribute, blocks=None, isPractice=False, checkIms=False):
+def register_task(conn, taskId, expSeq, attribute, blocks=None, isPractice=False, checkIms=False, image_attributes=[]):
     """
     Registers a new task to the database.
 
@@ -334,6 +306,7 @@ def register_task(conn, taskId, expSeq, attribute, blocks=None, isPractice=False
     :param blocks: The experimental blocks (fit for being placed into make_html)
     :param isPractice: A boolean, indicating if this task is a practice or not. [def: False]
     :param checkIms: A boolean. If True, it will check that every image required is in the database.
+    :param image_attributes: The set of attributes that the images from this task have.
     :return: None.
     """
     _log.info('Registering task %s' % taskId)
@@ -366,6 +339,7 @@ def register_task(conn, taskId, expSeq, attribute, blocks=None, isPractice=False
     task_dict['metadata:images'] = dumps(images)  # note: not in order of presentation!
     task_dict['metadata:tuples'] = dumps(im_tuples)
     task_dict['metadata:tupleTypes'] = dumps(im_tuple_types)
+    task_dict['metadata:attributes'] = dumps(image_attributes)
     task_dict['status:awaitingServe'] = TRUE
     if blocks is None:
         _log.error('No block structure defined for this task - will not be able to load it.')
@@ -418,24 +392,56 @@ def register_worker(conn, workerId):
                          'status:randomSeed': str(int((datetime.now()-datetime(2016, 1, 1)).total_seconds()))})
 
 
-def register_images(conn, imageIds, imageUrls):
+def register_images(conn, imageIds, imageUrls, attributes=[]):
     """
     Registers one or more images to the database.
 
     :param conn: The HappyBase connection object.
     :param imageIds: A list of strings, the image IDs.
     :param imageUrls: A list of strings, the image URLs (in the same order as imageIds).
+    :param attributes: The image attributes. This will allow us to run separate experiments on different subsets of the
+                       available images. This should be a list of strings, such as "people." They are set to True here.
     :return: None.
     """
     # get the table
     _log.info('Registering %i images.'%(len(imageIds)))
     table = conn.table(IMAGE_TABLE)
     b = table.batch()
+    if type(attributes) is str:
+        attributes = [attributes]
     for iid, iurl in zip(imageIds, imageUrls):
         imdict = _get_image_dict(iurl)
         if imdict is None:
             continue
+        for attribute in attributes:
+            imdict['attributes:%s' % attribute] = TRUE
+            import ipdb
+            ipdb.set_trace()
         b.put(iid, imdict)
+    b.send()
+
+
+def add_attributes_to_images(conn, imageIds, attributes):
+    """
+    Adds attributes to the requested images.
+
+    :param conn: The HappyBase connection object.
+    :param imageIds: A list of strings, the image IDs.
+    :param attributes: The image attributes, as a list. See register_images
+    :return: None
+    """
+    if type(imageIds) is str:
+        imageIds = [imageIds]
+    if type(attributes) is str:
+        attributes = [attributes]
+    _log.info('Adding %i attributes to %i images.'%(len(attributes), len(imageIds)))
+    table = conn.table(IMAGE_TABLE)
+    b = table.batch()
+    for iid in imageIds:
+        up_dict = dict()
+        for attribute in attributes:
+            up_dict['attributes:%s' % attribute] = TRUE
+        b.put(iid, up_dict)
     b.send()
 
 
@@ -458,7 +464,7 @@ def activate_images(conn, imageIds):
     b.send()
 
 
-def activate_n_images(conn, n):
+def activate_n_images(conn, n, image_attributes=[]):
     """
     Activates N new images.
 
@@ -467,7 +473,8 @@ def activate_n_images(conn, n):
     :return: None.
     """
     table = conn.table(IMAGE_TABLE)
-    scanner = table.scan(columns=['metadata:isActive'], filter=ACTIVE_FILTER)
+    scanner = table.scan(columns=['metadata:isActive'],
+                         filter=attribute_image_filter(image_attributes, only_active=True))
     to_activate = []
     for rowKey, rowData in scanner:
         to_activate.append(rowKey)
@@ -742,7 +749,7 @@ def ban_worker(conn, workerId, duration=DEFAULT_BAN_LENGTH, reason=DEFAULT_BAN_R
                                          'status:banReason': reason}))
 
 
-def worker_expire_ban(conn, workerId):
+def worker_ban_expires_in(conn, workerId):
     """
     Checks whether or not a worker's ban has expired; if so, it changes the ban status and returns 0. Otherwise, it
     returns the amount of time left in the ban.

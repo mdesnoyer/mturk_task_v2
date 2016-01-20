@@ -3,33 +3,17 @@ Handles general query events for the task. These are more abstract than the 'set
 variety of possibilities here.
 """
 
-from conf import *
-import numpy as np
 from itertools import combinations as comb
 import logger
 import set as dbset
 from dill import loads
-import time
+from utils import *
 
 #  LOGGING ##############################
 
 _log = logger.setup_logger(__name__)
 
 # /LOGGING ##############################
-
-
-def _pair_to_tuple(image1, image2):
-    """
-    Converts an image pair into a sorted tuple.
-
-    :param image1: An image ID (ordering irrelevant)
-    :param image2: An image ID (ordering irrelevant)
-    :return: A sorted image tuple.
-    """
-    if image1 > image2:
-        return (image2, image1)
-    else:
-        return (image1, image2)
 
 
 def _get_pair_key(image1, image2):
@@ -41,7 +25,7 @@ def _get_pair_key(image1, image2):
     :param image2: Image 2 ID.
     :return: The pair row key, as a string.
     """
-    return ','.join(_pair_to_tuple(image1, image2))
+    return ','.join(pair_to_tuple(image1, image2))
 
 
 def _get_preexisting_pairs(conn, images):
@@ -64,7 +48,7 @@ def _get_preexisting_pairs(conn, images):
     for im1, im2 in comb(images, 2):
         pairId = _get_pair_key(im1, im2)
         if _pair_exists(conn, pairId):
-            found_pairs.add(_pair_to_tuple(im1, im2))
+            found_pairs.add(pair_to_tuple(im1, im2))
     return found_pairs
 
 
@@ -113,7 +97,7 @@ def _tuple_permitted(im_tuple, ex_pairs, conn=None):
     """
     # First, check to make sure none of them are already in *this* task, which is much cheaper than the database.
     for im1, im2 in comb(im_tuple, 2):
-        pair = _pair_to_tuple(im1, im2)
+        pair = pair_to_tuple(im1, im2)
         if pair in ex_pairs:
             return False
     if conn is None:
@@ -152,6 +136,43 @@ def _task_has_blockdata(conn, taskId):
     # TODO: Find out if this really is impossible.
     raise NotImplementedError()
 
+
+def _attribute_image_filter(attributes=[], filter_type=ALL, only_active=False, only_inactive=False):
+    """
+    Returns a filter appropriate to HBase / HappyBase that will find images based on a list of their attributes and
+    (optionally) whether or not they are active.
+
+    :param attributes: A list of attributes as strings.
+    :param filter_type: Whether all columns are required or at least one column is required.
+    :param only_active: A boolean. If true, will find only active images.
+    :param only_inactive: A boolean. If true, will find only inactive images.
+    :return: An image filter, as a string.
+    """
+    if only_active and only_inactive:
+        raise ValueError('Cannot filter for images that are both active and inactive')
+    if filter_type is not ALL and filter_type is not ANY:
+        raise ValueError('Filter types may either be ANY or ALL')
+    f = [_column_boolean_filter('attributes', attribute, TRUE) for attribute in attributes]
+    f = (' ' + filter_type.strip() + ' ').join(f)
+    if only_active:
+        f = '(' + ACTIVE_FILTER + ')' + ' AND ' + '(' + f + ')'
+    elif only_inactive:
+        f = '(' + INACTIVE_FILTER + ')' + ' AND ' + '(' + f + ')'
+    return f
+
+
+def _column_boolean_filter(column_family, column_name, value):
+    """
+    Creates a generic single column filter returns when column is true.
+
+    :param column_family: The HBase / HappyBase column family
+    :param column_name: The HBase / Happybase column family
+    :param value: The required value for that column.
+    :return: The filter, as a string.
+    """
+    f = "SingleColumnValueFilter ('%s', '%s', =, 'regexstring:^%s$', true, true)"
+    f = f % (column_family, column_name, str(value))
+    return f
 
 
 # WORKER INFO
@@ -411,17 +432,19 @@ def get_items(table):
 # IMAGE STUFF
 
 
-def get_n_active_images(conn):
+def get_n_active_images(conn, image_attributes=[]):
     """
     Gets a count of active images.
 
     :param conn: The HappyBase connection object.
+    :param image_attributes: The image attributes that the images considered must satisfy.
     :return: An integer, the number of active images.
     """
     table = conn.table(IMAGE_TABLE)
     # TODO: Find out why the filterIfColumnMissing flag doesnt work! In principle, it's always added...but still...
     # note: do NOTE use binary prefix, because 1 does not correspond to the string 1, but to the binary 1.
-    scanner = table.scan(columns=['metadata:isActive'], filter=ACTIVE_FILTER)
+    scanner = table.scan(columns=['metadata:isActive'],
+                        filter=attribute_image_filter(image_attributes, only_active=True))
     active_image_count = 0
     for item in scanner:
         active_image_count += 1
@@ -444,19 +467,21 @@ def image_is_active(conn, imageId):
         return False
 
 
-def image_get_min_seen(conn):
+def image_get_min_seen(conn, image_attributes=[]):
     """
     Returns the number of times the least-seen image has been seen. (I.e., the number of tasks it has been featured in.
 
     NOTES: This only applies to active images.
 
     :param conn: The HappyBase connection object.
+    :param image_attributes: The image attributes that the images considered must satisfy.
     :return: Integer, the min number of times seen.
     """
     obs_min = np.inf
     table = conn.table(IMAGE_TABLE)
     # note that if we provide a column argument, rows without this column are not emitted.
-    scanner = table.scan(columns=['stats:numTimesSeen'], filter=ACTIVE_FILTER)
+    scanner = table.scan(columns=['stats:numTimesSeen'],
+                         filter=attribute_image_filter(image_attributes, only_active=True))
     been_seen = 0
     for row_key, row_data in scanner:
         been_seen += 1
@@ -470,7 +495,7 @@ def image_get_min_seen(conn):
     return obs_min
 
 
-def get_n_images(conn, n, base_prob=None):
+def get_n_images(conn, n, base_prob=None, image_attributes=[]):
     """
     Returns n images from the database, sampled according to some probability. These are fit for use in design
     generation.
@@ -481,16 +506,17 @@ def get_n_images(conn, n, base_prob=None):
     :param conn: The HappyBase connection object.
     :param n: Number of images to choose.
     :param base_prob: The base probability of selecting any image.
+    :param image_attributes: The image attributes that the images return must satisfy.
     :return: A list of image IDs.
     """
-    n_active = get_n_active_images(conn)
+    n_active = get_n_active_images(conn, image_attributes)
     if n > n_active:
         _log.warning('Insufficient number of active images, activating %i more.' % ACTIVATION_CHUNK_SIZE)
-        dbset.activate_n_images(conn, ACTIVATION_CHUNK_SIZE)
-    min_seen = image_get_min_seen(conn)
+        dbset.activate_n_images(conn, ACTIVATION_CHUNK_SIZE, image_attributes)
+    min_seen = image_get_min_seen(conn, image_attributes)
     if min_seen > SAMPLES_REQ_PER_IMAGE(n_active):
         _log.warning('Images are sufficiently sampled, activating %i images.' % ACTIVATION_CHUNK_SIZE)
-        dbset.activate_n_images(conn, ACTIVATION_CHUNK_SIZE)
+        dbset.activate_n_images(conn, ACTIVATION_CHUNK_SIZE, image_attributes)
     if base_prob is None:
         base_prob = float(n) / n_active
     p = _prob_select(base_prob, min_seen)
@@ -499,7 +525,7 @@ def get_n_images(conn, n, base_prob=None):
     while len(images) < n:
         # repeatedly scan the database, selecting images -- don't bother selecting the numTimesSeen column, since it
         # wont be defined for images that have yet to be seen.
-        scanner = table.scan(filter=ACTIVE_FILTER)
+        scanner = table.scan(filter=attribute_image_filter(image_attributes, only_active=True))
         for row_key, row_data in scanner:
             cur_seen = row_data.get('stats:numTimesSeen', 0)
             if np.random.rand() < p(cur_seen):
@@ -510,24 +536,26 @@ def get_n_images(conn, n, base_prob=None):
 # TASK DESIGN STUFF
 
 
-def get_design(conn, n, t, j):
+def get_design(conn, n, t, j, image_attributes):
     """
     Returns a task design, as a series of tuples of images. This is based directly on generate/utils/get_design, which
     should be consulted for reference on the creation of Steiner systems.
 
-    This extends get_design by not only checking against oc-occurance within the task, but also globally across all
+    This extends get_design by not only checking against co-occurence within the task, but also globally across all
     tasks by invoking _tuple_permitted.
 
     :param conn: The HappyBase connection object.
     :param n: The number of distinct elements involved in the experiment.
     :param t: The number of elements to present each trial.
     :param j: The number of times each element should appear during the experiment.
+    :param image_attributes: The attributes that images must have to be into the study. Images must have any of
+                             these attributes.
     :return: A list of tuples representing each subset. Elements may be randomized within trial and subset order may
     be randomized without consequence.
     """
     occ = np.zeros(n)  # an array which stores the number of times an image has been used.
     design = []
-    images = get_n_images(conn, n, 0.05)
+    images = get_n_images(conn, n, 0.05, image_attributes=image_attributes)
     np.random.shuffle(images)  # shuffle the images (remember its in-place! >.<)
     obs = _get_preexisting_pairs(conn, images)  # the set of observed tuples
     for allvio in range(t):  # minimize the number of j-violations (i.e., elements appearing more than j-times)
@@ -544,7 +572,7 @@ def get_design(conn, n, t, j):
             if cvio > allvio:
                 continue
             for x1, x2 in comb(c, 2):
-                obs.add(_pair_to_tuple(x1, x2))
+                obs.add(pair_to_tuple(x1, x2))
             for i in c:
                 occ[i] += 1
             design.append(cur_tuple)
@@ -554,7 +582,7 @@ def get_design(conn, n, t, j):
 
 
 def get_task(conn, n, t, j, n_keep_blocks=None, n_reject_blocks=None, prompt=None, practice=False,
-             attribute=ATTRIBUTE, random_segment_order=RANDOMIZE_SEGMENT_ORDER):
+             attribute=ATTRIBUTE, random_segment_order=RANDOMIZE_SEGMENT_ORDER, image_attributes=[]):
     """
     Creates a new task, by calling get_design and then arranging those tuples into keep and reject blocks, and then
     registering it in the database.
@@ -577,6 +605,7 @@ def get_task(conn, n, t, j, n_keep_blocks=None, n_reject_blocks=None, prompt=Non
     :param: practice: Boolean, whether or not this task is a practice.
     :param: attribute: The task attribute.
     :param: random_seqment_order: Whether or not to randomize block ordering.
+    :param image_attributes: The set of attributes that the images from this task have.
     :return: None.
     """
     if practice:
@@ -599,7 +628,7 @@ def get_task(conn, n, t, j, n_keep_blocks=None, n_reject_blocks=None, prompt=Non
         else:
             prompt = DEF_PROMPT
     # get the tuples
-    image_tuples = get_design(conn, n, t, j)
+    image_tuples = get_design(conn, n, t, j, image_attributes=image_attributes)
     # arrange them into blocks
     keep_tuples = [image_tuples[i:i+n] for i in xrange(0, len(image_tuples), n_keep_blocks)]
     reject_tuples = [image_tuples[i:i+n] for i in xrange(0, len(image_tuples), n_reject_blocks)]
@@ -630,7 +659,8 @@ def get_task(conn, n, t, j, n_keep_blocks=None, n_reject_blocks=None, prompt=Non
     # define expSeq
     # annoying expSeq expects image tuples...
     expSeq = [[x['type'], [typle(y) for y in x['images']]] for x in blocks]
-    dbset.register_task(conn, taskId, expSeq, attribute, blocks=blocks, isPractice=practice, checkIms=True)
+    dbset.register_task(conn, taskId, expSeq, attribute, blocks=blocks, isPractice=practice, checkIms=True,
+                        image_attributes=image_attributes)
 
 
 
