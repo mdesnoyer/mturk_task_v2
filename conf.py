@@ -20,6 +20,38 @@ For debugging
 """
 TESTING = False
 
+
+"""
+AWS STUFF
+"""
+# MTURK -- image.inference@gmail.com
+MTURK_ACCESS_ID = os.environ['MTURK_ACCESS_ID']
+MTURK_SECRET_KEY = os.environ['MTURK_SECRET_KEY']
+# AWS
+AWS_ACCESS_ID = os.environ['AWS_ACCESS_ID']
+AWS_SECRET_KEY = os.environ['AWS_SECRET_KEY']
+
+
+"""
+MTURK QUALIFICATIONS
+"""
+# CONSIDER MAKING THESE INTEGERS AND THEN JUST CHECKING THAT THE QUALIFICATION VALUE
+# EQUALS WHAT WE EXPECT.
+PASSED_PRACTICE = '1'
+TEMPORARY_BAN = '0'
+
+# descriptions
+QUALIFICATION_DESCRIPTION[PASSED_PRACTICE] = 'You have passed the practice and are ready to begin doing tasks.'
+QUALIFICATION_DESCRIPTION[TEMPORARY_BAN] = 'You have been temporarily banned. For more information, email us at ' \
+                                           'image.inference@gmail.com'
+
+
+"""
+OTHER MTURK INFORMATION
+"""
+PREVIEW_ASSIGN_ID = 'ASSIGNMENT_ID_NOT_AVAILABLE'
+
+
 """
 WORKER OPTIONS
 """
@@ -63,6 +95,7 @@ DEF_TRIAL_TYPE = KEEP_BLOCK  # the default trial type
 DEF_PROMPT = ''  # the default prompt to display
 DEF_PRACTICE_PROMPT = '<font color="red">PRACTICE</font>'  # the default prompt to display during practice tasks
 
+
 """
 TASK GENERATION
 """
@@ -75,6 +108,7 @@ RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized within
 DEF_IMAGES_PER_TASK = None  # TODO: decide on this
 DEF_IMAGES_PER_PRACTICE = None  # TODO: decide on this too
 
+
 """
 TEMPLATES
 """
@@ -82,7 +116,11 @@ BASE_TEMPLATE = 'base.html'
 PRELOAD_TEMPATE = 'preload_template.html'
 INSTRUCTION_TEMPLATE = 'inst_template.html'
 TRIAL_BLOCK_TEMPLATE = 'trial_block_template.html'
+BAN_TEMPLATE = 'ban_page.html'
+PRACTICE_EXCEEDED_TEMPLATE = 'too_many_practices.html'
 PRACTICE_IM_DIR = 'instr_screenshots/'
+ERROR_TEMPLATE = 'error.html'
+
 
 """
 DIRECTORIES
@@ -102,6 +140,7 @@ PRACTICE_PREFIX = 'p_'  # the prefix for every practice task ID
 """
 DATABASE OPTIONS
 """
+DATABASE_LOCATION = 'localhost'
 STORE_PRACTICE_PAIRS = False  # if True, will store all practice pairs as if they were in real trials.
 ACTIVATION_CHUNK_SIZE = 500  # The number of images to activate in a chunk.
 DEFAULT_BAN_LENGTH = float(60*60*24*7)  # the default length of time for a ban
@@ -114,17 +153,19 @@ DATABASE FLAGS
 ANY = 'OR'  # used in filter generators, to indicate whether or not it must pass ANY filters
 ALL = 'AND'  # used in filter generators, to indicate whether or not it must pass ALL filters
 
+
 """
 TASK STATUSES
 """
 DOES_NOT_EXIST = '-2'  # the task does not exist
 UNKNOWN_STATUS = '-1'  # the task exists, but has an unknown status
-AWAITING_SERVE = '0'  # the task has not been begun
-IS_PRACTICE = '1'  # the task is a practice
-COMPLETION_PENDING = '2'  # waiting on the worker to complete the task
-EVALUATION_PENDING = '3'  # waiting on the task to be evaluated
-ACCEPTED = '4'  # the task has been accepted
-REJECTED = '5'  # the task has been rejected
+AWAITING_HIT = '0'  # the task is awaiting a HIT group assignment.
+AWAITING_SERVE = '1'  # the task has not been begun
+IS_PRACTICE = '2'  # the task is a practice
+COMPLETION_PENDING = '3'  # waiting on the worker to complete the task
+EVALUATION_PENDING = '4'  # waiting on the task to be evaluated
+ACCEPTED = '5'  # the task has been accepted
+REJECTED = '6'  # the task has been rejected
 
 
 """
@@ -136,7 +177,6 @@ TASK_TABLE = 'tasks'
 IMAGE_TABLE = 'images'
 PAIR_TABLE = 'pairs'
 WIN_TABLE = 'wins'
-
 if TESTING:
     WORKER_TABLE = 'TEST_workers'
     TASK_TABLE = 'TEST_tasks'

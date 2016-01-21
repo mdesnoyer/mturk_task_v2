@@ -1,0 +1,72 @@
+<!--
+This is the first page the user hits, it displays a loading
+page while it attempts to fetch a task, then automatically
+redirects.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome</title>
+    <script src="../js/jspsych-4.3/js/jquery.min.js"></script>
+    <script src="../js/jspsych-4.3/js/jquery-ui.min.js"></script>
+    <script src="../js/jspsych-4.3/jspsych.js"></script>
+    <link rel="stylesheet" href="../js/jspsych-4.3/css/jspsych.css">
+    <link rel="stylesheet" href="../js/jspsych-4.3/css/jquery-ui.css">
+    <!-- <link rel="stylesheet" href="css/loading.css"> -->
+</head>
+<body>
+    <center>
+        <div id="jspsych-target">
+            <br><br>
+            Welcome! <br><br>
+            The task is loading. You will be redirected when it completes. <br><br>
+            REDIRECT BUTTON HERE <br><br>
+            <div id="loading">
+                <img src="/symbols/loading.gif" alt="loading">
+            </div>
+        </div>
+    </center>
+</body>
+<script>
+    /*
+    // This is adapted from http://stackoverflow.com/questions/68485/how-to-show-loading-spinner-in-jquery
+    // for jQuery 1.8, but I'm using jQuery 1.11, apparently.
+    var $loading = $("#loading").hide();
+    $(document)
+        .ajaxStart(function () {
+            $loading.show();
+        })
+        .ajaxStop(function () {
+            $loading.hide();
+        });
+    */
+    $('#loading')
+        .hide()  // Hide it initially
+        .ajaxStart(function() {
+            $(this).show();
+        })
+        .ajaxStop(function() {
+            $(this).hide();
+        })
+    ;
+    var turkInfo = jsPsych.turk.turkInfo()
+
+    function send_data(){
+        $.ajax({
+            type: 'post',
+            cache: false,
+            url: 'idk/yet.html',
+            async: true,
+            data: {
+                json: JSON.stringify(jsPsych.turk.turkInfo())
+            },
+            success: function(output) { window.location.replace(output); },
+            error: function(output) { window.location.replace("../generate/templates/error.html"); }
+        });
+    }
+
+    send_data();
+
+</script>
+</html>

@@ -5,6 +5,7 @@ remember, it requires
 >> /hbase/hbase-1.1.2/bin/start-hbase.sh
 >> hbase thrift start
 """
+import ipdb
 from glob import glob
 import numpy as np
 import happybase
@@ -13,7 +14,6 @@ from mturk_task_v2.database import get as dbget
 from mturk_task_v2.database.conf import *
 from mturk_task_v2.database import logger
 from mturk_task_v2.generate.request_for_task import build_task
-import ipdb
 #import logger
 import logging
 
@@ -22,6 +22,8 @@ _log.setLevel(logging.DEBUG)
 
 _log.info('Connecting to database')
 conn = happybase.Connection('localhost')
+
+# filtering test stuff
 _log.info('Rebuilding tables')
 dbset.force_regen_tables(conn)
 

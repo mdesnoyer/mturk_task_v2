@@ -300,7 +300,7 @@ def register_task(conn, taskId, expSeq, attribute, blocks=None, isPractice=False
         dill.
 
     :param conn: The HappyBase connection object.
-    :param filename: A string, the filename holding the task.
+    :param taskId: The task ID, as a string.
     :param expSeq: A list of lists, in order of presentation, one for each segment. See Notes.
     :param attribute: The image attribute this task pertains to, e.g., 'interesting.'
     :param blocks: The experimental blocks (fit for being placed into make_html)
@@ -341,6 +341,7 @@ def register_task(conn, taskId, expSeq, attribute, blocks=None, isPractice=False
     task_dict['metadata:tupleTypes'] = dumps(im_tuple_types)
     task_dict['metadata:attributes'] = dumps(image_attributes)
     task_dict['status:awaitingServe'] = TRUE
+    task_dict['status:awaitingHITGroup'] = TRUE
     if blocks is None:
         _log.error('No block structure defined for this task - will not be able to load it.')
     else:
@@ -358,6 +359,18 @@ def register_task(conn, taskId, expSeq, attribute, blocks=None, isPractice=False
         pid = _get_pair_key(pair[0], pair[1])
         b.put(pid, _get_pair_dict(pair[0], pair[1], taskId, attribute))
     b.send()
+
+
+def indicate_task_has_hit_group(conn, taskId):
+    """
+    Sets status.awaitingHITGroup parameter of the task, indicating that it has been added to a HIT Group
+
+    :param conn: The HappyBase connection object.
+    :param taskId: The task ID, as a string.
+    :return: None
+    """
+    table = conn.table(TASK_TABLE)
+    table.put(taskId, {'status:awaitingHITGroup': TRUE})
 
 
 def set_task_html(conn, taskId, html):
@@ -614,6 +627,7 @@ def practice_failure(conn, taskId, reason=None):
     :return: None.
     """
     _log.info('Nothing needs to be logged for a practice failure at this time.')
+
 
 def accept_task(conn, taskId):
     """

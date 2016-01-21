@@ -26,6 +26,7 @@ import os
 import jinja2
 from jinja2 import meta
 from conf import *
+from database import get as dbget
 
 # create the jinja template environment
 templateLoader = jinja2.FileSystemLoader(searchpath=TEMPLATE_DIR)
@@ -62,7 +63,8 @@ templateEnv.filters['escapejs'] = jinja2_escapejs_filter
 
 
 def make(blocks, taskId=None, preload_images=PRELOAD_IMAGES, box_size=BOX_SIZE, hit_size=HIT_SIZE, pos_type=POS_TYPE,
-         attribute=ATTRIBUTE, instruction_sequence=TASK_INSTRUCTION_SEQUENCE, practice=False, collect_demo=False):
+         attribute=ATTRIBUTE, instruction_sequence=TASK_INSTRUCTION_SEQUENCE, practice=False, collect_demo=False,
+         is_preview=False):
     """
     Produces an experimental HTML document. By assembling blocks of html code into a single html document. Note that
     this will fill in missing values in place!
@@ -79,6 +81,9 @@ def make(blocks, taskId=None, preload_images=PRELOAD_IMAGES, box_size=BOX_SIZE, 
     :param instruction_sequence: The sequence of instruction pages to display at the outset of the experiment.
     :param practice: Boolean. If True, will display the debrief pages.
     :param collect_demo: Boolean. If True, will collect demographic information.
+    :param is_preview: Boolean. If True, will assume that this is a preview of the experiment and only render the
+                       instructions. This should only be true if the worker is previewing the HIT, i.e., the value
+                       of assignmentId is ASSIGNMENT_ID_NOT_AVAILABLE
     :return The appropriate HTML for this experiment.
     """
     images = []
@@ -97,6 +102,11 @@ def make(blocks, taskId=None, preload_images=PRELOAD_IMAGES, box_size=BOX_SIZE, 
         block, start_inst_name = _make_start_block(instruction_sequence, attribute)
         rblocks.append(block)
         blocknames.append(start_inst_name)
+    if is_preview:
+        base = templateEnv.get_template(BASE_TEMPLATE)
+        html = base.render(blocks=rblocks, blocknames=blocknames, attribute='None',
+                           practice='false', collect_demo='false', taskId='preview')
+        return html
     for n, block in enumerate(blocks):
         # fill in any missing values
         block['type'] = block.get('type', DEF_TRIAL_TYPE)
@@ -126,6 +136,60 @@ def make(blocks, taskId=None, preload_images=PRELOAD_IMAGES, box_size=BOX_SIZE, 
     filled_preload = preload.render(images=images)
     html = base.render(blocks=rblocks, preload=filled_preload, blocknames=blocknames, attribute=attribute,
                        practice=p_val, collect_demo=d_val, taskId=str(taskId))
+    return html
+
+
+def make_ban_html(conn, workerId):
+    """
+    Creates the 'you are banned' html.
+
+    :param conn: The HappyBase connection object.
+    :param workerId: The worker ID, as a string.
+    :return: The ban page HTML.
+    """
+    reason, rem_dur = dbget.get_worker_ban_time_reason(conn, workerId)
+    template = templateEnv.get_template(BAN_TEMPLATE)
+    html = template.render(ban_time=rem_dur, ban_reason=reason)
+    return html
+
+
+def make_practice_limit_html(conn, workerId):
+    """
+    Creates the 'num-practices-exceeded' html.
+
+    :param conn: The HappyBase connection object.
+    :param workerId: The worker ID, as a string.
+    :return: The practices exceeded page HTML.
+    """
+    template = templateEnv.get_template(PRACTICE_EXCEEDED_TEMPLATE)
+    html = template.render()
+    return html
+
+
+def make_no_avail_tasks_html(conn, workerId):
+    """
+    Creates the 'no tasks are available' html.
+
+    NOTE:
+        For now, we will be using make_error_fetching_task_html as the page for the no-tasks-available situation.
+
+    :param conn: The HappyBase connection object.
+    :param workerId: The worker ID, as a string.
+    :return: The no tasks page HTML.
+    """
+    raise NotImplementedError()
+
+
+def make_error_fetching_task_html(conn, workerId):
+    """
+    Creates a 'error fetching task' page html.
+
+    :param conn: The HappyBase connection object.
+    :param workerId: The worker ID, as a string.
+    :return: The error page HTML.
+    """
+    template = templateEnv.get_template(ERROR_TEMPLATE)
+    html = template.render()
     return html
 
 

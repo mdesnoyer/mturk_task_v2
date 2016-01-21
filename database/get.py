@@ -8,6 +8,7 @@ import logger
 import set as dbset
 from dill import loads
 from utils import *
+import time
 
 #  LOGGING ##############################
 
@@ -112,14 +113,59 @@ def _tuple_permitted(im_tuple, ex_pairs, conn=None):
     return True
 
 
-def _timestamp_to_datetime(timestamp):
+def _timestamp_to_struct_time(timestamp):
     """
-    Converts an HBase timestamp (msec since UNIX epoch) to a datestr.
+    Converts an HBase timestamp (msec since UNIX epoch) to a struct_time.
 
-    :param timestamp: The HappyBase (i.e., HBase) timestamp, as a string.
-    :return: A datestr.
+    :param timestamp: The HappyBase (i.e., HBase) timestamp, as an int.
+    :return: A struct_time object.
     """
+    return time.localtime(float(timestamp)/1000)
+
+
+def _get_ban_expiration_date_str(ban_issued, ban_length):
+    """
+    Returns the date a ban expires.
+
+    :param ban_issued: The timestamp the ban was issued on, an int, in HBase / HappyBase format (msec since epoch)
+    :param ban_length: The duration of the ban, an int, seconds.
+    :return: The date the ban expires, as a string.
+    """
+    # ban_exp_msec = ban_issued + ban_length * 1000
+    # struct_time = time.localtime(float(ban_exp_msec)/1000)
     raise NotImplementedError()
+
+
+def _get_timedelta_string(timestamp1, timestamp2):
+    """
+    Returns a string, time from now, when the ban expires.
+
+    :param timestamp1: First timestamp, as an int in HBase / Happybase style (msec since epoch)
+    :param timestamp2: Second timestamp, as an int in HBase / Happybase style (msec since epoch)
+    :return: The timedelta, in weeks, days, hours, minutes and seconds, as a string.
+    """
+    week_len = 7 * 24 * 60 * 60.
+    day_len = 24 * 60 * 60.
+    hour_len = 60 * 60.
+    min_len = 60.
+    time_delta = abs(float(timestamp1)/1000 - float(timestamp2)/1000)
+    weeks, secs = divmod(time_delta, week_len)
+    days, secs = divmod(secs, day_len)
+    hours, secs = divmod(secs, hour_len)
+    minutes, secs = divmod(secs, min_len)
+    time_list = [[weeks, 'week'], [days, 'day'], [hours, 'hour'], [minutes, 'minute'], [secs, 'second']]
+
+    def get_name(num, noun):
+        if not num:
+            return ''
+        if num == 1:
+            return '%i %s' % (num, noun)
+        else:
+            return '%i %ss' % (num, noun)
+    cur_strs = []
+    for num, noun in time_list:
+        cur_strs.append(get_name(num, noun))
+    return ', '.join(filter(lambda x: len(x), cur_strs))
 
 
 def _task_has_blockdata(conn, taskId):
@@ -172,6 +218,26 @@ def _column_boolean_filter(column_family, column_name, value):
     """
     f = "SingleColumnValueFilter ('%s', '%s', =, 'regexstring:^%s$', true, true)"
     f = f % (column_family, column_name, str(value))
+    return f
+
+
+def _general_filter(column_tuples, values, filter_type=ALL, key_only=False):
+    """
+    General filter for tables, creating a filter that returns rows that satisfy the specified requirements.
+
+    :param column_tuples: A list of column tuples of the form [[column family 1, column name 1], ...]
+    :param values: A list of values that the columns should have, in-order.
+    :param filter_type: Either ALL or ANY. If ALL, all the column values must be satisfied. If ANY, at least one column
+                        value match must be met.
+    :param key_only: The filter will only return row keys and not the entire rows.
+    :return: The appropriate filter under the specification.
+    """
+    if filter_type is not ALL and filter_type is not ANY:
+        raise ValueError('Filter types may either be ANY or ALL')
+    f = [_column_boolean_filter(x, y, v) for ((x, y), z) in zip(column_tuples, values)]
+    f = (' ' + filter_type.strip() + ' ').join(f)
+    if key_only:
+        f += ' AND KeyOnlyFilter() AND FirstKeyOnlyFilter()'
     return f
 
 
@@ -245,6 +311,23 @@ def worker_is_banned(conn, workerId):
     return data.get('status:isBanned', FALSE) == TRUE
 
 
+def get_worker_ban_time_reason(conn, workerId):
+    """
+    Returns the length of remaining time this worker is banned along with the reason as a tuple.
+
+    :param conn: The HappyBase connection object.
+    :param workerId: The Worker ID (from MTurk), as a string.
+    :return: The time until the ban expires and the reason for the ban.
+    """
+    if not worker_is_banned(conn, workerId):
+        return None, None
+    table = conn.table(WORKER_TABLE)
+    data = table.row(workerId, columns=['status:banLength', 'status:banReason'], include_timestamp=True)
+    ban_time, timestamp = data.get('status:banLength', (DEFAULT_BAN_LENGTH, 0))
+    ban_reason, _ = data.get('status:banReason', (DEFAULT_BAN_REASON, 0))
+    return _get_timedelta_string(int(ban_time * 1000), timestamp), ban_reason
+
+
 def worker_attempted_this_week(conn, workerId):
     """
     Returns the number of tasks this worker has attempted this week.
@@ -315,6 +398,8 @@ def get_task_status(conn, taskId):
     if task.get('metadata:isPractice', FALSE) == TRUE:
         return IS_PRACTICE
     if task.get('status:awaitingServe', FALSE) == TRUE:
+        if task.get('status:awaitingHITGroup', FALSE) == TRUE:
+            return AWAITING_HIT
         return AWAITING_SERVE
     if task.get('status:pendingCompletion', FALSE) == TRUE:
         return COMPLETION_PENDING
@@ -358,6 +443,26 @@ def get_available_task(conn, practice=False, practice_n=0):
         return taskId
 
 
+def get_n_awaiting_hit(conn):
+    """
+    Returns the number of tasks that are awaiting a HIT assignment.
+
+    :param conn: The HappyBase connection object.
+    :return: None
+    """
+    raise NotImplementedError()
+
+
+def get_n_with_hit_awaiting_serve(conn):
+    """
+    Returns the number of tasks that are awaiting serving.
+
+    :param conn: The HappyBase connection object.
+    :return: None
+    """
+    raise NotImplementedError()
+
+
 def get_task_blocks(conn, taskId):
     """
     Returns the task blocks, as a list of dictionaries, appropriate for make_html.
@@ -371,6 +476,17 @@ def get_task_blocks(conn, taskId):
     if pickled_blocks is None:
         return None
     return loads(pickled_blocks)
+
+
+def task_is_practice(conn, taskId):
+    """
+    Indicates whether or not the task in question is a practice.
+
+    :param conn: The HappyBase connection object.
+    :param taskId: The task ID, as a string.
+    :return: Boolean. Returns True if the task specified by the task ID is a practice, otherwise false.
+    """
+    return NotImplementedError()
 
 
 # GENERAL QUERIES

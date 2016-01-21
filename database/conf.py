@@ -1,1 +1,1 @@
-from ..conf import *
+from mturk_task_v2.conf import *
