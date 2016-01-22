@@ -104,6 +104,9 @@ def register_hit_type_mturk(conn, mtconn, task_attribute=ATTRIBUTE, image_attrib
     Registers a new HIT type.
 
     NOTES:
+
+        ** THIS FUNCTION MODIFIES THE DATABASE
+
         The idea of practices and 'true' tasks is abstracted away here. It is assumed that for every HIT type, there
         will be defined practice and true tasks. Hence:
             ! THIS FUNCTION CREATES BOTH A PRACTICE AND A TRUE HIT TYPE ID BOTH ON MTURK
@@ -153,6 +156,10 @@ def register_hit_type_mturk(conn, mtconn, task_attribute=ATTRIBUTE, image_attrib
 def add_hit_to_hit_type(conn, mtconn, hit_type_id, task_id, is_practice=False, reward=None):
     """
     Creates a mechanical turk task, and assigns it to the HIT type specified.
+
+    NOTES:
+
+        ** THIS FUNCTION MODIFIES THE DATABASE **
 
     :param conn: The HappyBase connection object.
     :param mtconn: The Boto mechanical turk connection object.
