@@ -83,3 +83,23 @@ def column_boolean_filter(column_family, column_name, value):
     f = "SingleColumnValueFilter ('%s', '%s', =, 'regexstring:^%s$', true, true)"
     f = f % (column_family, column_name, str(value))
     return f
+
+
+def general_filter(column_tuples, values, filter_type=ALL, key_only=False):
+    """
+    General filter for tables, creating a filter that returns rows that satisfy the specified requirements.
+
+    :param column_tuples: A list of column tuples of the form [[column family 1, column name 1], ...]
+    :param values: A list of values that the columns should have, in-order.
+    :param filter_type: Either ALL or ANY. If ALL, all the column values must be satisfied. If ANY, at least one column
+                        value match must be met.
+    :param key_only: The filter will only return row keys and not the entire rows.
+    :return: The appropriate filter under the specification.
+    """
+    if filter_type is not ALL and filter_type is not ANY:
+        raise ValueError('Filter types may either be ANY or ALL')
+    f = [_column_boolean_filter(x, y, v) for ((x, y), z) in zip(column_tuples, values)]
+    f = (' ' + filter_type.strip() + ' ').join(f)
+    if key_only:
+        f += ' AND KeyOnlyFilter() AND FirstKeyOnlyFilter()'
+    return f

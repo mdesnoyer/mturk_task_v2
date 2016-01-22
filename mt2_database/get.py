@@ -7,6 +7,7 @@ from itertools import combinations as comb
 from .. import logger
 import set as dbset
 from dill import loads
+from dill import dumps
 from conf import *
 import time
 
@@ -131,10 +132,8 @@ def _get_ban_expiration_date_str(ban_issued, ban_length):
     :param ban_length: The duration of the ban, an int, seconds.
     :return: The date the ban expires, as a string.
     """
-    # ban_exp_msec = ban_issued + ban_length * 1000
-    # struct_time = time.localtime(float(ban_exp_msec)/1000)
-    # TODO: implement
-    raise NotImplementedError()
+    expire_time = ban_issue + ban_length
+    return _get_timedelta_string(expire_time, time.mktime(time.localtime()))
 
 
 def _get_timedelta_string(timestamp1, timestamp2):
@@ -182,64 +181,6 @@ def _task_has_blockdata(conn, task_id):
     """
     # TODO: Find out if this really is impossible.
     raise NotImplementedError()
-
-
-def _attribute_image_filter(attributes=[], filter_type=ALL, only_active=False, only_inactive=False):
-    """
-    Returns a filter appropriate to HBase / HappyBase that will find images based on a list of their attributes and
-    (optionally) whether or not they are active.
-
-    :param attributes: A list of attributes as strings.
-    :param filter_type: Whether all columns are required or at least one column is required.
-    :param only_active: A boolean. If true, will find only active images.
-    :param only_inactive: A boolean. If true, will find only inactive images.
-    :return: An image filter, as a string.
-    """
-    if only_active and only_inactive:
-        raise ValueError('Cannot filter for images that are both active and inactive')
-    if filter_type is not ALL and filter_type is not ANY:
-        raise ValueError('Filter types may either be ANY or ALL')
-    f = [_column_boolean_filter('attributes', attribute, TRUE) for attribute in attributes]
-    f = (' ' + filter_type.strip() + ' ').join(f)
-    if only_active:
-        f = '(' + ACTIVE_FILTER + ')' + ' AND ' + '(' + f + ')'
-    elif only_inactive:
-        f = '(' + INACTIVE_FILTER + ')' + ' AND ' + '(' + f + ')'
-    return f
-
-
-def _column_boolean_filter(column_family, column_name, value):
-    """
-    Creates a generic single column filter returns when column is true.
-
-    :param column_family: The HBase / HappyBase column family
-    :param column_name: The HBase / Happybase column family
-    :param value: The required value for that column.
-    :return: The filter, as a string.
-    """
-    f = "SingleColumnValueFilter ('%s', '%s', =, 'regexstring:^%s$', true, true)"
-    f = f % (column_family, column_name, str(value))
-    return f
-
-
-def _general_filter(column_tuples, values, filter_type=ALL, key_only=False):
-    """
-    General filter for tables, creating a filter that returns rows that satisfy the specified requirements.
-
-    :param column_tuples: A list of column tuples of the form [[column family 1, column name 1], ...]
-    :param values: A list of values that the columns should have, in-order.
-    :param filter_type: Either ALL or ANY. If ALL, all the column values must be satisfied. If ANY, at least one column
-                        value match must be met.
-    :param key_only: The filter will only return row keys and not the entire rows.
-    :return: The appropriate filter under the specification.
-    """
-    if filter_type is not ALL and filter_type is not ANY:
-        raise ValueError('Filter types may either be ANY or ALL')
-    f = [_column_boolean_filter(x, y, v) for ((x, y), z) in zip(column_tuples, values)]
-    f = (' ' + filter_type.strip() + ' ').join(f)
-    if key_only:
-        f += ' AND KeyOnlyFilter() AND FirstKeyOnlyFilter()'
-    return f
 
 
 # WORKER INFO
@@ -451,19 +392,29 @@ def get_n_awaiting_hit(conn):
     :param conn: The HappyBase connection object.
     :return: None
     """
-    # TODO: implement
-    raise NotImplementedError()
+    row_filter = general_filter([('status', 'awaiting_serve')],
+                                [TRUE], key_only=True)
+    scanner = conn.table(TASK_TABLE).scan(filter=row_filter)
+    awaiting_hit_cnt = 0
+    for task_data in scanner:
+        awaiting_hit_cnt += 1
+    return awaiting_hit_cnt
 
 
 def get_n_with_hit_awaiting_serve(conn):
     """
-    Returns the number of tasks that are awaiting serving.
+    Returns the number of true tasks that are awaiting serving.
 
     :param conn: The HappyBase connection object.
     :return: None
     """
-    # TODO: implement
-    raise NotImplementedError()
+    row_filter = general_filter([('status', 'awaiting_hit_type'), ('status', 'awaiting_serve')],
+                                [FALSE, TRUE], key_only=True)
+    scanner = conn.table(TASK_TABLE).scan(filter=row_filter)
+    awaiting_serve_cnt = 0
+    for task_data in scanner:
+        awaiting_serve_cnt += 1
+    return awaiting_serve_cnt
 
 
 def get_task_blocks(conn, task_id):
@@ -489,8 +440,8 @@ def task_is_practice(conn, task_id):
     :param task_id: The task ID, as a string.
     :return: Boolean. Returns True if the task specified by the task ID is a practice, otherwise false.
     """
-    # TODO: implement
-    raise NotImplementedError()
+    table = conn.table(TASK_TABLE)
+    return table.get(task_id).get('metadata:is_practice', None)
 
 
 # HIT TYPES
@@ -502,15 +453,18 @@ def get_hit_type_info(conn, hit_type_id):
 
     :param conn: The HappyBase connection object.
     :param hit_type_id: The HIT type ID, as provided by mturk.
-    :return: The HIT Type information, as a dictionary.
+    :return: The HIT Type information, as a dictionary. If this hit_type_id does not exist, returns an empty dictionary.
     """
-    # TODO: implement
-    raise NotImplementedError()
+    table = conn.table(HIT_TYPE_TABLE)
+    return table.get(hit_type_id)
 
 
 def hit_type_matches(conn, hit_type_id, task_attribute, image_attributes):
     """
-    Indicates whether or not the hit is an appropriate match for
+    Indicates whether or not the hit is an appropriate match for.
+
+    NOTE:
+        This is a bit wonky, as the image_attributes for task types (which
 
     :param conn: The HappyBase connection object.
     :param hit_type_id: The HIT type ID, as provided by mturk (see webserver.mturk.register_hit_type_mturk).
@@ -519,8 +473,19 @@ def hit_type_matches(conn, hit_type_id, task_attribute, image_attributes):
     :return: True if hit_type_id corresponds to a HIT type that has the specified task attribute and the specified
              image attributes.
     """
-    # TODO: implement
-    raise NotImplementedError()
+    type_info = get_hit_type_info(conn, hit_type_id)
+    if type_info == {}:
+        _log.warning('No such hit type')
+        return False
+    if task_attribute != type_info.get('status:task_attribute', None):
+        return False
+    try:
+        db_hit_type_image_attributes = loads(type_info.get('metadata:image_attributes', dumps(IMAGE_ATTRIBUTES)))
+    except:
+        db_hit_type_image_attributes = set()
+    if set(image_attributes) != db_hit_type_image_attributes:
+        return False
+    return True
 
 
 def get_active_hit_types(conn):
@@ -530,8 +495,9 @@ def get_active_hit_types(conn):
     :param conn: The HappyBase connection object.
     :return: An iterator over active hit types.
     """
-    # TODO: implement
-    raise NotImplementedError()
+    row_filter = general_filter([('status', 'active'), ('metadata', 'is_practice')],
+                                values=[TRUE, FALSE], key_only=True)
+    return conn.table(HIT_TYPE_TABLE).scan(filter=row_filter)
 
 
 def get_active_practice_hit_types(conn):
@@ -541,8 +507,9 @@ def get_active_practice_hit_types(conn):
     :param conn: The HappyBase connection object.
     :return: An iterator over active practice hit types.
     """
-    # TODO: implement
-    raise NotImplementedError()
+    row_filter = general_filter([('status', 'active'), ('metadata', 'is_practice')],
+                                values=[TRUE, TRUE], key_only=True)
+    return conn.table(HIT_TYPE_TABLE).scan(filter=row_filter)
 
 
 # GENERAL QUERIES
@@ -753,10 +720,15 @@ def get_design(conn, n, t, j, image_attributes=IMAGE_ATTRIBUTES):
 
 
 def get_task(conn, n, t, j, n_keep_blocks=None, n_reject_blocks=None, prompt=None, practice=False,
-             attribute=ATTRIBUTE, random_segment_order=RANDOMIZE_SEGMENT_ORDER, image_attributes=IMAGE_ATTRIBUTES):
+             attribute=ATTRIBUTE, random_segment_order=RANDOMIZE_SEGMENT_ORDER, image_attributes=IMAGE_ATTRIBUTES,
+             hit_type_id=None):
     """
     Creates a new task, by calling get_design and then arranging those tuples into keep and reject blocks, and then
-    registering it in the database.
+    registering it in the database. Additionally, you may specify which hit_type_id this task should be for. If this
+    is the case, then it overwrites:
+        task_attribute
+        image_attributes
+        practice
 
     NOTE:
         Keep blocks always come first, after which they alternate between Keep / Reject. If the RANDOMIZE_SEGMENT_ORDER
@@ -777,12 +749,18 @@ def get_task(conn, n, t, j, n_keep_blocks=None, n_reject_blocks=None, prompt=Non
     :param attribute: The task attribute.
     :param random_segment_order: Whether or not to randomize block ordering.
     :param image_attributes: The set of attributes that the images from this task have.
+    :param hit_type_id: The HIT type ID, as provided by MTurk and as findable in the database.
     :return: None.
     """
     if practice:
         task_id = practice_id_gen()
     else:
         task_id = task_id_gen()
+    if hit_type_id:
+        hit_type_info = get_hit_type_info(conn, hit_type_id)
+        practice = hit_type_info.get('metadata:is_practice', FALSE) == TRUE
+        attribute = hit_type_info.get('metadata:attribute', ATTRIBUTE)
+        image_attributes = list(loads(hit_type_info.get('metadata:image_attributes', dumps(IMAGE_ATTRIBUTES))))
     if n_keep_blocks is None:
         if practice:
             n_keep_blocks = DEF_PRACTICE_KEEP_BLOCKS
@@ -830,8 +808,28 @@ def get_task(conn, n, t, j, n_keep_blocks=None, n_reject_blocks=None, prompt=Non
     # define expSeq
     # annoying expSeq expects image tuples...
     exp_seq = [[x['type'], [tuple(y) for y in x['images']]] for x in blocks]
-    dbset.register_task(conn, task_id, exp_seq, attribute, blocks=blocks, is_practice=practice, checkIms=True,
+    dbset.register_task(conn, task_id, exp_seq, attribute, blocks=blocks, is_practice=practice, check_ims=True,
                         image_attributes=image_attributes)
 
 
+def get_active_hit_type_id_for_task(conn, task_id):
+    """
+    Returns the ID for an appropriate HIT type given the task. This is potentially expensive, but will be done
+    offline.
 
+    :param conn: The HappyBase connection object.
+    :param task_id: The task ID, as a string.
+    :return: An appropriate HIT type ID for this task, otherwise None. Returns the first one it finds.
+    """
+    task_info = conn.table(TASK_TABLE).row(task_id)
+    cur_task_is_practice = task_info.get('metadata:is_practice', FALSE) == TRUE
+    task_attribute = task_info.get('metadata:attribute', ATTRIBUTE)
+    image_attributes = loads(task_info.get('metadata:image_attributes', dumps(IMAGE_ATTRIBUTES)))
+    if cur_task_is_practice:
+        scanner = get_active_practice_hit_types(conn)
+    else:
+        scanner = get_active_hit_types(conn)
+    for hit_type_id, _ in scanner:
+        if hit_type_matches(conn, hit_type_id, task_attribute, image_attributes):
+            return hit_type_id
+    return None

@@ -242,7 +242,7 @@ def create_task_type_table(conn, clobber=False):
     :return: True if table was created. False otherwise.
     """
     _log.info('Creating HIT type table')
-    return _create_table(conn, HIT_TYPE, HIT_TYPE_FAMILIES, clobber)
+    return _create_table(conn, HIT_TYPE_TABLE, HIT_TYPE_FAMILIES, clobber)
 
 
 def force_regen_tables(conn):
@@ -331,12 +331,12 @@ def register_hit_type(conn, hit_type_id, task_attribute=None, image_attributes=N
     if is_practice is not FALSE and is_practice is not TRUE:
         _log.warning('Unknown practice status, defaulting to FALSE')
         is_practice = FALSE
-    hit_type_dict = {'metadata:task_attribute': task_attribute, 'metadata:image_attributes': image_attributes,
-                     'metadata:title': title, 'metadata:description': description, 'metadata:reward': reward,
-                     'metadata:assignment_duration': assignment_duration, 'metadata:keywords': keywords,
-                     'metadata:auto_approve_delay': auto_approve_delay, 'metadata:is_practice': is_practice,
-                     'status:active': active}
-    table = conn.table(HIT_TYPE)
+    hit_type_dict = {'metadata:task_attribute': task_attribute, 'metadata:title': title,
+                     'metadata:image_attributes': dumps(set(image_attributes)), 'metadata:description': description,
+                     'metadata:reward': reward, 'metadata:assignment_duration': assignment_duration,
+                     'metadata:keywords': keywords, 'metadata:auto_approve_delay': auto_approve_delay,
+                     'metadata:is_practice': is_practice, 'status:active': active}
+    table = conn.table(HIT_TYPE_TABLE)
     table.put(hit_type_id, _conv_dict_vals(hit_type_dict))
 
 
@@ -396,9 +396,9 @@ def register_task(conn, task_id, exp_seq, attribute, blocks=None, is_practice=Fa
     task_dict['metadata:images'] = dumps(images)  # note: not in order of presentation!
     task_dict['metadata:tuples'] = dumps(im_tuples)
     task_dict['metadata:tuple_types'] = dumps(im_tuple_types)
-    task_dict['metadata:attributes'] = dumps(image_attributes)
+    task_dict['metadata:attributes'] = dumps(set(image_attributes))
     task_dict['status:awaiting_serve'] = TRUE
-    task_dict['status:awaiting_hit_group'] = TRUE
+    task_dict['status:awaiting_hit_type'] = TRUE
     if blocks is None:
         _log.error('No block structure defined for this task - will not be able to load it.')
     else:
@@ -441,16 +441,16 @@ def deactivate_hit_type(conn, hit_type_id):
     raise NotImplementedError()
 
 
-def indicate_task_has_hit_group(conn, task_id):
+def indicate_task_has_hit_type(conn, task_id):
     """
-    Sets status.awaiting_hit_group parameter of the task, indicating that it has been added to a HIT Group
+    Sets status.awaiting_hit_type parameter of the task, indicating that it has been added to a HIT type
 
     :param conn: The HappyBase connection object.
     :param task_id: The task ID, as a string.
     :return: None
     """
     table = conn.table(TASK_TABLE)
-    table.put(task_id, {'status:awaiting_hit_group': TRUE})
+    table.put(task_id, {'status:awaiting_hit_type': TRUE})
 
 
 def set_task_html(conn, task_id, html):

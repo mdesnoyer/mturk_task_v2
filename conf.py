@@ -200,7 +200,7 @@ TASK_TABLE = 'tasks'
 IMAGE_TABLE = 'images'
 PAIR_TABLE = 'pairs'
 WIN_TABLE = 'wins'
-HIT_TYPE = 'hittypes'
+HIT_TYPE_TABLE = 'hittypes'
 if TESTING:
     WORKER_TABLE = 'TEST_workers'
     TASK_TABLE = 'TEST_tasks'
