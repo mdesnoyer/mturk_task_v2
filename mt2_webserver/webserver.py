@@ -7,13 +7,20 @@ This script actually runs the webserver. There are only two endpoints:
 from wsgiref.simple_server import make_server
 from pyramid.config import Configurator
 from pyramid.response import Response
-from mturk_task_v2.database import get as dbget
-from mturk_task_v2.database import set as dbset
-from mturk_task_v2.generate import request_for_task
+from ..mt2_database import get as dbget
+from ..mt2_database import set as dbset
+from ..mt2_generate import request_for_task
 import happybase
+import boto
 from conf import *
 
 conn = happybase.Connection(DATABASE_LOCATION)  # make sure to instantiate the database connection
+if MTURK_SANDBOX:
+    mturk_host = MTURK_SANDBOX_HOST
+else:
+    mturk_host = MTURK_HOST
+mtconn = boto.mturk.connection.MTurkConnection(host=mturk_host)
+
 
 def request_for_task(request):
     """
@@ -25,14 +32,16 @@ def request_for_task(request):
     is_preview = request.GET.getone('assignmentId') == PREVIEW_ASSIGN_ID
     workerId = request.GET.getone('workerId')
     taskId = request.GET.getone('taskId')
-    return request_for_task.fetch_task(conn, workerId, taskId)
+    return request_for_task.fetch_task(conn, workerId, taskId, is_preview=is_preview)
 
 
 def submission_of_task(request):
+    # TODO: implement
     raise NotImplementedError()
 
 
 if __name__ == '__main__':
+    # TODO: edit this!
     config = Configurator()
     config.add_route('hello', '/hello/{name}')                  # what is a 'route' and why do they need to be added?
     config.add_view(hello_world, route_name='hello')            # adds the view for this route, I think.

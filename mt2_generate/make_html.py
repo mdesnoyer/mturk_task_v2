@@ -25,8 +25,8 @@ import numpy as np
 import os
 import jinja2
 from jinja2 import meta
-from conf import *
-from database import get as dbget
+from utils import *
+from mt2_database import get as dbget
 
 # create the jinja template environment
 templateLoader = jinja2.FileSystemLoader(searchpath=TEMPLATE_DIR)

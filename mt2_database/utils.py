@@ -4,7 +4,6 @@ conf to the get and set namespace.
 """
 
 
-from mturk_task_v2.conf import *
 import urllib
 import cStringIO
 from PIL import Image

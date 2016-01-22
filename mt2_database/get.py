@@ -4,10 +4,10 @@ variety of possibilities here.
 """
 
 from itertools import combinations as comb
-import logger
+from .. import logger
 import set as dbset
 from dill import loads
-from utils import *
+from conf import *
 import time
 
 #  LOGGING ##############################
@@ -133,6 +133,7 @@ def _get_ban_expiration_date_str(ban_issued, ban_length):
     """
     # ban_exp_msec = ban_issued + ban_length * 1000
     # struct_time = time.localtime(float(ban_exp_msec)/1000)
+    # TODO: implement
     raise NotImplementedError()
 
 
@@ -168,7 +169,7 @@ def _get_timedelta_string(timestamp1, timestamp2):
     return ', '.join(filter(lambda x: len(x), cur_strs))
 
 
-def _task_has_blockdata(conn, taskId):
+def _task_has_blockdata(conn, task_id):
     """
     Checks whether or not a task has defined block data.
 
@@ -176,7 +177,7 @@ def _task_has_blockdata(conn, taskId):
         This does not seem possible without fetching all the data! :-(
 
     :param conn: The HappyBase connection object.
-    :param taskId: The Task ID, as a string.
+    :param task_id: The Task ID, as a string.
     :return: True if the task has pickled block data associated with it.
     """
     # TODO: Find out if this really is impossible.
@@ -244,166 +245,166 @@ def _general_filter(column_tuples, values, filter_type=ALL, key_only=False):
 # WORKER INFO
 
 
-def worker_exists(conn, workerId):
+def worker_exists(conn, worker_id):
     """
     Indicates whether we have a record of this worker in the database.
 
     :param conn: The HappyBase connection object.
-    :param workerId: The Worker ID (from MTurk), as a string.
+    :param worker_id: The Worker ID (from MTurk), as a string.
     :return: True if the there are records of this worker, otherwise false.
     """
     table = conn.table(WORKER_TABLE)
-    return table_has_row(table, workerId)
+    return table_has_row(table, worker_id)
 
 
-def worker_need_demographics(conn, workerId):
+def worker_need_demographics(conn, worker_id):
     """
     Indicates whether or not the worker needs demographic information.
 
     :param conn: The HappyBase connection object.
-    :param workerId: The Worker ID (from MTurk), as a string.
+    :param worker_id: The Worker ID (from MTurk), as a string.
     :return: True if we need demographic information from the worker. False otherwise.
     """
     table = conn.table(WORKER_TABLE)
-    rowData = table.row(workerId)
+    rowData = table.row(worker_id)
     if len(rowData.get('demographics:age', '')):
         return True
     else:
         return False
 
 
-def worker_need_practice(conn, workerId):
+def worker_need_practice(conn, worker_id):
     """
     Indicates whether the worker should be served a practice or a real task.
 
     :param conn: The HappyBase connection object.
-    :param workerId: The Worker ID (from MTurk), as a string.
+    :param worker_id: The Worker ID (from MTurk), as a string.
     :return: True if the worker has not passed a practice yet and must be served one. False otherwise.
     """
     table = conn.table(WORKER_TABLE)
-    rowData = table.row(workerId)
-    return rowData.get('status:passedPractice', FALSE) != TRUE
+    rowData = table.row(worker_id)
+    return rowData.get('status:passed_practice', FALSE) != TRUE
 
 
-def current_worker_practices_number(conn, workerId):
+def current_worker_practices_number(conn, worker_id):
     """
     Returns which practice the worker needs (as 0 ... N)
 
     :param conn: The HappyBase connection object.
-    :param workerId: The Worker ID (from MTurk) as a string.
+    :param worker_id: The Worker ID (from MTurk) as a string.
     :return: An integer corresponding to the practice the worker needs (starting from the top 'row')
     """
     table = conn.table(WORKER_TABLE)
-    rowData = table.row(workerId)
-    return int(rowData.get('status:numPracticesAttemptedThisWeek', '0'))
+    rowData = table.row(worker_id)
+    return int(rowData.get('status:num_practices_attempted_this_week', '0'))
 
 
-def worker_is_banned(conn, workerId):
+def worker_is_banned(conn, worker_id):
     """
     Determines whether or not the worker is banned.
 
     :param conn: The HappyBase connection object.
-    :param workerId: The Worker ID (from MTurk), as a string.
+    :param worker_id: The Worker ID (from MTurk), as a string.
     :return: True if the worker is banned, False otherwise.
     """
     table = conn.table(WORKER_TABLE)
-    data = table.row(workerId, columns=['status:isBanned'])
-    return data.get('status:isBanned', FALSE) == TRUE
+    data = table.row(worker_id, columns=['status:is_banned'])
+    return data.get('status:is_banned', FALSE) == TRUE
 
 
-def get_worker_ban_time_reason(conn, workerId):
+def get_worker_ban_time_reason(conn, worker_id):
     """
     Returns the length of remaining time this worker is banned along with the reason as a tuple.
 
     :param conn: The HappyBase connection object.
-    :param workerId: The Worker ID (from MTurk), as a string.
+    :param worker_id: The Worker ID (from MTurk), as a string.
     :return: The time until the ban expires and the reason for the ban.
     """
-    if not worker_is_banned(conn, workerId):
+    if not worker_is_banned(conn, worker_id):
         return None, None
     table = conn.table(WORKER_TABLE)
-    data = table.row(workerId, columns=['status:banLength', 'status:banReason'], include_timestamp=True)
-    ban_time, timestamp = data.get('status:banLength', (DEFAULT_BAN_LENGTH, 0))
-    ban_reason, _ = data.get('status:banReason', (DEFAULT_BAN_REASON, 0))
+    data = table.row(worker_id, columns=['status:ban_length', 'status:ban_reason'], include_timestamp=True)
+    ban_time, timestamp = data.get('status:ban_length', (DEFAULT_BAN_LENGTH, 0))
+    ban_reason, _ = data.get('status:ban_reason', (DEFAULT_BAN_REASON, 0))
     return _get_timedelta_string(int(ban_time * 1000), timestamp), ban_reason
 
 
-def worker_attempted_this_week(conn, workerId):
+def worker_attempted_this_week(conn, worker_id):
     """
     Returns the number of tasks this worker has attempted this week.
 
     :param conn: The HappyBase connection object.
-    :param workerId: The worker ID, as a string.
+    :param worker_id: The worker ID, as a string.
     :return: Integer, the number of tasks the worker has attempted this week.
     """
     table = conn.table(WORKER_TABLE)
-    data = table.row(workerId, columns=['stats:numAttemptedThisWeek'])
-    return int(data.get('stats:numAttemptedThisWeek', '0'))
+    data = table.row(worker_id, columns=['stats:num_attempted_this_week'])
+    return int(data.get('stats:num_attempted_this_week', '0'))
 
 
-def worker_attempted_too_much(conn, workerId):
+def worker_attempted_too_much(conn, worker_id):
     """
     Returns True if the worker has attempted too many tasks.
 
     :param conn: The HappyBase connection object.
-    :param workerId: The worker ID, as a string.
+    :param worker_id: The worker ID, as a string.
     :return: True if the worker has attempted too many tasks, otherwise False.
     """
-    return worker_attempted_this_week(conn, workerId) > MAX_ATTEMPTS_PER_WEEK
+    return worker_attempted_this_week(conn, worker_id) > MAX_ATTEMPTS_PER_WEEK
 
 
-def worker_weekly_rejected(conn, workerId):
+def worker_weekly_rejected(conn, worker_id):
     """
     Returns the rejection-to-acceptance ratio for this worker for this week.
 
     :param conn: The HappyBase connection object.
-    :param workerId: The worker ID, as a string.
+    :param worker_id: The worker ID, as a string.
     :return: Float, the number of tasks rejected divided by the number of tasks accepted.
     """
     table = conn.table(WORKER_TABLE)
-    data = table.row(workerId, columns=['stats:numRejectedThisWeek'])
-    return int(data.get('stats:numRejectedThisWeek', '0'))
+    data = table.row(worker_id, columns=['stats:num_rejected_this_week'])
+    return int(data.get('stats:num_rejected_this_week', '0'))
 
 
-def worker_weekly_reject_accept_ratio(conn, workerId):
+def worker_weekly_reject_accept_ratio(conn, worker_id):
     """
     Returns the rejection-to-acceptance ratio for this worker for this week.
 
     :param conn: The HappyBase connection object.
-    :param workerId: The worker ID, as a string.
+    :param worker_id: The worker ID, as a string.
     :return: Float, the number of tasks rejected divided by the number of tasks accepted.
     """
     table = conn.table(WORKER_TABLE)
-    data = table.row(workerId, columns=['stats:numAcceptedThisWeek', 'stats:numRejectedThisWeek'])
-    num_acc = float(data.get('stats:numAcceptedThisWeek', '0'))
-    num_rej = float(data.get('stats:numRejectedThisWeek', '0'))
+    data = table.row(worker_id, columns=['stats:num_accepted_this_week', 'stats:num_rejected_this_week'])
+    num_acc = float(data.get('stats:num_accepted_this_week', '0'))
+    num_rej = float(data.get('stats:num_rejected_this_week', '0'))
     return num_rej / num_acc
 
 
 # TASK
 
 
-def get_task_status(conn, taskId):
+def get_task_status(conn, task_id):
     """
     Fetches the status code given a task ID.
 
     :param conn: The HappyBase connection object.
-    :param taskId: The task ID, which is the row key.
+    :param task_id: The task ID, which is the row key.
     :return: A status code, as defined in conf.
     """
     table = conn.table(TASK_TABLE)
-    if not table_has_row(table, taskId):
+    if not table_has_row(table, task_id):
         return DOES_NOT_EXIST
-    task = table.row(taskId)
-    if task.get('metadata:isPractice', FALSE) == TRUE:
+    task = table.row(task_id)
+    if task.get('metadata:is_practice', FALSE) == TRUE:
         return IS_PRACTICE
-    if task.get('status:awaitingServe', FALSE) == TRUE:
-        if task.get('status:awaitingHITGroup', FALSE) == TRUE:
+    if task.get('status:awaiting_serve', FALSE) == TRUE:
+        if task.get('status:awaiting_hit_group', FALSE) == TRUE:
             return AWAITING_HIT
         return AWAITING_SERVE
-    if task.get('status:pendingCompletion', FALSE) == TRUE:
+    if task.get('status:pending_completion', FALSE) == TRUE:
         return COMPLETION_PENDING
-    if task.get('status:pendingEvaluation', FALSE) == TRUE:
+    if task.get('status:pending_evaluation', FALSE) == TRUE:
         return EVALUATION_PENDING
     if task.get('status:accepted', FALSE) == TRUE:
         return ACCEPTED
@@ -423,24 +424,24 @@ def get_available_task(conn, practice=False, practice_n=0):
     """
     table = conn.table(TASK_TABLE)
     if practice:
-        scanner = table.scan(columns=['metadata:isPractice'],
+        scanner = table.scan(columns=['metadata:is_practice'],
                              filter=IS_PRACTICE_FILTER)
         cnt = 0
-        for taskId, data in scanner:
+        for task_id, data in scanner:
             if cnt == practice_n:
                 # ideally, it'd check if there is block information for this task, but that requires loading the entire
                 # object into memory (unless there's some kind of filter for it)
-                return taskId
+                return task_id
             cnt += 1
         return None
     else:
         try:
-            taskId, data = table.scan(columns=['status:awaitingServe'],
+            task_id, data = table.scan(columns=['status:awaiting_serve'],
                                       filter=AWAITING_SERVE_FILTER).next()
         except StopIteration:
             # TODO: regenerate more tasks in this case.
             _log.warning('No tasks available.')
-        return taskId
+        return task_id
 
 
 def get_n_awaiting_hit(conn):
@@ -450,6 +451,7 @@ def get_n_awaiting_hit(conn):
     :param conn: The HappyBase connection object.
     :return: None
     """
+    # TODO: implement
     raise NotImplementedError()
 
 
@@ -460,58 +462,112 @@ def get_n_with_hit_awaiting_serve(conn):
     :param conn: The HappyBase connection object.
     :return: None
     """
+    # TODO: implement
     raise NotImplementedError()
 
 
-def get_task_blocks(conn, taskId):
+def get_task_blocks(conn, task_id):
     """
     Returns the task blocks, as a list of dictionaries, appropriate for make_html.
 
     :param conn: The HappyBase connection object.
-    :param taskId: The task ID, as a string.
+    :param task_id: The task ID, as a string.
     :return: List of blocks represented as dictionaries, if there is a problem returns None.
     """
     table = conn.table(TASK_TABLE)
-    pickled_blocks = table.row(taskId, columns=['blocks:c1']).get('blocks:c1', None)
+    pickled_blocks = table.row(task_id, columns=['blocks:c1']).get('blocks:c1', None)
     if pickled_blocks is None:
         return None
     return loads(pickled_blocks)
 
 
-def task_is_practice(conn, taskId):
+def task_is_practice(conn, task_id):
     """
     Indicates whether or not the task in question is a practice.
 
     :param conn: The HappyBase connection object.
-    :param taskId: The task ID, as a string.
+    :param task_id: The task ID, as a string.
     :return: Boolean. Returns True if the task specified by the task ID is a practice, otherwise false.
     """
-    return NotImplementedError()
+    # TODO: implement
+    raise NotImplementedError()
+
+
+# HIT TYPES
+
+
+def get_hit_type_info(conn, hit_type_id):
+    """
+    Returns the information for a hit_type_id.
+
+    :param conn: The HappyBase connection object.
+    :param hit_type_id: The HIT type ID, as provided by mturk.
+    :return: The HIT Type information, as a dictionary.
+    """
+    # TODO: implement
+    raise NotImplementedError()
+
+
+def hit_type_matches(conn, hit_type_id, task_attribute, image_attributes):
+    """
+    Indicates whether or not the hit is an appropriate match for
+
+    :param conn: The HappyBase connection object.
+    :param hit_type_id: The HIT type ID, as provided by mturk (see webserver.mturk.register_hit_type_mturk).
+    :param task_attribute: The task attribute for tasks that are HITs assigned to this HIT type.
+    :param image_attributes: The image attributes for tasks that are HITs assigned to this HIT type.
+    :return: True if hit_type_id corresponds to a HIT type that has the specified task attribute and the specified
+             image attributes.
+    """
+    # TODO: implement
+    raise NotImplementedError()
+
+
+def get_active_hit_types(conn):
+    """
+    Obtains active hit types which correspond to non-practice tasks.
+
+    :param conn: The HappyBase connection object.
+    :return: An iterator over active hit types.
+    """
+    # TODO: implement
+    raise NotImplementedError()
+
+
+def get_active_practice_hit_types(conn):
+    """
+    Obtains active hit types that correspond to practice tasks.
+
+    :param conn: The HappyBase connection object.
+    :return: An iterator over active practice hit types.
+    """
+    # TODO: implement
+    raise NotImplementedError()
 
 
 # GENERAL QUERIES
 
 
-def table_exists(conn, tableName):
+def table_exists(conn, table_name):
     """
     Checks if a table exists.
 
     :param conn: The HappyBase connection object.
-    :param tableName: The name of the table to check for existence.
+    :param table_name: The name of the table to check for existence.
     :return: True if table exists, false otherwise.
     """
-    return tableName in conn.tables()
+    return table_name in conn.tables()
 
 
-def table_has_row(table, rowKey):
+def table_has_row(table, row_key):
     """
     Determines if a table has a defined row key or not.
 
     :param table: A HappyBase table object.
-    :param rowKey: The desired row key, as a string.
+    :param row_key: The desired row key, as a string.
     :return: True if key exists, false otherwise.
     """
-    scan = table.scan(row_start=rowKey, filter='KeyOnlyFilter() AND FirstKeyOnlyFilter()', limit=1)
+    scan = table.scan(row_start=row_key, filter='KeyOnlyFilter() AND FirstKeyOnlyFilter()', limit=1)
     return next(scan, None) is not None
 
 
@@ -526,7 +582,7 @@ def get_num_items(table):
     """
     x = table.scan(filter=b'KeyOnlyFilter() AND FirstKeyOnlyFilter()')
     tot_ims = 0
-    for key, d in x:
+    for item in x:
         tot_ims += 1
     return tot_ims
 
@@ -548,7 +604,7 @@ def get_items(table):
 # IMAGE STUFF
 
 
-def get_n_active_images(conn, image_attributes=[]):
+def get_n_active_images(conn, image_attributes=IMAGE_ATTRIBUTES):
     """
     Gets a count of active images.
 
@@ -557,9 +613,8 @@ def get_n_active_images(conn, image_attributes=[]):
     :return: An integer, the number of active images.
     """
     table = conn.table(IMAGE_TABLE)
-    # TODO: Find out why the filterIfColumnMissing flag doesnt work! In principle, it's always added...but still...
     # note: do NOTE use binary prefix, because 1 does not correspond to the string 1, but to the binary 1.
-    scanner = table.scan(columns=['metadata:isActive'],
+    scanner = table.scan(columns=['metadata:is_active'],
                         filter=attribute_image_filter(image_attributes, only_active=True))
     active_image_count = 0
     for item in scanner:
@@ -567,23 +622,23 @@ def get_n_active_images(conn, image_attributes=[]):
     return active_image_count
 
 
-def image_is_active(conn, imageId):
+def image_is_active(conn, image_id):
     """
     Returns True if an image has been registered into the database and is an active image.
 
     :param conn: The HappyBase connection object.
-    :param imageId: The image ID, which is the row key.
+    :param image_id: The image ID, which is the row key.
     :return: True if the image is active. False otherwise.
     """
     table = conn.table(IMAGE_TABLE)
-    isActive = table.row(imageId, columns=['metadata:isActive']).get('metadata:isActive', None)
-    if isActive == TRUE:
+    is_active = table.row(image_id, columns=['metadata:is_active']).get('metadata:is_active', None)
+    if is_active == TRUE:
         return True
     else:
         return False
 
 
-def image_get_min_seen(conn, image_attributes=[]):
+def image_get_min_seen(conn, image_attributes=IMAGE_ATTRIBUTES):
     """
     Returns the number of times the least-seen image has been seen. (I.e., the number of tasks it has been featured in.
 
@@ -596,12 +651,12 @@ def image_get_min_seen(conn, image_attributes=[]):
     obs_min = np.inf
     table = conn.table(IMAGE_TABLE)
     # note that if we provide a column argument, rows without this column are not emitted.
-    scanner = table.scan(columns=['stats:numTimesSeen'],
+    scanner = table.scan(columns=['stats:num_times_seen'],
                          filter=attribute_image_filter(image_attributes, only_active=True))
     been_seen = 0
     for row_key, row_data in scanner:
         been_seen += 1
-        cur_seen = row_data.get('stats:numTimesSeen', 0)
+        cur_seen = row_data.get('stats:num_times_seen', 0)
         if cur_seen < obs_min:
             obs_min = cur_seen
         if obs_min == 0:
@@ -611,7 +666,7 @@ def image_get_min_seen(conn, image_attributes=[]):
     return obs_min
 
 
-def get_n_images(conn, n, base_prob=None, image_attributes=[]):
+def get_n_images(conn, n, base_prob=None, image_attributes=IMAGE_ATTRIBUTES):
     """
     Returns n images from the database, sampled according to some probability. These are fit for use in design
     generation.
@@ -639,11 +694,11 @@ def get_n_images(conn, n, base_prob=None, image_attributes=[]):
     table = conn.table(IMAGE_TABLE)
     images = set()
     while len(images) < n:
-        # repeatedly scan the database, selecting images -- don't bother selecting the numTimesSeen column, since it
+        # repeatedly scan the database, selecting images -- don't bother selecting the num_times_seen column, since it
         # wont be defined for images that have yet to be seen.
         scanner = table.scan(filter=attribute_image_filter(image_attributes, only_active=True))
         for row_key, row_data in scanner:
-            cur_seen = row_data.get('stats:numTimesSeen', 0)
+            cur_seen = row_data.get('stats:num_times_seen', 0)
             if np.random.rand() < p(cur_seen):
                 images.add(row_key)
     return list(images)
@@ -652,7 +707,7 @@ def get_n_images(conn, n, base_prob=None, image_attributes=[]):
 # TASK DESIGN STUFF
 
 
-def get_design(conn, n, t, j, image_attributes):
+def get_design(conn, n, t, j, image_attributes=IMAGE_ATTRIBUTES):
     """
     Returns a task design, as a series of tuples of images. This is based directly on generate/utils/get_design, which
     should be consulted for reference on the creation of Steiner systems.
@@ -698,7 +753,7 @@ def get_design(conn, n, t, j, image_attributes):
 
 
 def get_task(conn, n, t, j, n_keep_blocks=None, n_reject_blocks=None, prompt=None, practice=False,
-             attribute=ATTRIBUTE, random_segment_order=RANDOMIZE_SEGMENT_ORDER, image_attributes=[]):
+             attribute=ATTRIBUTE, random_segment_order=RANDOMIZE_SEGMENT_ORDER, image_attributes=IMAGE_ATTRIBUTES):
     """
     Creates a new task, by calling get_design and then arranging those tuples into keep and reject blocks, and then
     registering it in the database.
@@ -718,16 +773,16 @@ def get_task(conn, n, t, j, n_keep_blocks=None, n_reject_blocks=None, prompt=Non
     :param n_keep_blocks: The number of keep blocks in this task (tuples are evenly divided among them)
     :param n_reject_blocks: The number of reject blocks in this task (tuples are evenly divided among them)
     :param prompt: The prompt to use across all blocks (overrides defaults)
-    :param: practice: Boolean, whether or not this task is a practice.
-    :param: attribute: The task attribute.
-    :param: random_seqment_order: Whether or not to randomize block ordering.
+    :param practice: Boolean, whether or not this task is a practice.
+    :param attribute: The task attribute.
+    :param random_segment_order: Whether or not to randomize block ordering.
     :param image_attributes: The set of attributes that the images from this task have.
     :return: None.
     """
     if practice:
-        taskId = practice_id_gen()
+        task_id = practice_id_gen()
     else:
-        taskId = task_id_gen()
+        task_id = task_id_gen()
     if n_keep_blocks is None:
         if practice:
             n_keep_blocks = DEF_PRACTICE_KEEP_BLOCKS
@@ -774,8 +829,8 @@ def get_task(conn, n, t, j, n_keep_blocks=None, n_reject_blocks=None, prompt=Non
         np.random.shuffle(blocks)
     # define expSeq
     # annoying expSeq expects image tuples...
-    expSeq = [[x['type'], [typle(y) for y in x['images']]] for x in blocks]
-    dbset.register_task(conn, taskId, expSeq, attribute, blocks=blocks, isPractice=practice, checkIms=True,
+    exp_seq = [[x['type'], [tuple(y) for y in x['images']]] for x in blocks]
+    dbset.register_task(conn, task_id, exp_seq, attribute, blocks=blocks, is_practice=practice, checkIms=True,
                         image_attributes=image_attributes)
 
 

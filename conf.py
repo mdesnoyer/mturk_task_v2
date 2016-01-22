@@ -6,19 +6,15 @@ configuration + global parameters file.
 import numpy as np
 import string
 import random
-import sys
 import os
-
-
-base_path = os.path.abspath(os.path.join(os.path.dirname(__file__)))
-if base_path not in sys.path:
-    sys.path.insert(0,base_path)
+from utils import *
 
 
 """
 For debugging
 """
 TESTING = False
+MTURK_SANDBOX = False
 
 
 """
@@ -37,36 +33,24 @@ MTURK QUALIFICATIONS
 """
 # CONSIDER MAKING THESE INTEGERS AND THEN JUST CHECKING THAT THE QUALIFICATION VALUE
 # EQUALS WHAT WE EXPECT.
-PASSED_PRACTICE = '1'
-TEMPORARY_BAN = '0'
+PASSED_PRACTICE = 200  # the user has passed the practice and can try doing 'real' tasks
+# NEEDS_PRACTICE = 100  # the user has yet to pass a practice.
+# TEMPORARY_BAN = 000  # the user has been temporarily banned.
+# AVAILABLE_QUALIFICATIONS = (PASSED_PRACTICE, TEMPORARY_BAN)
 
 # descriptions
+QUALIFICATION_DESCRIPTION = dict()
 QUALIFICATION_DESCRIPTION[PASSED_PRACTICE] = 'You have passed the practice and are ready to begin doing tasks.'
-QUALIFICATION_DESCRIPTION[TEMPORARY_BAN] = 'You have been temporarily banned. For more information, email us at ' \
-                                           'image.inference@gmail.com'
+# QUALIFICATION_DESCRIPTION[TEMPORARY_BAN] = 'You have been temporarily banned. For more information, email us at ' \
+#                                            'image.inference@gmail.com'
 
+# notifications
+QUALIFICATION_NOTIFICATION = dict()
+QUALIFICATION_NOTIFICATION[PASSED_PRACTICE] = True  # notify them if they've passed the practice
+# QUALIFICATION_NOTIFICATION[TEMPORARY_BAN] = False  # DON'T notify them if they've been temporarily banned
 
-"""
-OTHER MTURK INFORMATION
-"""
-PREVIEW_ASSIGN_ID = 'ASSIGNMENT_ID_NOT_AVAILABLE'
-
-
-"""
-WORKER OPTIONS
-"""
-MAX_PRACTICES_PER_WEEK = 5  # The number of times you can attempt a practice per week.
-MAX_ATTEMPTS_PER_WEEK = np.inf  # the maximum number of tasks a worker can complete per week
-DEFAULT_BAN_REASON = 'Reason not provided.'  # the default reason for a ban
-MIN_REJECT_AUTOBAN_ELIGIBLE = 3  # the minimum number of rejections (in a week) to be eligible for a ban
-AUTOBAN_REJECT_ACCEPT_RATIO = 0.33  # the ratio of rejections / acceptances to be eligible for a ban
-
-
-"""
-BLOCK IDENTIFICATION
-"""
-KEEP_BLOCK = 'keep'
-REJECT_BLOCK = 'reject'
+# names
+PASSED_PRACTICE_NAME = 'Passed Practice'
 
 
 """
@@ -87,6 +71,7 @@ BOX_SIZE = [800, 500]  # The box size for serving images, [w, h]
 HIT_SIZE = [600, 400]  # the hit box size, which is where the images will be constrained to occur in, [w, h]
 POS_TYPE = 'random'  # the position type, see make_html.py
 ATTRIBUTE = 'interesting'  # the default attribute to use
+IMAGE_ATTRIBUTES = []  # the types of images to be included in the task.
 DEF_FEEDBACK_TIME = 100  # the amount of time to display feedback
 DEF_TRIAL_TIME = 1500  # the maximum amount of time each trial is allowed to go for
 DEF_INSTRUCTIONS = None  # the default instructions to display before each SEGMENT
@@ -94,6 +79,44 @@ DEF_RESPONSE_ENDS_TRIAL = 'true'  # whether or not a response ends a trial
 DEF_TRIAL_TYPE = KEEP_BLOCK  # the default trial type
 DEF_PROMPT = ''  # the default prompt to display
 DEF_PRACTICE_PROMPT = '<font color="red">PRACTICE</font>'  # the default prompt to display during practice tasks
+
+
+"""
+OTHER MTURK INFORMATION
+"""
+PREVIEW_ASSIGN_ID = 'ASSIGNMENT_ID_NOT_AVAILABLE'  # what the assignment ID is when they're just previewing
+EXTERNAL_QUESTION_ENDPOINT = ''  # where to route external question urls
+MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'  # the host for the mturk sandbox
+MTURK_HOST = ''  # the host for the vanilla sandbox
+DEFAULT_TASK_PAYMENT = 0.40  # the default payment for
+DEFAULT_PRACTICE_PAYMENT = 0.20  # the default payment for practices
+DEFAULT_TASK_NAME = 'Choosing images'  # The title for the actual tasks.
+DEFAULT_PRACTICE_TASK_NAME = 'Practice choosing images'  # The title for practice tasks.
+HIT_LIFETIME_IN_SECONDS = 60*60*24*7  # How long a hit lasts. HITs remain for one week.
+AUTO_APPROVE_DELAY = 60*60*24*3  # How long until the task is auto-accepted.
+KEYWORDS = []
+DESCRIPTION = 'Choosing %s images (no limit)' % ATTRIBUTE  # The default ask description.
+PRACTICE_DESCRIPTION = 'Practice for choosing %s images (you only need pass the practice once)' % ATTRIBUTE # the
+                                                                                        # default practice description
+ASSIGNMENT_DURATION = 60*60*2  # How long after accepting a task does a worker have to complete it.
+QUALIFICATION_ID = None  # this can't be known until we create the qualification type ID.
+
+
+"""
+WORKER OPTIONS
+"""
+MAX_PRACTICES_PER_WEEK = 5  # The number of times you can attempt a practice per week.
+MAX_ATTEMPTS_PER_WEEK = np.inf  # the maximum number of tasks a worker can complete per week
+DEFAULT_BAN_REASON = 'Reason not provided.'  # the default reason for a ban
+MIN_REJECT_AUTOBAN_ELIGIBLE = 3  # the minimum number of rejections (in a week) to be eligible for a ban
+AUTOBAN_REJECT_ACCEPT_RATIO = 0.33  # the ratio of rejections / acceptances to be eligible for a ban
+
+
+"""
+BLOCK IDENTIFICATION
+"""
+KEEP_BLOCK = 'keep'
+REJECT_BLOCK = 'reject'
 
 
 """
@@ -177,12 +200,14 @@ TASK_TABLE = 'tasks'
 IMAGE_TABLE = 'images'
 PAIR_TABLE = 'pairs'
 WIN_TABLE = 'wins'
+HIT_TYPE = 'hittypes'
 if TESTING:
     WORKER_TABLE = 'TEST_workers'
     TASK_TABLE = 'TEST_tasks'
     IMAGE_TABLE = 'TEST_images'
     PAIR_TABLE = 'TEST_pairs'
     WIN_TABLE = 'TEST_wins'
+    HIT_TYPE = 'TEST_hittypes'
 
 
 """
@@ -191,14 +216,12 @@ COLUMN NAMES, BY FAMILY
 # See the readme on the database schema.
 WORKER_FAMILIES = {'status': dict(max_versions=1),
                    'stats': dict(max_versions=1),
-                   'demographics': dict(max_versions=1),
-                   'attempted_practices': dict(max_versions=1)}
+                   'demographics': dict(max_versions=1)}
 TASK_FAMILIES = {'metadata': dict(max_versions=1),
                  'status': dict(max_versions=1),
                  'completed_data': dict(max_versions=1),
                  'blocks': dict(max_versions=1),
-                 'html': dict(max_versions=1),
-                 'forbidden_workers': dict(max_versions=1)}
+                 'html': dict(max_versions=1)}
 IMAGE_FAMILIES = {'metadata': dict(max_versions=1),
                   'stats': dict(max_versions=1),
                   'phash': dict(max_versions=1),
@@ -208,7 +231,8 @@ PAIR_FAMILIES = {'metadata': dict(max_versions=1),
                  'legacy_trials': dict(max_versions=1),
                  'legacy_workers': dict(max_versions=1)}
 WIN_FAMILIES = {'data': dict(max_versions=1)}
-
+HIT_TYPE_FAMILIES = {'metadata': dict(max_versions=1),
+                     'status': dict(max_versions=1)}
 
 """
 DATA INPUT FORMATTING
@@ -227,35 +251,6 @@ SAMPLES REQ PER IMAGE
 #   graph. If pairs are chosen at random, hte graph is Erdos-Renyi and the spectral gap has a lower bound by some
 #   probability and hence the complexity is O(n * poly(log(n))). poly(x) denotes x^O(1), which we assume to be x^1.
 SAMPLES_REQ_PER_IMAGE = lambda n_active: n_active * np.log(n_active)
-
-
-"""
-ID GENERATION
-"""
-_id_len = 16
-def _rand_id_gen(n):
-    """
-    Generates random IDs
-    :param n: The number of characters in the random ID
-    :return: A raw ID string, composed of n upper- and lowercase letters as well as digits.
-    """
-    return ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(n))
-
-
-def task_id_gen():
-    """
-    Generates task IDs
-    :return: A task ID, as a string
-    """
-    return TASK_PREFIX + _rand_id_gen(_id_len)
-
-
-def practice_id_gen():
-    """
-    Generates practice IDs
-    :return: A practice ID, as a string
-    """
-    return PREFIX_PREFIX + _rand_id_gen(_id_len)
 
 
 """

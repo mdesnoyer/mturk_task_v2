@@ -5,6 +5,7 @@ Exports useful utilities for generation.
 import numpy as np
 from itertools import combinations as comb
 
+
 def get_design(n, t, j):
     """
     Creates an experimental design by creating a series of fixed-length subsets of N elements such that each element
