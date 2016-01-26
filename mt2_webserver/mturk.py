@@ -5,8 +5,15 @@ much in the same manner as database.get/set.
 """
 
 from conf import *
-import boto
+import boto.mturk.connection
+import boto.mturk.notification
+import boto.mturk.qualification
+import boto.mturk.price
+import boto.mturk.question
 import hashlib
+
+
+_log = logger.setup_logger(__name__)
 
 """
 FUNCTIONS WE WILL NEED:
@@ -33,19 +40,78 @@ def _gen_qualification(task_type='REAL'):
     return boto.mturk.qualification.Requirement(QUALIFICATION_ID, 'EqualTo', PASSED_PRACTICE, required_to_preview=True)
 
 
+def _validate_qualification_id(mtconn):
+    """
+    Ensures that the practice qualification ID exported in the configuration file is correct. If it's not, it sets the
+    qualification ID globally (which, nonetheless, is local to this module).
+
+    :param mtconn: The Boto mechanical turk connection object.
+    :return: True if the qualification ID in the configuration file is correct, False otherwise.
+    """
+    try:
+        query_resp = mtconn.get_qualification_type(QUALIFICATION_ID)
+    except boto.mturk.connection.MTurkRequestError:
+        return False
+    # ensure the name is correct
+    if query_resp[0].Name != QUALIFICATION_NAME:
+        _log.warning('Qualification with correct ID found, but name is different')
+    return True
+
+
+def init(mtconn):
+    """
+    Performs initialization for working with MTurk.
+
+    :param mtconn: The Boto mechanical turk connection object.
+    :return: None
+    """
+    # Ensure that the qualification ID is correct
+    if not _validate_qualification_id(mtconn):
+        create_practice_qualification(mtconn)
+
+
+def create_practice_qualification(mtconn):
+    """
+    Creates a practice qualification on MTurk. Also sets the global variable QUALIFICATION_ID, if it is not set.
+
+    :param mtconn: The Boto mechanical turk connection object.
+    :return: None
+    """
+    global QUALIFICATION_ID
+    _log.info('Checking if qualification %s exists already' % QUALIFICATION_NAME)
+    srch_resp = mtconn.search_qualification_types(query=QUALIFICATION_NAME)
+    for qual in srch_resp:
+        if qual.Name == QUALIFICATION_NAME:
+            _log.info('Qualification %s already exists, setting the global variable to %s' % (QUALIFICATION_NAME,
+                                                                                              qual.QualificationTypeId))
+            QUALIFICATION_ID = qual.QualificationTypeId
+    try:
+        resp = mtconn.create_qualification_type(name=QUALIFICATION_NAME,
+                                                description=QUALIFICATION_DESCRIPTION,
+                                                status='Active')
+        QUALIFICATION_ID = resp[0].QualificationTypeId
+    except boto.mturk.connection.MTurkRequestError as e:
+        _log.error('Error creating qualification: ' + e.message)
+
+
 def grant_worker_practice_passed(mtconn, worker_id):
     """
     Grants worker the qualification necessary to begin attempting to complete our real tasks.
+
+    NOTE:
+        This does NOT update the database to reflect the fact that the worker has become qualified!
 
     :param mtconn: The Boto mechanical turk connection object.
     :param worker_id: The MTurk worker ID.
     :return: None
     """
-    # TODO: implement
-    raise NotImplementedError()
+    try:
+        mtconn.assign_qualification(QUALIFICATION_ID, worker_id, value=PASSED_PRACTICE)
+    except boto.mturk.connection.MTurkRequestError as e:
+        _log.error('Error granting worker practice passed qualification: %s' + e.message)
 
 
-def _revoke_worker_practice_passed(mtconn, worker_id):
+def revoke_worker_practice_passed(mtconn, worker_id, reason=None):
     """
     Revokes the qualification necessary to begin attempting to complete our real tasks from a worker.
 
@@ -53,8 +119,11 @@ def _revoke_worker_practice_passed(mtconn, worker_id):
     :param worker_id: The MTurk worker ID.
     :return: None
     """
-    # TODO: implement
-    raise NotImplementedError()
+    try:
+        # NOTE: They refer to 'worker_id' idiosyncratically here as "subject_id"...
+        mtconn.revoke_qualification(worker_id, QUALIFICATION_ID, reason=reason)
+    except boto.mturk.connection.MTurkRequestError as e:
+        _log.error('Error revoking worker practice passed qualification: %s' + e.message)
 
 
 def ban_worker(mtconn, worker_id, reason=DEFAULT_BAN_REASON):
@@ -66,8 +135,9 @@ def ban_worker(mtconn, worker_id, reason=DEFAULT_BAN_REASON):
     :param reason: The reason for the ban.
     :return: None
     """
-    # TODO: implement
-    raise NotImplementedError()
+    # revoke the workers qualifications
+    revoke_worker_practice_passed(mtconn, worker_id, reason=reason)
+    mtconn.block_worker(worker_id, reason=reason)
 
 
 def unban_worker(mtconn, worker_id):
@@ -78,8 +148,7 @@ def unban_worker(mtconn, worker_id):
     :param worker_id: The MTurk worker ID.
     :return: None
     """
-    # TODO: implement
-    raise NotImplementedError()
+    mtconn.unblock_worker(worker_id, reason='Your ban has expired, you are free to attempt our tasks once more.')
 
 
 def get_hit_complete(mtconn, hit_id=None):
@@ -87,10 +156,35 @@ def get_hit_complete(mtconn, hit_id=None):
     Determines if a task has been completed or not.
 
     :param mtconn: The Boto mechanical turk connection object.
-    :param hit_id: The ID of the hit in question.
+    :param hit_id: The ID of the hit in question as provided by MTurk.
     :return: True if the task/HIT has been completed, otherwise false.
     """
-    # TODO: implement
+    # TODO: Implement this.
+    raise NotImplementedError()
+
+
+def approve_hit(mtconn, hit_id):
+    """
+    Approves a HIT.
+
+    :param mtconn: The Boto mechanical turk connection object.
+    :param hit_id: The ID of the hit in question as provided by MTurk.
+    :return: None.
+    """
+    # TODO: Implement this.
+    raise NotImplementedError()
+
+
+def reject_hit(mtconn,  hit_id, reason=None):
+    """
+    Rejects a HIT.
+
+    :param mtconn: The Boto mechanical turk connection object.
+    :param hit_id: The ID of the hit in question as provided by MTurk.
+    :param reason: The reason the HIT was rejected.
+    :return: None.
+    """
+    # TODO: Implement this.
     raise NotImplementedError()
 
 

@@ -28,14 +28,17 @@ def fetch_task(conn, worker_id, task_id, is_preview=False):
     collect_demo = False
     if dbget.worker_need_demographics(conn, worker_id):
         collect_demo = True
-    if is_practice:
-        dbset.practice_served(conn, task_id, worker_id)
+    if not is_preview:
+        if is_practice:
+            dbset.practice_served(conn, task_id, worker_id)
+        else:
+            dbset.task_served(conn, task_id, worker_id)
+        blocks = dbget.get_task_blocks(conn, task_id)
+        if blocks is None:
+            # display an error-fetching-task page.
+            return make_html.make_error_fetching_task_html(conn, worker_id)
     else:
-        dbset.task_served(conn, task_id, worker_id)
-    blocks = dbget.get_task_blocks(conn, task_id)
-    if blocks is None:
-        # display an error-fetching-task page.
-        return make_html.make_error_fetching_task_html(conn, worker_id)
+        blocks = []  # do not show them anything if this is just a preview.
     html = make_html.make(blocks, practice=is_practice, collect_demo=collect_demo, is_preview=is_preview)
     # TODO: add the html to the database
     if not is_practice:
@@ -51,6 +54,7 @@ def naive_build_task(conn, worker_id, is_preview=False):
     :param worker_id: The worker ID, as a string.
     :return: The HTML for the request.
     """
+    raise DeprecationWarning('This function is depricated, you should use fetch_task')
     # check that the worker exists, else register them. We want to have their information in the database so we don't
     # spawn errors down the road.
     if not dbget.worker_exists(conn, worker_id):
