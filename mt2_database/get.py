@@ -4,7 +4,6 @@ variety of possibilities here.
 """
 
 from itertools import combinations as comb
-from .. import logger
 import set as dbset
 from dill import loads
 from dill import dumps
@@ -442,6 +441,18 @@ def task_is_practice(conn, task_id):
     """
     table = conn.table(TASK_TABLE)
     return table.get(task_id).get('metadata:is_practice', None)
+
+
+def task_is_acceptable(conn, task_id):
+    """
+    Indicates whether or not a task is acceptable.
+
+    :param conn: The HappyBase connection object.
+    :param task_id: The task ID, as a string.
+    :return: True if the task is acceptable, False otherwise.
+    """
+    # TODO: Implement this.
+    raise NotImplementedError()
 
 
 # HIT TYPES

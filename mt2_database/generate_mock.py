@@ -5,6 +5,7 @@ remember, it requires
 >> /hbase/hbase-1.1.2/bin/start-hbase.sh
 >> hbase thrift start
 """
+
 import ipdb
 from glob import glob
 import numpy as np

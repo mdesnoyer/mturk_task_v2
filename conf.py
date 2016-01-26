@@ -8,6 +8,7 @@ import string
 import random
 import os
 from utils import *
+import logger
 
 
 """
@@ -54,6 +55,13 @@ PASSED_PRACTICE_NAME = 'Passed Practice'
 
 
 """
+BLOCK IDENTIFICATION
+"""
+KEEP_BLOCK = 'keep'
+REJECT_BLOCK = 'reject'
+
+
+"""
 TASK CONFIGURATION
 """
 # The practice instruction sequence
@@ -96,10 +104,17 @@ HIT_LIFETIME_IN_SECONDS = 60*60*24*7  # How long a hit lasts. HITs remain for on
 AUTO_APPROVE_DELAY = 60*60*24*3  # How long until the task is auto-accepted.
 KEYWORDS = []
 DESCRIPTION = 'Choosing %s images (no limit)' % ATTRIBUTE  # The default ask description.
-PRACTICE_DESCRIPTION = 'Practice for choosing %s images (you only need pass the practice once)' % ATTRIBUTE # the
-                                                                                        # default practice description
+PRACTICE_DESCRIPTION = 'Practice for choosing %s images (you only need pass the practice once)' % ATTRIBUTE
 ASSIGNMENT_DURATION = 60*60*2  # How long after accepting a task does a worker have to complete it.
-QUALIFICATION_ID = None  # this can't be known until we create the qualification type ID.
+QUALIFICATION_NAME = 'Practice for image selection task passed.'
+QUALIFICATION_DESCRIPTION = 'You have passed the practices for the image selection task, and are now free to ' \
+                            'complete the full tasks. Thank you! NOTE: This qualification should not be requested! ' \
+                            'It will be granted automatically after a short delay following you completing the ' \
+                            'practice task. NOTE: While our tasks have no wrong answers, if we believe that you ' \
+                            'are not giving your attention to the task or behaving randomly, you could be ' \
+                            'temporarily banned in which case this qualification will be revoked. Once the ban ' \
+                            'expires, you will be able to re-take the practice.'
+QUALIFICATION_ID = '3LPLP7F83FJ3OREHDWT5463KYHHPG5'  # this can't be known until we create the qualification type ID.
 
 
 """
@@ -110,13 +125,6 @@ MAX_ATTEMPTS_PER_WEEK = np.inf  # the maximum number of tasks a worker can compl
 DEFAULT_BAN_REASON = 'Reason not provided.'  # the default reason for a ban
 MIN_REJECT_AUTOBAN_ELIGIBLE = 3  # the minimum number of rejections (in a week) to be eligible for a ban
 AUTOBAN_REJECT_ACCEPT_RATIO = 0.33  # the ratio of rejections / acceptances to be eligible for a ban
-
-
-"""
-BLOCK IDENTIFICATION
-"""
-KEEP_BLOCK = 'keep'
-REJECT_BLOCK = 'reject'
 
 
 """

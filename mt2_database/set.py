@@ -39,7 +39,6 @@ Handles all update events for the database. The following events are possible, w
     Create/recreate wins table
 """
 
-import logger
 import get as dbget
 from dill import dumps, loads
 from itertools import combinations as comb
@@ -356,6 +355,10 @@ def register_task(conn, task_id, exp_seq, attribute, blocks=None, is_practice=Fa
         Since we don't need to check up on these values all that often, we will be converting them to strings using
         dill.
 
+        Because tasks may expire and need to be reposted as a new HIT or somesuch, do not provide any information about
+        the HIT_ID, the Task type ID, etc--in other words, no MTurk-specific information. At this point in the flow
+        of information, our knowledge about the task is constrained to be purely local information.
+
     :param conn: The HappyBase connection object.
     :param task_id: The task ID, as a string.
     :param exp_seq: A list of lists, in order of presentation, one for each segment. See Notes.
@@ -366,6 +369,7 @@ def register_task(conn, task_id, exp_seq, attribute, blocks=None, is_practice=Fa
     :param image_attributes: The set of attributes that the images from this task have.
     :return: None.
     """
+
     _log.info('Registering task %s' % task_id)
     # determine the total number of images in this task.
     task_dict = dict()
@@ -373,7 +377,7 @@ def register_task(conn, task_id, exp_seq, attribute, blocks=None, is_practice=Fa
     task_dict['metadata:is_practice'] = is_practice
     task_dict['metadata:attribute'] = attribute
     images = set()
-    image_list = [] # we also need to store the images as a list incase some need to be incremented more than once
+    image_list = [] # we also need to store the images as a list in case some need to be incremented more than once
     im_tuples = []
     im_tuple_types = []
     table = conn.table(IMAGE_TABLE)
@@ -635,7 +639,8 @@ def worker_demographics(conn, worker_id, gender, age, location):
                                           'demographics:location': location}))
 
 
-def task_finished(conn, task_id, worker_id, choices, choice_idxs, reaction_times, hit_id=None):
+def task_finished(conn, task_id, worker_id, choices, choice_idxs, reaction_times, hit_id=None, assignment_id=None,
+                  hit_type_id=None):
     """
     Notes that a user has completed a task.
 
@@ -645,6 +650,9 @@ def task_finished(conn, task_id, worker_id, choices, choice_idxs, reaction_times
     :param choices: In-order choice sequence as image IDs (empty if no choice made).
     :param choice_idxs: In-order choice index sequence as integers (empty if no choice made).
     :param reaction_times: In-order reaction times, in msec (empty if no choice made).
+    :param hit_id: The HIT ID, as provided by MTurk.
+    :param assignment_id: The assignment ID, as provided by MTurk.
+    :param hit_type_id: The HIT type ID, as provided by MTurk.
     :return: None
     """
 
@@ -655,10 +663,12 @@ def task_finished(conn, task_id, worker_id, choices, choice_idxs, reaction_times
         # issue a warning, but do not discard the data
         _log.warning('No task data for finished task %s' % task_id)
     # update the data
-    table.put(task_id, {'metadata:hit_id': hit_id, 'completed_data:choices': dumps(choices),
-                        'completed_data:reaction_times': dumps(reaction_times),
-                        'completed_data:choice_idxs': dumps(choice_idxs),
-                        'status:pending_completion': FALSE, 'status:pending_evaluation': TRUE})
+    table.put(task_id,
+              _conv_dict_vals({'metadata:hit_id': hit_id, 'metadata:assignment_id': assignment_id,
+                               'metadata:hit_type_id': hit_type_id, 'completed_data:choices': dumps(choices),
+                               'completed_data:reaction_times': dumps(reaction_times),
+                               'completed_data:choice_idxs': dumps(choice_idxs),
+                               'status:pending_completion': FALSE, 'status:pending_evaluation': TRUE}))
     database_worker_id = table.row(task_id, columns=['metadata:worker_id']).get('metadata:worker_id', None)
     if database_worker_id != worker_id:
         _log.warning('The task was completed by a different worker than in our database.')
