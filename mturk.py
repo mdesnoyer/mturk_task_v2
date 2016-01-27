@@ -162,6 +162,7 @@ class MTurk(object):
         :return: A response type containing a qualification type data structure, identical to the authentic boto
                  function.
         """
+        # TODO: Create a fork on github for this on the boto repo and fix it then issue a pull request!
         params = {'Name': name, 'Description': description, 'QualificationTypeStatus': status,
                   'IsRequestable': is_requestable}
         if keywords:
