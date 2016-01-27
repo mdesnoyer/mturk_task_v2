@@ -6,8 +6,8 @@ The template version of the success page.
 <head>
     <meta charset="UTF-8">
     <title>Ban</title>
-    <link rel="stylesheet" href="../js/jspsych-4.3/css/jspsych.css">
-    <link rel="stylesheet" href="../js/jspsych-4.3/css/jquery-ui.css">
+    <link rel="stylesheet" href="{{ jspsych.css }}">
+    <link rel="stylesheet" href="{{ jquery-ui.css }}">
 </head>
 <body>
     <center>
@@ -16,7 +16,7 @@ The template version of the success page.
         <br><br>
         Your task has been submitted. Thank you!
         <br><br>
-        You may complete {{ num_more_tasks }} this week.
+        <!-- TODO: Implement 'contact us' -->
     </center>
 </body>
 </html>

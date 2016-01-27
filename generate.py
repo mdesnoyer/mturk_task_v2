@@ -34,9 +34,57 @@ templateEnv = jinja2.Environment(loader=templateLoader)
 templateEnv.filters['escapejs'] = jinja2_escapejs_filter
 
 
+def _get_static_url_dict(template, static_urls=None):
+    """
+    Returns a dictionary with the appropriate key/value pairs to generate a template. Originally, it attempted to fill
+    in all undeclared static variables in a template, however, it does not seem possible to sequentially render a
+    template -- it has to be done all at once. This seems like a bizarre design choice, but perhaps jinja2 has no
+    provision for storing the value of variables without rendering the whole template to unicode? idk...
+
+    :param template: A jinja2 template object.
+    :param static_urls: A dictionary of static URLs. See webserver.py.
+    :return: A dictionary for filling in the static urls.
+    """
+    to_fill_in = {}
+    vars = _get_template_variables(template)
+    for var in vars:
+        # TODO: what happens when you define a template variable as None?
+        if static_urls.has_key(var):
+            to_fill_in[var] = static_urls[var]
+    return to_fill_in
+
+
+def make_demographics(static_urls=None):
+    """
+    Generates the demographic HTML. Since this is constant across workers, all that's necessary for it to work is the
+    dictionary of static URLs so it knows where to get the jsPsych javascript from.
+
+    :param static_urls: A dictionary of static URLs. See webserver.py.
+    :return: The demographics acquisition page HTML.
+    """
+    if static_urls is None:
+        static_urls = {}
+    demographics = templateEnv.get_template(DEMOGRAPHICS_TEMPLATE)
+    return demographics.render(**_get_static_url_dict(demographics, static_urls))
+
+
+def make_success(static_urls=None):
+    """
+    Functions just like make_demographics, but returns a 'success page' indicating that the task was successfully
+    submitted. It needs static_urls for the same reason.
+
+    :param static_urls: A dictionary of static URLs. See webserver.py.
+    :return: HTML for a page indicating the worker has successfully completed a task.
+    """
+    if static_urls is None:
+        static_urls = {}
+    success = templateEnv.get_template(SUCCESS_TEMPLATE)
+    return success.render(**_get_static_url_dict(success, static_urls))
+
+
 def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_SIZE, hit_size=HIT_SIZE,
               pos_type=POS_TYPE, attribute=ATTRIBUTE, instruction_sequence=TASK_INSTRUCTION_SEQUENCE, practice=False,
-              collect_demo=False, is_preview=False):
+              collect_demo=False, is_preview=False, static_urls=None):
     """
     Produces an experimental HTML document. By assembling blocks of html code into a single html document. Note that
     this will fill in missing values in place!
@@ -76,7 +124,10 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
                        instructions. This should only be true if the worker is previewing the HIT, i.e., the value
                        of assignmentId is ASSIGNMENT_ID_NOT_AVAILABLE
     :return The appropriate HTML for this experiment.
+    :param static_urls: A dictionary of static URLs. See webserver.py.
     """
+    if static_urls is None:
+        static_urls = {}
     # TODO: Make sure this thing uses task_id and preload_images!
     images = []
     counts = {KEEP_BLOCK: 0, REJECT_BLOCK: 0}
@@ -127,13 +178,17 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
     # fill the preload template
     filled_preload = preload.render(images=images)
     html = base.render(blocks=rblocks, preload=filled_preload, blocknames=blocknames, attribute=attribute,
-                       practice=p_val, collect_demo=d_val, taskId=str(task_id))
+                       practice=p_val, collect_demo=d_val, taskId=str(task_id),
+                       **_get_static_url_dict(base, static_urls))
     return html
 
 
 def make_ban_html(dbget, worker_id):
     """
     Creates the 'you are banned' html.
+
+    NOTES:
+        This is now unused, since banning is done implicitly.
 
     :param dbget: An instance of db.Get
     :param worker_id: The worker ID, as a string.
@@ -145,11 +200,14 @@ def make_ban_html(dbget, worker_id):
     return html
 
 
-def make_practice_limit_html(workerId):
+def make_practice_limit_html(static_urls=None):
     """
     Creates the 'num-practices-exceeded' html.
 
-    :param workerId: The worker ID, as a string.
+    NOTES:
+        This is now unused, since banning is done implicitly.
+
+    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The practices exceeded page HTML.
     """
     template = templateEnv.get_template(PRACTICE_EXCEEDED_TEMPLATE)
@@ -157,28 +215,46 @@ def make_practice_limit_html(workerId):
     return html
 
 
-def make_no_avail_tasks_html(workerId):
+def make_no_avail_tasks_html(static_urls=None):
     """
     Creates the 'no tasks are available' html.
 
     NOTE:
         For now, we will be using make_error_fetching_task_html as the page for the no-tasks-available situation.
 
-    :param workerId: The worker ID, as a string.
+        This is now unused, since banning is done implicitly.
+
+    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The no tasks page HTML.
     """
     raise NotImplementedError()
 
 
-def make_error_fetching_task_html(workerId):
+def make_error_fetching_task_html(static_urls=None):
     """
     Creates a 'error fetching task' page html.
 
-    :param workerId: The worker ID, as a string.
+    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The error page HTML.
     """
+    if static_urls is None:
+        static_urls = {}
     template = templateEnv.get_template(ERROR_TEMPLATE)
-    html = template.render()
+    html = template.render(**_get_static_url_dict(template, static_urls))
+    return html
+
+
+def make_error_submitting_task_html(static_urls=None):
+    """
+    Creates the HTML that indicates there was an error submitting the task.
+
+    :param static_urls: A dictionary of static URLs. See webserver.py.
+    :return: The error page HTML.
+    """
+    if static_urls is None:
+        static_urls = {}
+    template = templateEnv.get_template(ERROR_TEMPLATE)
+    html = template.render(**_get_static_url_dict(template, static_urls))
     return html
 
 
@@ -304,27 +380,28 @@ def _make_instr_block(block, attribute):
     return filled_template, rblock['name']
 
 
-def _create_instruction_page(instruction, attribute):
+def _create_instruction_page(instruction, attribute, static_urls=None):
     """
     Creates a single instruction page, and attempts to intelligently define the items that require filling. Note that
     if a template file (or one that does not exist) is not provided, then it will simply return whatever is passed in
     as the instructions.
 
-    :param template: The template filename, or a string that will be the instructions.
+    :param instruction: The template filename, or a string that will be the instructions.
     :param attribute: The study attribute.
+    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The instruction page as a filled template.
     """
+    if static_urls is None:
+        static_urls = {}
     try:
         template_class = templateEnv.get_template(instruction)
     except:
         return instruction
+    var_dict = _get_static_url_dict(instruction, static_urls=static_urls)
     vars = _get_template_variables(instruction)
-    var_dict = dict()
     # create a dict of variables to set in the template
     if 'attribute' in vars:
         var_dict['attribute'] = attribute
-    if 'image_dir' in vars:
-        var_dict['image_dir'] = os.path.join(ROOT, PRACTICE_IM_DIR)
     filled_template = template_class.render(**var_dict)
     # perform replacements
     filled_template = filled_template.replace('\n', '')  # must eliminate the carriage returns!
@@ -333,18 +410,21 @@ def _create_instruction_page(instruction, attribute):
     return filled_template
 
 
-def _make_start_block(instruction_sequence, attribute):
+def _make_start_block(instruction_sequence, attribute, static_urls=None):
     """
     Accepts the attribute that we will be scoring, a sequence of instruction templates, and converts them into an
     instruction block.
 
     :param instruction_sequence: A list of filenames, in order, which points to template files.
     :param attribute: The attribute that will be scored.
+    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: An instruction block as a filled template.
     """
+    if static_urls is None:
+        static_urls = {}
     pages = []
     for ist in instruction_sequence: # ist = instruction template
-        pages.append(_create_instruction_page(ist, attribute))
+        pages.append(_create_instruction_page(ist, attribute, static_urls=static_urls))
     block = {'instructions':pages, 'name': 'start_block'}
     template = templateEnv.get_template('inst_template.html')
     filled_template = template.render(block=block)
@@ -355,15 +435,15 @@ def _get_template_variables(template):
     """
     Accepts a template file, returns the undeclared variables.
 
-    :param template: A template file, from which we will extract the variables.
-    :return: The undeclared variables (i.e., those that still need to be defined) as a set
+    :param template: A jinja2 template file, from which we will extract the variables.
+    :return: The undeclared variables (i.e., those that still need to be defined) as a set of strings.
     """
     src = templateEnv.loader.get_source(templateEnv, template)
     vars = meta.find_undeclared_variables(templateEnv.parse(src))
     return vars
 
 
-def fetch_task(dbget, dbset, worker_id, task_id, is_preview=False):
+def fetch_task(dbget, dbset, worker_id, task_id, is_preview=False, static_urls=None):
     """
     Constructs a task after a request hits the webserver. In contrast to build_task, this is for requests that have a
     task ID encoded in them--i.e., the request is for a specific task. It does not check if the worker is banned or if
@@ -378,8 +458,11 @@ def fetch_task(dbget, dbset, worker_id, task_id, is_preview=False):
     :param worker_id: The worker ID, as a string.
     :param task_id: The task ID, as a string.
     :param is_preview: The task to be served up is a 'preview' task.
+    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The HTML for the requested task.
     """
+    if static_urls is None:
+        static_urls = {}
     # check that the worker exists, else register them. We want to have their information in the database so we don't
     # spawn errors down the road.
     if not dbget.worker_exists(worker_id):
@@ -397,11 +480,11 @@ def fetch_task(dbget, dbset, worker_id, task_id, is_preview=False):
         blocks = dbget.get_task_blocks(task_id)
         if blocks is None:
             # display an error-fetching-task page.
-            return make_error_fetching_task_html(worker_id)
+            return make_error_fetching_task_html(worker_id, static_urls=static_urls)
     else:
         blocks = []  # do not show them anything if this is just a preview.
-    html = make_html(blocks, practice=is_practice, collect_demo=collect_demo, is_preview=is_preview)
-    # TODO: add the html to the database
+    html = make_html(blocks, practice=is_practice, collect_demo=collect_demo, is_preview=is_preview,
+                     static_urls=static_urls)
     if not is_practice:
         dbset.set_task_html(task_id, html)
     return html

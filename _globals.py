@@ -60,7 +60,9 @@ TRIAL_BLOCK_TEMPLATE = 'trial_block_template.html'
 BAN_TEMPLATE = 'ban_page.html'
 PRACTICE_EXCEEDED_TEMPLATE = 'too_many_practices.html'
 PRACTICE_IM_DIR = 'instr_screenshots/'
-ERROR_TEMPLATE = 'error.html'
+ERROR_TEMPLATE = 'fetch_error.html'
+DEMOGRAPHICS_TEMPLATE = 'demographics.html'
+SUCCESS_TEMPLATE = 'success.html'
 
 
 """
@@ -76,8 +78,6 @@ TASK ID OPTIONS
 """
 TASK_PREFIX = 't_'  # the prefix for every true task ID
 PRACTICE_PREFIX = 'p_'  # the prefix for every practice task ID
-
-
 
 
 """
