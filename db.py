@@ -77,13 +77,15 @@ def _get_preexisting_pairs(conn, images):
     """
     found_pairs = set()
     table = conn.table(IMAGE_TABLE)
+    im_set = set(images)
     for im1 in images:
         scanner = table.scan(row_prefix=im1, columns=['metadata:im_id1', 'metadata:im_id2'])
         for row_key, row_data in scanner:
             # don't use get with this, we want it to fail hard if it does.
             c_im1 = row_data['metadata:im_id1']
             c_im2 = row_data['metadata:im_id2']
-            found_pairs.add(pair_to_tuple(c_im1, c_im2))
+            if c_im1 in im_set and c_im2 in im_set:
+                found_pairs.add(pair_to_tuple(c_im1, c_im2))
     return found_pairs
 
 
