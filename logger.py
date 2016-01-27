@@ -23,7 +23,11 @@ def setup_logger(log_name):
     logger = logging.getLogger(log_name)
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    # github says that you can only add a handler once:
+    #   http://stackoverflow.com/questions/6333916/python-logging-ensure-a-handler-is-added-only-once
+    # this does not appear to be the case, and so I'll perform the check here.
+    if handler not in logger.handlers:
+        logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
 
     return logger

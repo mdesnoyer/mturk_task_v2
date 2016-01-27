@@ -5,7 +5,6 @@ much in the same manner as database.get/set.
 """
 
 from conf import *
-import boto.mturk.connection
 import boto.mturk.notification
 import boto.mturk.qualification
 import boto.mturk.price

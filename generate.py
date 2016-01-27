@@ -4,7 +4,8 @@ The external resources in ./resources are specifically in the purview of generat
 """
 
 from conf import *
-import urllib, cStringIO
+import urllib
+import cStringIO
 from PIL import Image
 import numpy as np
 import os
@@ -12,36 +13,24 @@ import jinja2
 from jinja2 import meta
 
 
+# create the jinja escape filter
+def jinja2_escapejs_filter(value):
+    # Perform Jinja2 Escapes
+    _js_escapes = {'\\': '\\u005C', '\'': '\\u0027', '"': '\\u0022', '>': '\\u003E', '<': '\\u003C', '&': '\\u0026',
+                   '=': '\\u003D', '-': '\\u002D', ';': '\\u003B', u'\u2028': '\\u2028', u'\u2029': '\\u2029'}
+    _js_escapes.update(('%c' % z, '\\u%04X' % z) for z in xrange(32))
+    retval = []
+    for letter in value:
+        if _js_escapes.has_key(letter):
+            retval.append(_js_escapes[letter])
+        else:
+            retval.append(letter)
+    return jinja2.Markup("".join(retval))
+
+
 # create the jinja template environment
 templateLoader = jinja2.FileSystemLoader(searchpath=TEMPLATE_DIR)
 templateEnv = jinja2.Environment(loader=templateLoader)
-
-# --------------------------------
-# Perform Jinja2 Escapes
-_js_escapes = {
-        '\\': '\\u005C',
-        '\'': '\\u0027',
-        '"': '\\u0022',
-        '>': '\\u003E',
-        '<': '\\u003C',
-        '&': '\\u0026',
-        '=': '\\u003D',
-        '-': '\\u002D',
-        ';': '\\u003B',
-        u'\u2028': '\\u2028',
-        u'\u2029': '\\u2029'
-}
-# Escape every ASCII character with a value less than 32.
-_js_escapes.update(('%c' % z, '\\u%04X' % z) for z in xrange(32))
-def jinja2_escapejs_filter(value):
-        retval = []
-        for letter in value:
-                if _js_escapes.has_key(letter):
-                        retval.append(_js_escapes[letter])
-                else:
-                        retval.append(letter)
-
-        return jinja2.Markup("".join(retval))
 templateEnv.filters['escapejs'] = jinja2_escapejs_filter
 
 
@@ -72,6 +61,7 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
 
     :param blocks: These are individual trials, and take the form of dictionaries, called 'blocks'. For the fields, see
                    the readme above.
+    :param task_id: The ID of the task, as provided by MTurk
     :param preload_images: Boolean, whether or not to fetch images ahead of time. [def: True]
     :param box_size: The size of the images to display in pixels, [w, h]. {def: [800, 800]}
     :param hit_size: The size of the box that contains the images, [w, h]. This is a subbox that will either be (a)
@@ -141,25 +131,24 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
     return html
 
 
-def make_ban_html(conn, workerId):
+def make_ban_html(dbget, worker_id):
     """
     Creates the 'you are banned' html.
 
-    :param conn: The HappyBase connection object.
-    :param workerId: The worker ID, as a string.
+    :param dbget: An instance of db.Get
+    :param worker_id: The worker ID, as a string.
     :return: The ban page HTML.
     """
-    reason, rem_dur = dbget.get_worker_ban_time_reason(conn, workerId)
+    reason, rem_dur = dbget.get_worker_ban_time_reason(worker_id)
     template = templateEnv.get_template(BAN_TEMPLATE)
     html = template.render(ban_time=rem_dur, ban_reason=reason)
     return html
 
 
-def make_practice_limit_html(conn, workerId):
+def make_practice_limit_html(workerId):
     """
     Creates the 'num-practices-exceeded' html.
 
-    :param conn: The HappyBase connection object.
     :param workerId: The worker ID, as a string.
     :return: The practices exceeded page HTML.
     """
@@ -168,25 +157,23 @@ def make_practice_limit_html(conn, workerId):
     return html
 
 
-def make_no_avail_tasks_html(conn, workerId):
+def make_no_avail_tasks_html(workerId):
     """
     Creates the 'no tasks are available' html.
 
     NOTE:
         For now, we will be using make_error_fetching_task_html as the page for the no-tasks-available situation.
 
-    :param conn: The HappyBase connection object.
     :param workerId: The worker ID, as a string.
     :return: The no tasks page HTML.
     """
     raise NotImplementedError()
 
 
-def make_error_fetching_task_html(conn, workerId):
+def make_error_fetching_task_html(workerId):
     """
     Creates a 'error fetching task' page html.
 
-    :param conn: The HappyBase connection object.
     :param workerId: The worker ID, as a string.
     :return: The error page HTML.
     """
@@ -338,7 +325,7 @@ def _create_instruction_page(instruction, attribute):
         var_dict['attribute'] = attribute
     if 'image_dir' in vars:
         var_dict['image_dir'] = os.path.join(ROOT, PRACTICE_IM_DIR)
-    filled_template = template_class.render(**var_dict)\
+    filled_template = template_class.render(**var_dict)
     # perform replacements
     filled_template = filled_template.replace('\n', '')  # must eliminate the carriage returns!
     filled_template = filled_template.replace('"', '\"')  # escape quotes!

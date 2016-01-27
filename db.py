@@ -9,6 +9,7 @@ from dill import loads
 from itertools import combinations as comb
 from datetime import datetime
 import time
+import warnings
 
 """
 LOGGING
@@ -33,7 +34,7 @@ def _get_pair_key(image1, image2):
     return ','.join(pair_to_tuple(image1, image2))
 
 
-def _get_preexisting_pairs(conn, images):
+def _get_preexisting_pairs_slow(conn, images):
     """
     Returns all pairs that have already occurred among a list of images.
 
@@ -42,17 +43,47 @@ def _get_preexisting_pairs(conn, images):
             (1) Iterate over each pair in images, and see if they exist.
             (2) Select all pairs for each image with a prefix and look for pairs where the other image is also in
             images.
-        For now, we will use (1), for its conceptual similarity.
+        For now, we will use (1), for its conceptual simplicity.
 
-    :param images: A iterable of image IDs
+        This is SLOW. Can we speed it up?
+
     :param conn: The HappyBase connection object.
+    :param images: A iterable of image IDs
     :return: A set of tuples of forbidden image ID pairs.
     """
+    tot_to_scan = 0.5 * len(images) * (len(images) * 1)
+    to_scan_brks = tot_to_scan / 10
+    _log.debug('Scanning over %i possible pairs' % tot_to_scan)
     found_pairs = set()
-    for im1, im2 in comb(images, 2):
+    for n, (im1, im2) in enumerate(comb(images, 2)):
+        if not n % to_scan_brks and n > 0:
+            _log.debug('%.0f%% done.' % (100. * n / tot_to_scan))
         pair_id = _get_pair_key(im1, im2)
         if _pair_exists(conn, pair_id):
             found_pairs.add(pair_to_tuple(im1, im2))
+    return found_pairs
+
+
+def _get_preexisting_pairs(conn, images):
+    """
+    Returns all pairs that have already occurred among a list of images. The original implementation is potentially
+    more robust (_get_preexisting_pairs_slow), but has polynomial complexity, which is obviously undesirable. The
+    conceptual similarity (as mentioned in the original implementation) is not worth the added time complexity,
+    especially when we may be generating thousands of tasks.
+
+    :param conn: The HappyBase connection object.
+    :param images: A iterable of image IDs
+    :return: A set of tuples of forbidden image ID pairs.
+    """
+    found_pairs = set()
+    table = conn.table(IMAGE_TABLE)
+    for im1 in images:
+        scanner = table.scan(row_prefix=im1, columns=['metadata:im_id1', 'metadata:im_id2'])
+        for row_key, row_data in scanner:
+            # don't use get with this, we want it to fail hard if it does.
+            c_im1 = row_data['metadata:im_id1']
+            c_im2 = row_data['metadata:im_id2']
+            found_pairs.add(pair_to_tuple(c_im1, c_im2))
     return found_pairs
 
 
@@ -84,7 +115,7 @@ def _pair_exists(conn, pair_key):
     :return: True if pair exists, False otherwise.
     """
     table = conn.table(PAIR_TABLE)
-    return table_has_row(table, pair_key)
+    return Get.table_has_row(table, pair_key)
 
 
 def _tuple_permitted(im_tuple, ex_pairs, conn=None):
@@ -108,7 +139,6 @@ def _tuple_permitted(im_tuple, ex_pairs, conn=None):
         # TODO: Make this warn people only once!
         # _log.info('No connection information provided, search is only performed among in-memory pairs.')
         return True  # The database cannot be checked, and so we will be only looking at the in-memory pairs.
-    table = conn.table(PAIR_TABLE)
     for im1, im2 in comb(im_tuple, 2):
         pair_key = _get_pair_key(im1, im2)
         if _pair_exists(conn, pair_key):
@@ -249,8 +279,8 @@ def _get_image_dict(image_url):
     if width is None:
         return None
     aspect_ratio = '%.3f'%(float(width) / height)
-    im_dict = {'metadata:width': width, 'metadata:height': height, 'metadata:aspectRatio': aspect_ratio,
-               'metadata:url': image_url, 'metadata:isActive': FALSE}
+    im_dict = {'metadata:width': width, 'metadata:height': height, 'metadata:aspect_ratio': aspect_ratio,
+               'metadata:url': image_url, 'metadata:is_active': FALSE}
     return _conv_dict_vals(im_dict)
 
 
@@ -273,7 +303,7 @@ def _get_pair_dict(image1, image2, task_id, attribute):
     else:
         im1 = image1
         im2 = image2
-    pair_dict = {'metadata:imId1': im1, 'metadata:imId2': im2, 'metadata:task_id': task_id,
+    pair_dict = {'metadata:im_id1': im1, 'metadata:im_id2': im2, 'metadata:task_id': task_id,
                  'metadata:attribute': attribute}
     return _conv_dict_vals(pair_dict)
 
@@ -385,7 +415,8 @@ class Get(object):
         :param worker_id: The worker ID, as a string.
         :return: True if the worker has attempted too many tasks, otherwise False.
         """
-        return self.worker_attempted_this_week(worker_id) > MAX_ATTEMPTS_PER_WEEK
+        _log.warning('DEPRECATED: This functionality is now performed implicitly by the MTurk task structure')
+        return self.worker_attempted_this_week(worker_id) > (7 * MAX_SUBMITS_PER_DAY)
 
     def worker_weekly_rejected(self, worker_id):
         """
@@ -643,7 +674,7 @@ class Get(object):
 
     # IMAGE STUFF
 
-    def get_n_active_images(self, image_attributes=IMAGE_ATTRIBUTES):
+    def get_n_active_images_count(self, image_attributes=IMAGE_ATTRIBUTES):
         """
         Gets a count of active images.
 
@@ -712,7 +743,7 @@ class Get(object):
         :param image_attributes: The image attributes that the images return must satisfy.
         :return: A list of image IDs, unless it cannot get enough images -- then returns None.
         """
-        n_active = self.get_n_active_images(image_attributes)
+        n_active = self.get_n_active_images_count(image_attributes)
         if n > n_active:
             _log.warning('Insufficient number of active images, activating %i more.' % ACTIVATION_CHUNK_SIZE)
             # TODO: Add a statemon here?
@@ -791,12 +822,14 @@ class Get(object):
         """
         Creates a new task, by calling gen_design and then arranging those tuples into keep and reject blocks.
         Additionally, you may specify which hit_type_id this task should be for. If this
-        is the case, then it overwrites:
+        is the case, it overwrites:
             task_attribute
             image_attributes
             practice
+        In accordance with the design philosophy of segregating function, gen_task does not attempt to modify the
+        database. Instead, it returns elements that befit a call to Set's register_task.
     
-        NOTE:
+        NOTES:
             Keep blocks always come first, after which they alternate between Keep / Reject. If the
             RANDOMIZE_SEGMENT_ORDER option is true, then the segments order will be randomized.
     
@@ -817,7 +850,7 @@ class Get(object):
         :param random_segment_order: Whether or not to randomize block ordering.
         :param image_attributes: The set of attributes that the images from this task have.
         :param hit_type_id: The HIT type ID, as provided by MTurk and as findable in the database.
-        :return: None.
+        :return: task_id, exp_seq, attribute, register_task_kwargs. On failure, returns None.
         """
         if practice:
             task_id = practice_id_gen()
@@ -845,9 +878,11 @@ class Get(object):
                 prompt = DEF_PROMPT
         # get the tuples
         image_tuples = self.gen_design(n, t, j, image_attributes=image_attributes)
+        if image_tuples is None:
+            return None, None, None, None
         # arrange them into blocks
-        keep_tuples = [image_tuples[i:i+n] for i in xrange(0, len(image_tuples), n_keep_blocks)]
-        reject_tuples = [image_tuples[i:i+n] for i in xrange(0, len(image_tuples), n_reject_blocks)]
+        keep_tuples = [x for x in chunks(image_tuples, n_keep_blocks)]
+        reject_tuples = [x for x in chunks(image_tuples, n_reject_blocks)]
         keep_blocks = []
         reject_blocks = []
         for kt in keep_tuples:
@@ -865,7 +900,7 @@ class Get(object):
             block['prompt'] = prompt
             reject_blocks.append(block)
         blocks = []
-        while (not len(keep_blocks)) and (not len(reject_blocks)):
+        while len(keep_blocks) or len(reject_blocks):
             if len(keep_blocks):
                 blocks.append(keep_blocks.pop(0))
             if len(reject_blocks):
@@ -1134,7 +1169,7 @@ class Set(object):
         raise NotImplementedError()
 
     """
-    ADDING /CHANGING DATA
+    ADDING / CHANGING DATA
     """
 
     def register_hit_type(self, hit_type_id, task_attribute=None, image_attributes=None, title=None, description=None,
@@ -1336,8 +1371,6 @@ class Set(object):
                 continue
             for attribute in attributes:
                 imdict['attributes:%s' % attribute] = TRUE
-                import ipdb
-                ipdb.set_trace()
             b.put(iid, imdict)
         b.send()
 
@@ -1694,3 +1727,23 @@ class Set(object):
                                             'status:pending_completion': FALSE, 'status:awaiting_serve': TRUE}))
         b.send()
         _log.info('Found %i incomplete tasks to be reset.' % len(to_reset))
+
+    def deactivate_images(self, image_ids):
+        """
+        Deactivates a list of images.
+
+        :param image_ids: A list of strings, the image IDs.
+        :return: None
+        """
+        # TODO: Implement
+        raise NotImplementedError()
+
+    def deactivate_hit_type(self, hit_type_id):
+        """
+        Deactivates a hit type ID, so that no new tasks or HITs should be created that are attached to it.
+
+        :param hit_type_id: The HIT type ID, as a string.
+        :return: None
+        """
+        # TODO: Implement
+        raise NotImplementedError()

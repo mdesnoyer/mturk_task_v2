@@ -1,19 +1,68 @@
 """
 GLOBAL UTILITY FUNCTIONS
 
-Warning: This cannot be used in isolation (right now), mostly because I  haven't had time to fix up all the imports.
+Warning: This cannot be used in isolation (right now), mostly because I  haven't had time to fix up all the imports,
+and this requires global variables defined in conf.
 """
 
-# TODO: Fix imports
-
-import numpy as np
-from itertools import combinations as comb
 import random
 import string
 import cStringIO
 import urllib
-import numpy as np
 from itertools import combinations as comb
+import logger
+from PIL import Image
+from _globals import *
+import re
+
+_log = logger.setup_logger(__name__)
+
+
+"""
+GENERAL
+"""
+
+
+_first_cap_re = re.compile('(.)([A-Z][a-z]+)')
+_all_cap_re = re.compile('([a-z0-9])([A-Z])')
+
+
+def convert(name):
+    """
+    Converts a camelCase string to camel_case. I only needed to use this once for a README document about the database
+    schema; however, I liked it so much I want to save it.
+
+    NOTES:
+        source: http://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-camel-case
+
+    :param name: A string.
+    :return: name, only with camelCase replaced with camel_case.
+    """
+    s1 = _first_cap_re.sub(r'\1_\2', name)
+    return _all_cap_re.sub(r'\1_\2', s1).lower()
+
+
+def chunks(l, k):
+    """
+    Yields k approximately uniformly sized lists from l
+
+    :param l: A list
+    :param k: The total number of sublists to yield.
+    :return: Iterator over sublists on the list l.
+    """
+    if k < 1:
+        yield []
+        raise StopIteration
+    n = len(l)
+    avg = n/k
+    remainders = n % k
+    start, end = 0, avg
+    while start < n:
+        if remainders > 0:
+            end = end + 1
+            remainders = remainders - 1
+        yield l[start:end]
+        start, end = end, end+avg
 
 
 """
@@ -44,7 +93,7 @@ def practice_id_gen():
     Generates practice IDs
     :return: A practice ID, as a string
     """
-    return PREFIX_PREFIX + _rand_id_gen(_id_len)
+    return PRACTICE_PREFIX + _rand_id_gen(_id_len)
 
 
 """
@@ -59,9 +108,9 @@ def pair_to_tuple(image1, image2):
     :return: A sorted image tuple.
     """
     if image1 > image2:
-        return (image2, image1)
+        return image2, image1
     else:
-        return (image1, image2)
+        return image1, image2
 
 
 def get_im_dims(imageUrl):
@@ -87,22 +136,28 @@ def get_im_dims(imageUrl):
     return width, height
 
 
-def attribute_image_filter(attributes=[], filter_type=ANY, only_active=False, only_inactive=False):
+def attribute_image_filter(attributes=[], filter_type=None, only_active=False, only_inactive=False):
     """
     Returns a filter appropriate to HBase / HappyBase that will find images based on a list of their attributes and
     (optionally) whether or not they are active.
 
     :param attributes: A list of attributes as strings.
     :param filter_type: Whether all columns are required or at least one column is required. By default, having any of
-                        the required columns is sufficient.
-    :param only_active: A boolean. If true, will find only active images.
-    :param only_inactive: A boolean. If true, will find only inactive images.
+                        the required columns is sufficient. [default: ANY]
+    :param only_active: A boolean. If true, will find only active images. [default: False]
+    :param only_inactive: A boolean. If true, will find only inactive images. [default: False]
     :return: An image filter, as a string.
     """
+    if filter_type is None:
+        filter_type = ANY
     if only_active and only_inactive:
         raise ValueError('Cannot filter for images that are both active and inactive')
     if filter_type is not ALL and filter_type is not ANY:
         raise ValueError('Filter types may either be ANY or ALL')
+    if only_active and not len(attributes):
+        return ACTIVE_FILTER
+    if only_inactive and not len(attributes):
+        return INACTIVE_FILTER
     f = [column_boolean_filter('attributes', attribute, TRUE) for attribute in attributes]
     f = (' ' + filter_type.strip() + ' ').join(f)
     if only_active:
@@ -126,20 +181,22 @@ def column_boolean_filter(column_family, column_name, value):
     return f
 
 
-def general_filter(column_tuples, values, filter_type=ALL, key_only=False):
+def general_filter(column_tuples, values, filter_type=None, key_only=False):
     """
     General filter for tables, creating a filter that returns rows that satisfy the specified requirements.
 
     :param column_tuples: A list of column tuples of the form [[column family 1, column name 1], ...]
     :param values: A list of values that the columns should have, in-order.
     :param filter_type: Either ALL or ANY. If ALL, all the column values must be satisfied. If ANY, at least one column
-                        value match must be met.
-    :param key_only: The filter will only return row keys and not the entire rows.
+                        value match must be met. [default: ALL]
+    :param key_only: The filter will only return row keys and not the entire rows. [default: False]
     :return: The appropriate filter under the specification.
     """
+    if filter_type is None:
+        filter_type = ALL
     if filter_type is not ALL and filter_type is not ANY:
         raise ValueError('Filter types may either be ANY or ALL')
-    f = [_column_boolean_filter(x, y, v) for ((x, y), z) in zip(column_tuples, values)]
+    f = [column_boolean_filter(x, y, v) for ((x, y), v) in zip(column_tuples, values)]
     f = (' ' + filter_type.strip() + ' ').join(f)
     if key_only:
         f += ' AND KeyOnlyFilter() AND FirstKeyOnlyFilter()'

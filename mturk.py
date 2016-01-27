@@ -8,6 +8,7 @@ other things:
     Unban worker (change status)
     Approve worker (change status) (add practice passed)
     Unapprove worker (change status)
+    etc
 
     NOTES
         No function here modifies the database; operations that should take place on both MTurk and the database, like
@@ -50,8 +51,9 @@ class MTurk(object):
         self._get_qualification_ids()  # fetch the qualification names
         self._gen_requirement()  # fetch the qualification requirement for the 'true' task
         self._gen_practice_requirement()  # fetch the qualification for the practice task
-        # TODO: Print out number of active tasks, current funds, etc.
-        # TODO: Send warning if the funds get too low?
+        self.current_balance = 0
+        self.get_account_balance()  # get the current account balance
+        _log.info('Current account funds: $%i' % self.current_balance)
 
     def _get_qualification_ids(self):
         """
@@ -93,9 +95,11 @@ class MTurk(object):
         """
         _log.info('Generating main qualification')
         try:
-            resp = self.mtconn.create_qualification_type(name=QUALIFICATION_NAME,
-                                                         description=QUALIFICATION_DESCRIPTION,
-                                                         status='Active')
+            # resp = self.mtconn.create_qualification_type(name=QUALIFICATION_NAME,
+            #                                              description=QUALIFICATION_DESCRIPTION,
+            #                                              status='Active')
+            resp = self._create_qualification_type(name=QUALIFICATION_NAME, description=QUALIFICATION_DESCRIPTION,
+                                                   status='Active', is_requestable=False)
             self.qualification_id = resp[0].QualificationTypeId
         except boto.mturk.connection.MTurkRequestError as e:
             _log.error('Error creating main qualification: ' + e.message)
@@ -108,9 +112,11 @@ class MTurk(object):
         """
         _log.info('Generating quota qualification')
         try:
-            resp = self.mtconn.create_qualification_type(name=DAILY_QUOTA_NAME,
-                                                         description=DAILY_QUOTA_DESCRIPTION,
-                                                         status='Active')
+            # resp = self.mtconn.create_qualification_type(name=DAILY_QUOTA_NAME,
+            #                                              description=DAILY_QUOTA_DESCRIPTION,
+            #                                              status='Active')
+            resp = self._create_qualification_type(name=DAILY_QUOTA_NAME, description=DAILY_QUOTA_DESCRIPTION,
+                                                   status='Active', is_requestable=False)
             self.qualification_id = resp[0].QualificationTypeId
         except boto.mturk.connection.MTurkRequestError as e:
             _log.error('Error creating quota qualification: ' + e.message)
@@ -135,6 +141,59 @@ class MTurk(object):
         """
         requirements = [boto.mturk.qualification.Requirement(self.qualification_id, 'DoesNotExist')]
         self.practice_qualification_requirement = boto.mturk.qualification.Qualifications(requirements=requirements)
+
+    def _create_qualification_type(self, name, description, status, keywords=None, is_requestable=False,
+                                   auto_granted=False, auto_granted_value=1):
+        """
+        Replicates the function of the boto mturk connection function, but permits the caller of the function to
+        determine whether or not the created qualification type is requestable or not, which the current implementation
+        of create_qualification_type does not provision for.
+
+        NOTES:
+            I have opened an issue on the boto github for this.
+
+        :param name: The name of the qualification type, visible to workers.
+        :param description: Description shown to workers, max 2000 characters.
+        :param status: 'Active' or 'Inactive'
+        :param keywords: The keywords for this qualification type. [def: None]
+        :param is_requestable: If True, then worker are able to request this qualification type. [def: False]
+        :param auto_granted: If True, requests for this qualification type are granted immediately. [def: False]
+        :param auto_granted_value: The value that this qualification takes on if it was auto-granted.
+        :return: A response type containing a qualification type data structure, identical to the authentic boto
+                 function.
+        """
+        params = {'Name': name, 'Description': description, 'QualificationTypeStatus': status,
+                  'IsRequestable': is_requestable}
+        if keywords:
+            params['Keywords'] = self.mtconn.get_keywords_as_string(keywords)
+        if auto_granted:
+            params['AutoGranted'] = True
+            params['AutoGrantedValue'] = auto_granted_value
+        return self.mtconn._process_request('CreateQualificationType', params,
+                                            [('QualificationType', boto.mturk.connection.QualificationType)])
+
+    def get_account_balance(self):
+        """
+        Checks the account balance. Also sets its value internally.
+
+        :return: The account balance, in USD
+        """
+        resp = self.mtconn.get_account_balance()
+        self.current_balance = resp[0].amount
+        return self.current_balance
+
+    def get_pending_hits(self):
+        """
+        Fetches the number of pending hits.
+
+        :return: Number of hits that are in an 'assignable' state.
+        """
+        iterator = self.mtconn.get_all_hits()
+        total_pending = 0
+        for hit in iterator:
+            if hit.HITStatus == 'Assignable':
+                total_pending += 1
+        return total_pending
 
     def grant_worker_practice_passed(self, worker_id):
         """
@@ -214,7 +273,6 @@ class MTurk(object):
         """
         Un-bans a worker.
 
-        :param mtconn: The Boto mechanical turk connection object.
         :param worker_id: The MTurk worker ID.
         :return: None
         """
@@ -252,6 +310,23 @@ class MTurk(object):
         :return: None.
         """
         self.mtconn.reject_assignment(assignment_id, feedback=reason)
+
+    def soft_reject_hit(self, assignment_id, reason=None):
+        """
+        Soft rejects a hit: i.e., approves a hit but provides feedback.
+
+        :param assignment_id: The assignment ID.
+        :param reason: The warning to provide to the worker. This may be a list.
+        :return: None
+        """
+        feedback = 'While we are accepting assignment %s we found the following problem(s):\n\n'
+        if type(reason) is str:
+            reason = [reason]
+        for specific_reason in reason:
+            feedback += specific_reason + '\n'
+        feedback += '\n'
+        feedback += 'If we continue to find problems in your HITs, you will be temporarily banned.'
+        self.mtconn.approve_assignment(assignment_id, feedback=feedback)
 
     def register_hit_type_mturk(self, title=DEFAULT_TASK_NAME, practice_title=DEFAULT_PRACTICE_TASK_NAME,
                                 description=DESCRIPTION, practice_description=PRACTICE_DESCRIPTION,
@@ -307,30 +382,21 @@ class MTurk(object):
         practice_hit_type_id = resp[0].HITTypeId
         return true_hit_type_id, practice_hit_type_id
 
-    def add_hit_to_hit_type(self, hit_type_id, task_id, is_practice=False, reward=None):
+    def add_hit_to_hit_type(self, hit_type_id, task_id):
         """
-        Creates a mechanical turk task, and assigns it to the HIT type specified.
+        Creates a mechanical turk task, and assigns it to the HIT type specified. This function exposes internally-
+        generated tasks to MTurk.
 
         NOTES:
 
             ** THIS FUNCTION DOES NOT MODIFY THE DATABASE **
 
-        :param conn: The HappyBase connection object.
-        :param mtconn: The Boto mechanical turk connection object.
         :param hit_type_id: A string, specifying the HIT type using its ID.
         :param task_id: The task ID that this HIT will serve up.
-        :param is_practice: Boolean, indicating whether or not this task is a practice.
-        :param reward: The reward amount (as a float).
         :return: None if successful, else raises an error.
         """
-        # TODO: Verify that the hit type is_practice corresponds to the value of is_practice?
-        # TODO: meta to-do: if we don't institute these checks below, remove 'conn' from the list of arguments.
-        # TODO: check that the task ID exists in the database?
-        # TODO: check that the task type ID exists in the database?
-        # TODO: Figure out why there isn't an AssignmentReviewPolicy in boto...
         question_object = boto.mturk.question.ExternalQuestion(external_url=EXTERNAL_QUESTION_ENDPOINT,
                                                                frame_height=BOX_SIZE[1])
-        # TODO: Finish this!
         opobj = dict()
         opobj['hit_type'] = hit_type_id
         opobj['question'] = question_object

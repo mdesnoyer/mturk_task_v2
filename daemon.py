@@ -16,6 +16,19 @@ This amounts to:
 This should be done continuously, as such the daemon simply runs between those tasks, iteratively. Importantly, some
 tasks that may seem as though they should be done "offline" or in parallel with the webserver should be done
 on-demand, to keep workers happy, such as granting the practice passed qualification.
+
+In sequence, the daemon:
+    - Checks for tasks that need validation
+        - Post-validation, check if this merit a bans.
+    - Check banned workers if it's time to unban them.
+    - Checks if new tasks are needed
+    - Checks if the practices need to be refreshed
+    - Checks if workers need to be unbanned
+
+NOTES:
+    The Daemon also uses the database db connection and mturk connection objects, and thus should not be run in
+    parallel with the webserver in the true sense. Instead, it should be spawned as a separate thread, which share
+    memory in python because of the GIL.
 """
 
 # TODO: determine if it's possible to set the daemon's database access priority lower than the webservers.
