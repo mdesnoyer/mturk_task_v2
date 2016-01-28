@@ -550,7 +550,7 @@ class Get(object):
         :return: Boolean. Returns True if the task specified by the task ID is a practice, otherwise false.
         """
         table = self.conn.table(TASK_TABLE)
-        return table.get(task_id).get('metadata:is_practice', None)
+        return table.row(task_id).get('metadata:is_practice', None)
 
     def task_is_acceptable(self, task_id):
         """
@@ -572,7 +572,7 @@ class Get(object):
         :return: The HIT Type information, as a dictionary. If this hit_type_id does not exist, returns an empty dictionary.
         """
         table = self.conn.table(HIT_TYPE_TABLE)
-        return table.get(hit_type_id)
+        return table.row(hit_type_id)
 
     def hit_type_matches(self, hit_type_id, task_attribute, image_attributes):
         """
@@ -1174,8 +1174,10 @@ class Set(object):
     ADDING / CHANGING DATA
     """
 
-    def register_hit_type(self, hit_type_id, task_attribute=None, image_attributes=None, title=None, description=None,
-                          reward=None, assignment_duration=None, keywords=None, auto_approve_delay=None,
+    def register_hit_type(self, hit_type_id, task_attribute=ATTRIBUTE, image_attributes=IMAGE_ATTRIBUTES,
+                          title=DEFAULT_TASK_NAME, description=DESCRIPTION,
+                          reward=DEFAULT_TASK_PAYMENT, assignment_duration=HIT_TYPE_DURATION,
+                          keywords=KEYWORDS, auto_approve_delay=AUTO_APPROVE_DELAY,
                           is_practice=FALSE, active=FALSE):
         """
         Registers a HIT type in the database.

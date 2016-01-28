@@ -14,6 +14,10 @@ other things:
         No function here modifies the database; operations that should take place on both MTurk and the database, like
         the creation of a task, should be made consistent with calls to both MTurk and db.Set by whatever is managing
         the instances of the two classes (see: daemon, webserver).
+
+        Some confusion has been created (by me) when referring to HITs here. For the MTurk task, there is only one
+        assignment per HIT. However, in the broader world of MTurk, this isn't always the case--some HITs can have
+        multiple assignments--and hence HIT status and assignment status are not synonymous. (whoops!)
 """
 
 from conf import *
@@ -31,6 +35,34 @@ _log = logger.setup_logger(__name__)
 MTURK_ACCESS_ID = os.environ['MTURK_ACCESS_ID']
 MTURK_SECRET_KEY = os.environ['MTURK_SECRET_KEY']
 # !!!!!!!!!!!!!!!!!!!!!!!!!!! end temporary stuff
+
+
+class _LocaleRequirement(boto.mturk.qualification.Requirement):
+    """
+    Similar to MTurk._create_qualification_type, this replicates boto.murk's functionality, but extends it to add some
+    missing functionality. In this case, it adds the ability to specify multiple locales.
+    """
+    # TODO: Create a fork on github for this on the boto repo and fix it then issue a pull request!
+
+    def __init__(self, comparator, locale, required_to_preview=False):
+        super(_LocaleRequirement, self).__init__(qualification_type_id="00000000000000000071",
+                                                 comparator=comparator, integer_value=None,
+                                                 required_to_preview=required_to_preview)
+        self.locale = locale
+
+    def get_as_params(self):
+        params =  {
+            "QualificationTypeId": self.qualification_type_id,
+            "Comparator": self.comparator,
+        }
+        if type(self.locale) is str:
+            params['LocaleValue.Country'] = self.locale,
+        else:
+            for n, loc in enumerate(self.locale):
+                params['LocaleValue.%i.Country' % (n + 1)] = loc
+        if self.required_to_preview:
+            params['RequiredToPreview'] = "true"
+        return params
 
 
 class MTurk(object):
@@ -53,7 +85,7 @@ class MTurk(object):
         self._gen_practice_requirement()  # fetch the qualification for the practice task
         self.current_balance = 0
         self.get_account_balance()  # get the current account balance
-        _log.info('Current account funds: $%i' % self.current_balance)
+        _log.info('Current account funds: $%.2f' % self.current_balance)
 
     def _get_qualification_ids(self):
         """
@@ -80,7 +112,7 @@ class MTurk(object):
         :param qualification_name: The Qualification type name, as a string.
         :return: The ID of the qualification, as a string. Otherwise returns None.
         """
-        _log.info('Checking if qualification %s exists already' % qualification_name)
+        _log.info('Checking if qualification "%s" exists already' % qualification_name)
         srch_resp = self.mtconn.search_qualification_types(query=qualification_name)
         for qual in srch_resp:
             if qual.Name == qualification_name:
@@ -117,7 +149,7 @@ class MTurk(object):
             #                                              status='Active')
             resp = self._create_qualification_type(name=DAILY_QUOTA_NAME, description=DAILY_QUOTA_DESCRIPTION,
                                                    status='Active', is_requestable=False)
-            self.qualification_id = resp[0].QualificationTypeId
+            self.quota_id = resp[0].QualificationTypeId
         except boto.mturk.connection.MTurkRequestError as e:
             _log.error('Error creating quota qualification: ' + e.message)
 
@@ -130,7 +162,8 @@ class MTurk(object):
         requirements = [boto.mturk.qualification.Requirement(self.qualification_id, 'Exists',
                                                              required_to_preview=True),
                         boto.mturk.qualification.Requirement(self.quota_id, 'GreaterThan', 0,
-                                                             required_to_preview=True)]
+                                                             required_to_preview=True),
+                        _LocaleRequirement('In', LOCALES)]
         self.qualification_requirement = boto.mturk.qualification.Qualifications(requirements=requirements)
 
     def _gen_practice_requirement(self):
@@ -139,7 +172,8 @@ class MTurk(object):
 
         :return: None
         """
-        requirements = [boto.mturk.qualification.Requirement(self.qualification_id, 'DoesNotExist')]
+        requirements = [boto.mturk.qualification.Requirement(self.qualification_id, 'DoesNotExist'),
+                        _LocaleRequirement('In', LOCALES)]
         self.practice_qualification_requirement = boto.mturk.qualification.Qualifications(requirements=requirements)
 
     def _create_qualification_type(self, name, description, status, keywords=None, is_requestable=False,
@@ -192,7 +226,7 @@ class MTurk(object):
         iterator = self.mtconn.get_all_hits()
         total_pending = 0
         for hit in iterator:
-            if hit.HITStatus == 'Assignable':
+            if self.get_hit_status(hit=hit) == HIT_PENDING:
                 total_pending += 1
         return total_pending
 
@@ -293,6 +327,35 @@ class MTurk(object):
         except:
             return False
 
+    def get_hit_status(self, hit_id=None, hit=None):
+        """
+        Gets the HIT status (see: _globals.py)
+
+        :param hit_id: The HIT ID, as provided by MTurk, as a string.
+        :param hit: The HIT object itself. If this is provided, hit_id is unnecessary and it overrides HIT ID.
+        :return: A HIT status.
+        """
+        if hit is None:
+            if hit_id is None:
+                raise ValueError('Must specify either hit_id or hit')
+            try:
+                hit = self.mtconn.get_hit(hit_id)[0]
+            except IndexError:
+                _log.error('Could not obtain HIT status for HIT %s' % hit_id)
+                return HIT_UNDEFINED
+        if hit.HITStatus == 'Disposed':
+            return HIT_DISPOSED
+        assignments = self.mtconn.get_assignments(hit.HITId)
+        if len(assignments) == hit.MaxAssignments:  # this is redundant, HITs should only ever have 1 assignment.
+            if assignments[0].AssignmentStatus == 'Approved':
+                return HIT_APPROVED
+            else:
+                return HIT_COMPLETE
+        if hit.HITStatus == 'Available':
+            return HIT_PENDING
+        elif hit.HITStatus == 'Unavailable':
+            return HIT_EXPIRED
+
     def approve_assignment(self, assignment_id):
         """
         Approves an assignment.
@@ -332,7 +395,7 @@ class MTurk(object):
     def register_hit_type_mturk(self, title=DEFAULT_TASK_NAME, practice_title=DEFAULT_PRACTICE_TASK_NAME,
                                 description=DESCRIPTION, practice_description=PRACTICE_DESCRIPTION,
                                 reward=DEFAULT_TASK_PAYMENT, practice_reward=DEFAULT_PRACTICE_PAYMENT,
-                                assignment_duration=ASSIGNMENT_DURATION, keywords=KEYWORDS,
+                                hit_type_duration=HIT_TYPE_DURATION, keywords=KEYWORDS,
                                 auto_approve_delay=AUTO_APPROVE_DELAY):
         """
         Registers a new HIT type.
@@ -354,7 +417,7 @@ class MTurk(object):
         :param practice_description: The HIT type description to accompany practice tasks.
         :param reward: The reward for completing this type of HIT.
         :param practice_reward: The reward for completing practices of this HIT type.
-        :param assignment_duration: How long this HIT type persists for.
+        :param hit_type_duration: How long this HIT type persists for.
         :param keywords: The HIT type keywords.
         :param auto_approve_delay: The auto-approve delay.
         :return: The HIT type IDs, in order ('True' HIT Type, Practice HIT Type). Raises an error if not successful.
@@ -365,7 +428,7 @@ class MTurk(object):
         true_opobj['title'] = title
         true_opobj['description'] = description
         true_opobj['reward'] = reward
-        true_opobj['duration'] = assignment_duration
+        true_opobj['duration'] = hit_type_duration
         true_opobj['keywords'] = keywords
         true_opobj['approval_delay'] = auto_approve_delay
         true_opobj['qual_req'] = self.qualification_requirement
@@ -375,7 +438,7 @@ class MTurk(object):
         prac_opobj['title'] = practice_title
         prac_opobj['description'] = practice_description
         prac_opobj['reward'] = practice_reward
-        prac_opobj['duration'] = assignment_duration
+        prac_opobj['duration'] = hit_type_duration
         prac_opobj['keywords'] = keywords
         prac_opobj['approval_delay'] = auto_approve_delay
         prac_opobj['qual_req'] = self.practice_qualification_requirement
@@ -406,3 +469,113 @@ class MTurk(object):
         opobj['annotation'] = task_id
         resp = self.mtconn.create_hit(**opobj)
         return resp[0].HITId
+
+    def disable_all_hits_of_type(self, hit_type_id=None):
+        """
+        Expires and then disposes of all hits of a certain hit type. If hit_type_id is undefined, it disposes of ALL
+        hits that have been posted. All submitted tasks are automatically approved.
+
+        :param hit_type_id: The hit type ID, as a string. If None, all hit types are searched.
+        :return: None.
+        """
+        hits = self.get_all_hits_of_type(hit_type_id=hit_type_id, ids_only=True)
+        for hit in hits:
+            self.disable_hit(hit)
+        _log.info('Disposed of %i HITs' % len(hits))
+
+    def get_all_hits_of_type(self, hit_type_id=None, ids_only=False):
+        """
+        Gets all hits of a certain type. If no hit_type_id is specified, then it returns hit IDs from across all hit
+        types.
+
+        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
+        :param ids_only: If True, will return the IDs only.
+        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
+        """
+        return self._get_all_hits_of_type_by_status_selector(hit_type_id=hit_type_id,
+                                                             ids_only=ids_only,
+                                                             selector=lambda x: True)
+
+    def get_all_pending_hits_of_type(self, hit_type_id=None, ids_only=False):
+        """
+        Returns all pending HITs of a specified hit_type_id. If no hit_type_id is specified, then it returns hits
+        from across all hit types.
+
+        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
+        :param ids_only: If True, will return the IDs only.
+        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
+        """
+        return self._get_all_hits_of_type_by_status_selector(hit_type_id=hit_type_id,
+                                                             ids_only=ids_only,
+                                                             selector=lambda x: x == HIT_PENDING)
+
+    def get_all_incomplete_hits_of_type(self, hit_type_id=None, ids_only=False):
+        """
+        Returns all incomplete hits of a type.
+
+        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
+        :param ids_only: If True, will return the IDs only.
+        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
+        """
+        return self._get_all_hits_of_type_by_status_selector(hit_type_id=hit_type_id,
+                                                             ids_only=ids_only,
+                                                             selector=lambda x: x == HIT_PENDING or x == HIT_EXPIRED)
+
+    def _get_all_hits_of_type_by_status_selector(self, hit_type_id=None, ids_only=False, selector=lambda x: True):
+        """
+        Gets all hits according to a selector based on the HIT status.
+
+        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
+        :param ids_only: If True, will return the IDs only.
+        :param selector: A lambda function, which accepts a HIT status (see: _globals.py) and returns a boolean.
+        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
+        """
+        iterator = self.mtconn.get_all_hits()
+        hits = []
+        for hit in iterator:
+            if selector(self.get_hit_status(hit=hit)):
+                if hit_type_id is None or hit.HITTypeId == hit_type_id:
+                    if ids_only:
+                        hits.append(hit.HITId)
+                    else:
+                        hits.append(hit)
+        return hits
+
+    def disable_hit(self, hit_id):
+        """
+        Disables a HIT.
+
+        :param hit_id: The HIT ID, as provided by MTurk, as a string.
+        :return: None
+        """
+        self.mtconn.disable_hit(hit_id)
+
+    def extend_hit(self, hit_id, extension_amount=DEF_EXTENSION_TIME):
+        """
+        Extends a HIT by extension_amount.
+
+        :param hit_id: The HIT ID, as a string.
+        :param extension_amount: The length of time to extend it by in seconds.
+        :return: None.
+        """
+        self.mtconn.extend_hit(hit_id, expiration_increment=extension_amount)
+
+    def extend_all_hits_of_type(self, hit_type_id=None, extension_amount=DEF_EXTENSION_TIME):
+        """
+        Extends all hits of a specified type by the extension_amount, which is specified in seconds. If no
+        hit_type_id is specified, then it applies to all hits across all types.
+
+        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
+        :param extension_amount: The length of time to extend it by in seconds.
+        :return: None.
+        """
+        hits = self.get_all_incomplete_hits_of_type(hit_type_id=hit_type_id, ids_only=True)
+        for hit in hits:
+            self.extend_hit(hit)
+
+    def dispose_of_hit_type(self, hit_type_id):
+        """
+
+        :param hit_type_id:
+        :return:
+        """

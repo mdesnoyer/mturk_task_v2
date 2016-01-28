@@ -76,12 +76,14 @@ DEFAULT_TASK_PAYMENT = 0.40  # the default payment for
 DEFAULT_PRACTICE_PAYMENT = 0.20  # the default payment for practices
 DEFAULT_TASK_NAME = 'Choosing images'  # The title for the actual tasks.
 DEFAULT_PRACTICE_TASK_NAME = 'Practice choosing images'  # The title for practice tasks.
-HIT_LIFETIME_IN_SECONDS = 60*60*24*7  # How long a hit lasts. HITs remain for one week.
-AUTO_APPROVE_DELAY = 60*60*24*3  # How long until the task is auto-accepted.
-KEYWORDS = []
-DESCRIPTION = 'Choosing %s images (no limit)' % ATTRIBUTE  # The default ask description.
+HIT_LIFETIME_IN_SECONDS = 60*60*24*7  # How long a hit lasts. The current value is one week.
+AUTO_APPROVE_DELAY = 60*60  # How long until the task is auto-accepted, in seconds. The current value is 1 hour.
+HIT_TYPE_DURATION = 60*60*24*365  # How long registered hit types last, in seconds. The current value is one year.
+KEYWORDS = []  # the keywords for the HIT / HIT Type
+DESCRIPTION = 'Choosing %s images' % ATTRIBUTE  # The default ask description.
 PRACTICE_DESCRIPTION = 'Practice for choosing %s images (you only need pass the practice once)' % ATTRIBUTE
 ASSIGNMENT_DURATION = 60*60*2  # How long after accepting a task does a worker have to complete it.
+DEF_EXTENSION_TIME = 60*60*3  # The default time to extend a hit for during extension. The current value is 3 days.
 
 
 """
@@ -92,6 +94,22 @@ MAX_SUBMITS_PER_DAY = 20  # the maximum number of tasks a worker can complete pe
 DEFAULT_BAN_REASON = 'Reason not provided.'  # the default reason for a ban
 MIN_REJECT_AUTOBAN_ELIGIBLE = 3  # the minimum number of rejections (in a week) to be eligible for a ban
 AUTOBAN_REJECT_ACCEPT_RATIO = 0.33  # the ratio of rejections / acceptances to be eligible for a ban
+
+
+"""
+ALLOWABLE COUNTRIES
+"""
+# these are countries from which we accept workers
+LOCALES = [
+    'GB',  # great britain, northern ireland
+    'IE',  # ireland
+    'NZ',  # new zealand
+    'AU',  # australia
+    'BM',  # bermuda
+    'VI',  # U.S. Virgin Islands
+    'US',  # United States
+    'CA'  # Canada
+]
 
 
 # this is a necessary switch. even though it should be in _globals, TESTING is a parameter.
