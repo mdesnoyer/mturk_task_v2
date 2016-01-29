@@ -127,11 +127,12 @@ class MTurk(object):
         """
         _log.info('Generating main qualification')
         try:
-            # resp = self.mtconn.create_qualification_type(name=QUALIFICATION_NAME,
-            #                                              description=QUALIFICATION_DESCRIPTION,
-            #                                              status='Active')
-            resp = self._create_qualification_type(name=QUALIFICATION_NAME, description=QUALIFICATION_DESCRIPTION,
-                                                   status='Active', is_requestable=False)
+            resp = self.mtconn.create_qualification_type(name=QUALIFICATION_NAME,
+                                                         description=QUALIFICATION_DESCRIPTION,
+                                                         status='Active',
+                                                         is_requestable=False)
+            # resp = self._create_qualification_type(name=QUALIFICATION_NAME, description=QUALIFICATION_DESCRIPTION,
+            #                                        status='Active', is_requestable=False)
             self.qualification_id = resp[0].QualificationTypeId
         except boto.mturk.connection.MTurkRequestError as e:
             _log.error('Error creating main qualification: ' + e.message)
@@ -144,11 +145,12 @@ class MTurk(object):
         """
         _log.info('Generating quota qualification')
         try:
-            # resp = self.mtconn.create_qualification_type(name=DAILY_QUOTA_NAME,
-            #                                              description=DAILY_QUOTA_DESCRIPTION,
-            #                                              status='Active')
-            resp = self._create_qualification_type(name=DAILY_QUOTA_NAME, description=DAILY_QUOTA_DESCRIPTION,
-                                                   status='Active', is_requestable=False)
+            resp = self.mtconn.create_qualification_type(name=DAILY_QUOTA_NAME,
+                                                         description=DAILY_QUOTA_DESCRIPTION,
+                                                         status='Active',
+                                                         is_requestable=False)
+            # resp = self._create_qualification_type(name=DAILY_QUOTA_NAME, description=DAILY_QUOTA_DESCRIPTION,
+            #                                        status='Active', is_requestable=False)
             self.quota_id = resp[0].QualificationTypeId
         except boto.mturk.connection.MTurkRequestError as e:
             _log.error('Error creating quota qualification: ' + e.message)
@@ -176,36 +178,36 @@ class MTurk(object):
                         _LocaleRequirement('In', LOCALES)]
         self.practice_qualification_requirement = boto.mturk.qualification.Qualifications(requirements=requirements)
 
-    def _create_qualification_type(self, name, description, status, keywords=None, is_requestable=False,
-                                   auto_granted=False, auto_granted_value=1):
-        """
-        Replicates the function of the boto mturk connection function, but permits the caller of the function to
-        determine whether or not the created qualification type is requestable or not, which the current implementation
-        of create_qualification_type does not provision for.
-
-        NOTES:
-            I have opened an issue on the boto github for this.
-
-        :param name: The name of the qualification type, visible to workers.
-        :param description: Description shown to workers, max 2000 characters.
-        :param status: 'Active' or 'Inactive'
-        :param keywords: The keywords for this qualification type. [def: None]
-        :param is_requestable: If True, then worker are able to request this qualification type. [def: False]
-        :param auto_granted: If True, requests for this qualification type are granted immediately. [def: False]
-        :param auto_granted_value: The value that this qualification takes on if it was auto-granted.
-        :return: A response type containing a qualification type data structure, identical to the authentic boto
-                 function.
-        """
-        # TODO: Create a fork on github for this on the boto repo and fix it then issue a pull request!
-        params = {'Name': name, 'Description': description, 'QualificationTypeStatus': status,
-                  'IsRequestable': is_requestable}
-        if keywords:
-            params['Keywords'] = self.mtconn.get_keywords_as_string(keywords)
-        if auto_granted:
-            params['AutoGranted'] = True
-            params['AutoGrantedValue'] = auto_granted_value
-        return self.mtconn._process_request('CreateQualificationType', params,
-                                            [('QualificationType', boto.mturk.connection.QualificationType)])
+    # def _create_qualification_type(self, name, description, status, keywords=None, is_requestable=False,
+    #                                auto_granted=False, auto_granted_value=1):
+    #     """
+    #     Replicates the function of the boto mturk connection function, but permits the caller of the function to
+    #     determine whether or not the created qualification type is requestable or not, which the current implementation
+    #     of create_qualification_type does not provision for.
+    #
+    #     NOTES:
+    #         I have opened an issue on the boto github for this.
+    #
+    #     :param name: The name of the qualification type, visible to workers.
+    #     :param description: Description shown to workers, max 2000 characters.
+    #     :param status: 'Active' or 'Inactive'
+    #     :param keywords: The keywords for this qualification type. [def: None]
+    #     :param is_requestable: If True, then worker are able to request this qualification type. [def: False]
+    #     :param auto_granted: If True, requests for this qualification type are granted immediately. [def: False]
+    #     :param auto_granted_value: The value that this qualification takes on if it was auto-granted.
+    #     :return: A response type containing a qualification type data structure, identical to the authentic boto
+    #              function.
+    #     """
+    #     # TODO: Create a fork on github for this on the boto repo and fix it then issue a pull request!
+    #     params = {'Name': name, 'Description': description, 'QualificationTypeStatus': status,
+    #               'IsRequestable': is_requestable}
+    #     if keywords:
+    #         params['Keywords'] = self.mtconn.get_keywords_as_string(keywords)
+    #     if auto_granted:
+    #         params['AutoGranted'] = True
+    #         params['AutoGrantedValue'] = auto_granted_value
+    #     return self.mtconn._process_request('CreateQualificationType', params,
+    #                                         [('QualificationType', boto.mturk.connection.QualificationType)])
 
     def get_account_balance(self):
         """
@@ -469,6 +471,19 @@ class MTurk(object):
         opobj['annotation'] = task_id
         resp = self.mtconn.create_hit(**opobj)
         return resp[0].HITId
+
+    def get_hit(self, hit_id):
+        """
+        Get information about a HIT.
+
+        :param hit_id: HIT ID, as a string, as supplied by MTurk.
+        :return: A boto.mturk HIT object, else returns None.
+        """
+        try:
+            hit_info = self.mtconn.get_hit(hit_id)[0]
+        except boto.mturk.connection.MTurkRequestError as e:
+            _log.warn('Getting HIT information failed with: %s' % e.message)
+            return None
 
     def disable_all_hits_of_type(self, hit_type_id=None):
         """

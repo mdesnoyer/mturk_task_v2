@@ -37,5 +37,5 @@ from conf import *
 
 _log = logger.setup_logger(__name__)
 
-
-
+class Daemon():
+    pass
