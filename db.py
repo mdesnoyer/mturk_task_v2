@@ -550,7 +550,7 @@ class Get(object):
         :return: Boolean. Returns True if the task specified by the task ID is a practice, otherwise false.
         """
         table = self.conn.table(TASK_TABLE)
-        return table.row(task_id).get('metadata:is_practice', None)
+        return table.row(task_id).get('metadata:is_practice', FALSE)
 
     def task_is_acceptable(self, task_id):
         """
@@ -1178,7 +1178,7 @@ class Set(object):
                           title=DEFAULT_TASK_NAME, description=DESCRIPTION,
                           reward=DEFAULT_TASK_PAYMENT, assignment_duration=HIT_TYPE_DURATION,
                           keywords=KEYWORDS, auto_approve_delay=AUTO_APPROVE_DELAY,
-                          is_practice=FALSE, active=FALSE):
+                          is_practice=False, active=False):
         """
         Registers a HIT type in the database.
 
@@ -1191,18 +1191,18 @@ class Set(object):
         :param assignment_duration: How long this HIT Type persists for.
         :param keywords: The HIT type keywords.
         :param auto_approve_delay: The auto-approve delay.
-        :param is_practice: FALSE or TRUE (see conf). Whether or not this HIT type should be used for practice tasks
-                            (remember that they are mutually exclusive; no hit type should be used for both practice and
-                            authentic/'real' tasks.)
-        :param active: FALSE or TRUE (see conf). Whether or not this HIT is active, i.e., if new HITs / Tasks should be
-                       assigned to this HIT type.
+        :param is_practice: Boolean, or FALSE/TRUE (see conf). Whether or not this HIT type should be used for practice
+                            tasks (remember that they are mutually exclusive; no hit type should be used for both
+                            practice and authentic/'real' tasks.)
+        :param active: Boolean, or FALSE/TRUE (see conf). Whether or not this HIT is active, i.e., if new HITs / Tasks
+                       should be assigned to this HIT type.
         :return: None.
         """
         _log.info('Registering HIT Type %s' % hit_type_id)
-        if active is not FALSE and active is not TRUE:
+        if (type(active) is not bool) and (active is not FALSE and active is not TRUE):
             _log.warning('Unknown active status, defaulting to FALSE')
             active = FALSE
-        if is_practice is not FALSE and is_practice is not TRUE:
+        if (type(is_practice) is not bool) and (is_practice is not FALSE and is_practice is not TRUE):
             _log.warning('Unknown practice status, defaulting to FALSE')
             is_practice = FALSE
         hit_type_dict = {'metadata:task_attribute': task_attribute, 'metadata:title': title,
@@ -1443,7 +1443,7 @@ class Set(object):
         :param worker_id: The ID of the worker to whom the practice was served.
         :return: None.
         """
-        _log.info('Serving practice %s to worker %s' % task_id, worker_id)
+        _log.info('Serving practice %s to worker %s' % (task_id, worker_id))
         # TODO: Check that worker exists
         table = self.conn.table(WORKER_TABLE)
         table.counter_inc(worker_id, 'stats:num_practices_attempted')
@@ -1461,7 +1461,7 @@ class Set(object):
         :param payment: The task payment, if known.
         :return: None.
         """
-        _log.info('Serving task %s served to %s'%(task_id, worker_id))
+        _log.info('Serving task %s served to %s' % (task_id, worker_id))
         table = self.conn.table(TASK_TABLE)
         table.put(task_id, _conv_dict_vals({'metadata:worker_id': worker_id, 'metadata:hit_id': hit_id,
                                             'metadata:hit_type_id': hit_type_id, 'metadata:payment': payment,

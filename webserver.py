@@ -14,7 +14,7 @@ NOTES:
 
 from db import Get
 from db import Set
-# from generate import fetch_task
+from generate import fetch_task
 # from generate import make_demographics
 from mturk import MTurk
 # from daemon import Daemon
@@ -23,6 +23,7 @@ import happybase
 from conf import *
 from flask import Flask
 from flask import request
+# from flask import url_for
 
 _log = logger.setup_logger(__name__)
 
@@ -50,6 +51,51 @@ CERT_DIR = '/repos/mturk_task_v2/certificates'
 
 app = Flask(__name__)
 
+# list of resources
+resources = [
+    'resources/instr_screenshots/accept_1.jpg',
+    'resources/instr_screenshots/accept_2.jpg',
+    'resources/instr_screenshots/reject_1.jpg',
+    'resources/instr_screenshots/reject_1.jpg',
+    'resources/templates/symbols/error.png',
+    'resources/templates/symbols/check.png'
+]
+scripts = [  # note, this also includes the jsPsych-specific CSS.
+    'js/jspsych-4.3/js/jquery.min.js',
+    'js/jspsych-4.3/js/jquery-ui.min.js',
+    'js/jspsych-4.3/jspsych.js',
+    'js/jspsych-4.3/plugins/jspsych-click-choice.js',
+    'js/jspsych-4.3/plugins/jspsych-instructions.js',
+    'js/jspsych-4.3/plugins/jspsych-html.js',
+    'js/practice_debrief.js',
+    'js/progressbar.min.js',
+    'js/jspsych-4.3/css/jspsych.css',
+    'js/jspsych-4.3/css/jquery-ui.css'
+]
+
+
+def _get_static_urls():
+    """
+    Accepts a request for a task, and then returns the static URLs pointing to all the resources.
+
+    NOTES
+        The template variables corresponding to the resources are generally named with their filename (no directory or
+        folder information) + their extension.
+
+        Getting this to work with Flask is somewhat opaque. Even though Flask is the most lightweight web framework
+        that I can find, it seems ridiculously overpowered for what I'm doing. Thus, _get_static_url's will just return
+        the hard-coded stuff for now.
+
+    :return: A dictionary of static urls, of the form {'resource_name': 'resource_url'}
+    """
+    static_urls = dict()
+
+    for resource in resources:
+        static_urls[os.path.basename(resource).replace('.', '_').replace('-', '_')] = os.path.join('static', resource)
+    for script in scripts:
+        static_urls[os.path.basename(script).replace('.', '_').replace('-', '_')] = os.path.join('static', script)
+    return static_urls
+
 
 @app.route('/task', methods=['POST', 'GET'])
 def task():
@@ -65,12 +111,15 @@ def task():
     assignment_id = request.values.get('assignmentId', '')
     is_preview = request.values.get('assignmentId') == PREVIEW_ASSIGN_ID
     hit_id = request.values.get('hitId', '')
-    hitinfo = mt.get_hit(hit_id)
+    hit_info = mt.get_hit(hit_id)
     # TODO: Get HIT information.
     if not is_preview:
         worker_id = request.values.get('workerId', '')
-    import ipdb
-    ipdb.set_trace()
+    else:
+        worker_id = None
+    task_id = hit_info.RequesterAnnotation
+    response = fetch_task(dbget, dbset, task_id, worker_id, is_preview=is_preview)
+    return response
 
 # make sure the damn thing can use HTTPS
 context = ('%s/%s.crt' % (CERT_DIR, CERT_NAME), '%s/%s.key' % (CERT_DIR, CERT_NAME))

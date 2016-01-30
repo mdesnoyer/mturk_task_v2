@@ -1,16 +1,16 @@
 <!doctype html>
 <html>
 <head>
-  <script src="{{ jquery.min.js }}"></script>
-  <script src="{{ jquery-ui.min.js }}"></script>
-  <script src="{{ jspsych.js }}"></script>
-  <script src="{{ jspsych-click-choice.js }}"></script>
-  <script src="{{ jspsych-instructions.js }}"></script>
-  <script src="{{ jspsych-html.js }}"></script>
-  <script src="{{ practice_debrief.js }}"></script>
-  <script src="{{ progressbar.min.js }}"></script>
-  <link rel="stylesheet" href="{{ jspsych.css }}">
-  <link rel="stylesheet" href="{{ jquery-ui.css }}">
+  <script src="{{ jquery_min_js }}"></script>
+  <script src="{{ jquery_ui_min_js }}"></script>
+  <script src="{{ jspsych_js }}"></script>
+  <script src="{{ jspsych_click_choice_js }}"></script>
+  <script src="{{ jspsych_instructions_js }}"></script>
+  <script src="{{ jspsych_html_js }}"></script>
+  <script src="{{ practice_debrief_js }}"></script>
+  <script src="{{ progressbar_min_js }}"></script>
+  <link rel="stylesheet" href="{{ jspsych_css }}">
+  <link rel="stylesheet" href="{{ jquery_ui_css }}">
 </head>
 <body>
 <div id="jspsych-target"></div>
@@ -56,7 +56,7 @@
 
   var demo = {
     type:'html',
-    pages: [{url: "external_html/demographics.html", cont_btn: "start", check_fn: check_demographics}]
+    pages: [{url: "static/html/demographics.html", cont_btn: "start", check_fn: check_demographics}]
   }
 
   {{ preload }}

@@ -61,7 +61,7 @@ TRIAL_BLOCK_TEMPLATE = 'trial_block_template.html'
 BAN_TEMPLATE = 'ban_page.html'
 PRACTICE_EXCEEDED_TEMPLATE = 'too_many_practices.html'
 PRACTICE_IM_DIR = 'instr_screenshots/'
-ERROR_TEMPLATE = 'fetch_error.html'
+ERROR_TEMPLATE = 'error.html'
 DEMOGRAPHICS_TEMPLATE = 'demographics.html'
 SUCCESS_TEMPLATE = 'success.html'
 
@@ -70,7 +70,7 @@ SUCCESS_TEMPLATE = 'success.html'
 DIRECTORIES
 """
 ROOT = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE_DIR = os.path.join(ROOT, 'resources/templates/')  # The template location
+TEMPLATE_DIR = os.path.join(ROOT, 'static/resources/templates/')  # The template location
 EXPERIMENT_DIR = os.path.join(ROOT, 'experiments/')  # The destination of experiments
 
 

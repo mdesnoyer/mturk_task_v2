@@ -481,6 +481,7 @@ class MTurk(object):
         """
         try:
             hit_info = self.mtconn.get_hit(hit_id)[0]
+            return hit_info
         except boto.mturk.connection.MTurkRequestError as e:
             _log.warn('Getting HIT information failed with: %s' % e.message)
             return None
@@ -590,7 +591,10 @@ class MTurk(object):
 
     def dispose_of_hit_type(self, hit_type_id):
         """
+        Disposes of a hit type.
 
-        :param hit_type_id:
-        :return:
+        :param hit_type_id: The HIT type ID, as a string, as provided by MTurk
+        :return: None
         """
+        # TODO: Implement this!
+        raise NotImplementedError()

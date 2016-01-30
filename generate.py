@@ -41,7 +41,7 @@ def _get_static_url_dict(template, static_urls=None):
     template -- it has to be done all at once. This seems like a bizarre design choice, but perhaps jinja2 has no
     provision for storing the value of variables without rendering the whole template to unicode? idk...
 
-    :param template: A jinja2 template object.
+    :param template: A jinja2 template filename.
     :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: A dictionary for filling in the static urls.
     """
@@ -49,7 +49,7 @@ def _get_static_url_dict(template, static_urls=None):
     vars = _get_template_variables(template)
     for var in vars:
         # TODO: what happens when you define a template variable as None?
-        if static_urls.has_key(var):
+        if var in static_urls:
             to_fill_in[var] = static_urls[var]
     return to_fill_in
 
@@ -65,7 +65,7 @@ def make_demographics(static_urls=None):
     if static_urls is None:
         static_urls = {}
     demographics = templateEnv.get_template(DEMOGRAPHICS_TEMPLATE)
-    return demographics.render(**_get_static_url_dict(demographics, static_urls))
+    return demographics.render(**_get_static_url_dict(DEMOGRAPHICS_TEMPLATE, static_urls))
 
 
 def make_success(static_urls=None):
@@ -79,7 +79,7 @@ def make_success(static_urls=None):
     if static_urls is None:
         static_urls = {}
     success = templateEnv.get_template(SUCCESS_TEMPLATE)
-    return success.render(**_get_static_url_dict(success, static_urls))
+    return success.render(**_get_static_url_dict(SUCCESS_TEMPLATE, static_urls))
 
 
 def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_SIZE, hit_size=HIT_SIZE,
@@ -179,7 +179,7 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
     filled_preload = preload.render(images=images)
     html = base.render(blocks=rblocks, preload=filled_preload, blocknames=blocknames, attribute=attribute,
                        practice=p_val, collect_demo=d_val, taskId=str(task_id),
-                       **_get_static_url_dict(base, static_urls))
+                       **_get_static_url_dict(BASE_TEMPLATE, static_urls))
     return html
 
 
@@ -240,7 +240,7 @@ def make_error_fetching_task_html(static_urls=None):
     if static_urls is None:
         static_urls = {}
     template = templateEnv.get_template(ERROR_TEMPLATE)
-    html = template.render(**_get_static_url_dict(template, static_urls))
+    html = template.render(**_get_static_url_dict(ERROR_TEMPLATE, static_urls))
     return html
 
 
@@ -254,7 +254,7 @@ def make_error_submitting_task_html(static_urls=None):
     if static_urls is None:
         static_urls = {}
     template = templateEnv.get_template(ERROR_TEMPLATE)
-    html = template.render(**_get_static_url_dict(template, static_urls))
+    html = template.render(**_get_static_url_dict(ERROR_TEMPLATE, static_urls))
     return html
 
 
@@ -435,7 +435,7 @@ def _get_template_variables(template):
     """
     Accepts a template file, returns the undeclared variables.
 
-    :param template: A jinja2 template file, from which we will extract the variables.
+    :param template: A jinja2 template filename, from which we will extract the variables.
     :return: The undeclared variables (i.e., those that still need to be defined) as a set of strings.
     """
     src = templateEnv.loader.get_source(templateEnv, template)
@@ -443,7 +443,7 @@ def _get_template_variables(template):
     return vars
 
 
-def fetch_task(dbget, dbset, worker_id, task_id, is_preview=False, static_urls=None):
+def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False, static_urls=None):
     """
     Constructs a task after a request hits the webserver. In contrast to build_task, this is for requests that have a
     task ID encoded in them--i.e., the request is for a specific task. It does not check if the worker is banned or if
@@ -455,8 +455,9 @@ def fetch_task(dbget, dbset, worker_id, task_id, is_preview=False, static_urls=N
 
     :param dbget: An instance of db.Get
     :param dbset: An instance of db.Set.
-    :param worker_id: The worker ID, as a string.
     :param task_id: The task ID, as a string.
+    :param worker_id: The worker ID, as a string. If this is a preview, you cannot obtain the worker ID, thus supply
+                      None.
     :param is_preview: The task to be served up is a 'preview' task.
     :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The HTML for the requested task.
@@ -465,27 +466,32 @@ def fetch_task(dbget, dbset, worker_id, task_id, is_preview=False, static_urls=N
         static_urls = {}
     # check that the worker exists, else register them. We want to have their information in the database so we don't
     # spawn errors down the road.
-    if not dbget.worker_exists(worker_id):
-        dbset.register_worker(worker_id)
+    if not is_preview:
+        if not dbget.worker_exists(worker_id):
+            dbset.register_worker(worker_id)
     # check if we need demographics or not
     is_practice = dbget.task_is_practice(task_id)
     collect_demo = False
-    if dbget.worker_need_demographics(worker_id):
-        collect_demo = True
+    if is_practice:
+        instruction_sequence = PRACTICE_INSTRUCTION_SEQUENCE
+    else:
+        instruction_sequence = TASK_INSTRUCTION_SEQUENCE
     if not is_preview:
         if is_practice:
+            if dbget.worker_need_demographics(worker_id):
+                collect_demo = True
             dbset.practice_served(task_id, worker_id)
         else:
             dbset.task_served(task_id, worker_id)
         blocks = dbget.get_task_blocks(task_id)
         if blocks is None:
             # display an error-fetching-task page.
-            return make_error_fetching_task_html(worker_id, static_urls=static_urls)
+            return make_error_fetching_task_html(static_urls=static_urls)
     else:
         blocks = []  # do not show them anything if this is just a preview.
     html = make_html(blocks, practice=is_practice, collect_demo=collect_demo, is_preview=is_preview,
-                     static_urls=static_urls)
-    if not is_practice:
+                     static_urls=static_urls, instruction_sequence=instruction_sequence)
+    if not is_practice and not is_preview:
         dbset.set_task_html(task_id, html)
     return html
 
