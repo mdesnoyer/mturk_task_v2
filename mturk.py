@@ -80,6 +80,7 @@ class MTurk(object):
                                                             aws_secret_access_key=MTURK_SECRET_KEY,
                                                             host='mechanicalturk.sandbox.amazonaws.com')
         # TODO: delete the above!
+        # TODO: figure out which functions can be discarded and stuff.
         self._get_qualification_ids()  # fetch the qualification names
         self._gen_requirement()  # fetch the qualification requirement for the 'true' task
         self._gen_practice_requirement()  # fetch the qualification for the practice task
@@ -488,7 +489,7 @@ class MTurk(object):
 
     def disable_all_hits_of_type(self, hit_type_id=None):
         """
-        Expires and then disposes of all hits of a certain hit type. If hit_type_id is undefined, it disposes of ALL
+        Disables all hits of a certain hit type. If hit_type_id is undefined, it disables ALL
         hits that have been posted. All submitted tasks are automatically approved.
 
         :param hit_type_id: The hit type ID, as a string. If None, all hit types are searched.
@@ -497,7 +498,7 @@ class MTurk(object):
         hits = self.get_all_hits_of_type(hit_type_id=hit_type_id, ids_only=True)
         for hit in hits:
             self.disable_hit(hit)
-        _log.info('Disposed of %i HITs' % len(hits))
+        _log.info('Disabled %i HITs' % len(hits))
 
     def get_all_hits_of_type(self, hit_type_id=None, ids_only=False):
         """
@@ -564,7 +565,18 @@ class MTurk(object):
         :param hit_id: The HIT ID, as provided by MTurk, as a string.
         :return: None
         """
+        _log.info('Disabling hit %s' % hit_id)
         self.mtconn.disable_hit(hit_id)
+
+    def dispose_hit(self, hit_id):
+        """
+        Disposes of a hit.
+
+        :param hit_id: The HIT ID, as provided by MTurk, as a string.
+        :return: None
+        """
+        _log.info('Disposing of hit %s' % hit_id)
+        self.mtconn.dispose_hit(hit_id)
 
     def extend_hit(self, hit_id, extension_amount=DEF_EXTENSION_TIME):
         """
@@ -574,6 +586,7 @@ class MTurk(object):
         :param extension_amount: The length of time to extend it by in seconds.
         :return: None.
         """
+        _log.info('Extending hit %s by %.0f seconds' % (hit_id, extension_amount))
         self.mtconn.extend_hit(hit_id, expiration_increment=extension_amount)
 
     def extend_all_hits_of_type(self, hit_type_id=None, extension_amount=DEF_EXTENSION_TIME):
@@ -587,14 +600,16 @@ class MTurk(object):
         """
         hits = self.get_all_incomplete_hits_of_type(hit_type_id=hit_type_id, ids_only=True)
         for hit in hits:
-            self.extend_hit(hit)
+            self.extend_hit(hit, extension_amount)
 
-    def dispose_of_hit_type(self, hit_type_id):
+    def dispose_of_hit_type(self, hit_type_id=None):
         """
         Disposes of a hit type.
 
         :param hit_type_id: The HIT type ID, as a string, as provided by MTurk
         :return: None
         """
-        # TODO: Implement this!
-        raise NotImplementedError()
+        hits = self.get_all_hits_of_type(hit_type_id=hit_type_id, ids_only=True)
+        for hit in hits:
+            self.dispose_hit(hit)
+        _log.info('Disposed of %i HITs' % len(hits))

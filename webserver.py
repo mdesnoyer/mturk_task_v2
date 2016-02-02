@@ -96,6 +96,8 @@ def _get_static_urls():
         static_urls[os.path.basename(script).replace('.', '_').replace('-', '_')] = os.path.join('static', script)
     return static_urls
 
+static_urls = _get_static_urls()
+
 
 @app.route('/task', methods=['POST', 'GET'])
 def task():
@@ -118,7 +120,7 @@ def task():
     else:
         worker_id = None
     task_id = hit_info.RequesterAnnotation
-    response = fetch_task(dbget, dbset, task_id, worker_id, is_preview=is_preview)
+    response = fetch_task(dbget, dbset, task_id, worker_id, is_preview=is_preview, static_urls=static_urls)
     return response
 
 # make sure the damn thing can use HTTPS

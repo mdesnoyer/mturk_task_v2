@@ -314,7 +314,6 @@ function updateLoadedCount(nLoaded){
   circle.animate(percentcomplete);
 }
 
-jsPsych.preloadImages(images, function(){ startExperiment(); }, function(nLoaded) { updateLoadedCount(nLoaded); });
 
 
   function clearBox(elementID){
@@ -337,5 +336,7 @@ var experiment_structure = [
       experiment_structure: experiment_structure,
     });
   }
+
+ startExperiment();
 </script>
 </html>

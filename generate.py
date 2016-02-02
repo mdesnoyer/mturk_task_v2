@@ -12,6 +12,7 @@ import os
 import jinja2
 from jinja2 import meta
 
+_log = logger.setup_logger(__name__)
 
 # create the jinja escape filter
 def jinja2_escapejs_filter(value):
@@ -123,8 +124,8 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
     :param is_preview: Boolean. If True, will assume that this is a preview of the experiment and only render the
                        instructions. This should only be true if the worker is previewing the HIT, i.e., the value
                        of assignmentId is ASSIGNMENT_ID_NOT_AVAILABLE
-    :return The appropriate HTML for this experiment.
     :param static_urls: A dictionary of static URLs. See webserver.py.
+    :return The appropriate HTML for this experiment.
     """
     if static_urls is None:
         static_urls = {}
@@ -394,6 +395,7 @@ def _create_instruction_page(instruction, attribute, static_urls=None):
     if static_urls is None:
         static_urls = {}
     try:
+        _log.info('Attempting to get template: %s' % instruction)
         template_class = templateEnv.get_template(instruction)
     except:
         return instruction
@@ -486,11 +488,12 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False, static_u
         blocks = dbget.get_task_blocks(task_id)
         if blocks is None:
             # display an error-fetching-task page.
+            _log.warn('Could not fetch blocks for task %s' % task_id)
             return make_error_fetching_task_html(static_urls=static_urls)
     else:
         blocks = []  # do not show them anything if this is just a preview.
     html = make_html(blocks, practice=is_practice, collect_demo=collect_demo, is_preview=is_preview,
-                     static_urls=static_urls, instruction_sequence=instruction_sequence)
+                     static_urls=static_urls, instruction_sequence=instruction_sequence, task_id=task_id)
     if not is_practice and not is_preview:
         dbset.set_task_html(task_id, html)
     return html

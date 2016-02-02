@@ -362,6 +362,7 @@ step: function(state, bar) {
 });
 
 function updateLoadedCount(nLoaded){
+  console.log('preloaded image.');
   var percentcomplete = nLoaded / images.length;
   circle.animate(percentcomplete);
 }

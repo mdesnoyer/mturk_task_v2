@@ -75,3 +75,6 @@ CTestResults.xml
 
 ### pycharm stuff ###
 .idea/
+
+### all the friggin images ###
+*.jpeg
