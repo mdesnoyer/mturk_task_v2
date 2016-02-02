@@ -540,7 +540,21 @@ class Get(object):
         pickled_blocks = table.row(task_id, columns=['blocks:c1']).get('blocks:c1', None)
         if pickled_blocks is None:
             return None
-        return loads(pickled_blocks)
+        blocks = loads(pickled_blocks)
+        url_map = dict()
+        table = self.conn.table(IMAGE_TABLE)
+        # convert the image IDs into URLs
+        # TODO: Warn about the possibility of filename collisions?
+        for block in blocks:
+            for im_list in block['images']:
+                for image in im_list:
+                    if image not in url_map:
+                        url_map[image] = table.row(image).get('metadata:url', None)
+        # now, replace this image IDs with their URLs
+        for block in blocks:
+            for n, im_list in enumerate(block['images']):
+                block['images'][n] = [url_map[x] for x in im_list]
+        return blocks
 
     def task_is_practice(self, task_id):
         """

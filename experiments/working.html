@@ -1,0 +1,425 @@
+<!doctype html>
+<html>
+<head>
+  <script src="../static/js/jspsych-4.3/js/jquery.min.js"></script>
+  <script src="../static/js/jspsych-4.3//js/jquery-ui.min.js"></script>
+  <script src="../static/js/jspsych-4.3/jspsych.js"></script>
+  <script src="../static/js/jspsych-4.3/plugins/jspsych-click-choice.js"></script>
+  <script src="../static/js/jspsych-4.3/plugins/jspsych-instructions.js"></script>
+  <script src="../static/js/jspsych-4.3/plugins/jspsych-html.js"></script>
+  <script src="../static/js/practice_debrief.js"></script>
+  <script src="../static/js/progressbar.min.js"></script>
+  <link rel="stylesheet" href="../static/js/jspsych-4.3/css/jspsych.css">
+  <link rel="stylesheet" href="../static/js/jspsych-4.3/css/jquery-ui.css">
+</head>
+<body>
+<div id="jspsych-target"></div>
+</body>
+<script>
+  /* FILTERS */
+  // these are currently imported
+  /* END FILTERS */
+
+    var start_block = {
+    type: 'instructions',
+    pages: [
+
+                '\u003Ccenter\u003E\u003Cp\u003E        \u003Cb\u003E            FINDING COOL IMAGES        \u003C/b\u003E\u003C/p\u003E\u003C/center\u003E\u003Cp\u003E    You are about to participate in an a psychological experiment to gather data about the COOL\u002Dness of images.\u003C/p\u003E\u003Cp\u003E    However, first, you have to complete a practice run, which is what this is. This will ensure that you understand the directions and are able to work appropriately quickly and finish the task as desired. You will complete a practice experiment (\u003Cb\u003Eyou WILL be paid\u003C/b\u003E), which will determine if you are able to begin participating in the actual experiment.\u003C/p\u003E\u003Cp\u003E    Remember that in all segments, you must work as quickly as you can while still doing the task. Don\u0027t act randomly, but try not to think about things too much\u002D\u002Dthere are no \u0027wrong\u0027 answers, per se.\u003C/p\u003E\u003Cp\u003E    Click \u0027next\u0027 to go over an explanation of the task types.\u003C/p\u003E',
+
+                '\u003Ccenter\u003E\u003Cp\u003E    \u003Cb\u003EKEEP SEGMENTS\u003C/b\u003E\u003C/p\u003E\u003C/center\u003E\u003Cp\u003E    In \u003Cb\u003EKEEP SEGMENTS\u003C/b\u003E, you will see a series of groups of images. You are asked to select the \u003Cb\u003EMOST\u003C/b\u003E COOL image from among them.\u003C/p\u003E\u003Cp\u003E    Each group of images will look like this:\u003C/p\u003E\u003Ccenter\u003E    \u003Cimg src\u003D\u0022/media/nick/d216eb37\u002Db0e1\u002D478c\u002Db170\u002D2270d7699ea2/repos/mturk_task_v2/generate/instr_screenshots//accept_1.jpg\u0022 width\u003D\u0022600\u0022 height\u003D\u0022600\u0022\u003E\u003C/center\u003E',
+
+                '\u003Ccenter\u003E\u003Cp\u003E    \u003Cb\u003EKEEP SEGMENTS\u003C/b\u003E\u003C/p\u003E\u003C/center\u003E\u003Cp\u003E    You must decide quickly (but not randomly!) which image, among those displayed, is the \u003Cb\u003EMOST\u003C/b\u003E COOL. Click on this image. You will see that the image you choose is highlighted in \u003Cfont color\u003D\u0022green\u0022\u003Egreen\u003C/font\u003E as shown here:\u003C/p\u003E\u003Ccenter\u003E    \u003Cimg src\u003D\u0022/media/nick/d216eb37\u002Db0e1\u002D478c\u002Db170\u002D2270d7699ea2/repos/mturk_task_v2/generate/instr_screenshots//accept_2.jpg\u0022 width\u003D\u0022600\u0022 height\u003D\u0022600\u0022\u003E\u003C/center\u003E',
+
+                '\u003Ccenter\u003E\u003Cp\u003E    \u003Cb\u003EREJECT SEGMENTS\u003C/b\u003E\u003C/p\u003E\u003C/center\u003E\u003Cp\u003E    In \u003Cb\u003EREJECT SEGMENTS\u003C/b\u003E, you will see a series of groups of images. You are asked to select the \u003Cb\u003ELEAST\u003C/b\u003E COOL image from among them.\u003C/p\u003E\u003Cp\u003E    Each group of images will look like this:\u003C/p\u003E\u003Ccenter\u003E    \u003Cimg src\u003D\u0022/media/nick/d216eb37\u002Db0e1\u002D478c\u002Db170\u002D2270d7699ea2/repos/mturk_task_v2/generate/instr_screenshots//accept_1.jpg\u0022 width\u003D\u0022600\u0022 height\u003D\u0022600\u0022\u003E\u003C/center\u003E',
+
+                '\u003Ccenter\u003E\u003Cp\u003E    \u003Cb\u003EREJECT SEGMENTS\u003C/b\u003E\u003C/p\u003E\u003C/center\u003E\u003Cp\u003E    You must decide quickly (but not randomly!) which image, among those displayed, is the \u003Cb\u003ELEAST\u003C/b\u003E COOL. Click on this image. You will see that the image you choose is highlighted in \u003Cfont color\u003D\u0022red\u0022\u003Ered\u003C/font\u003E as shown here:\u003C/p\u003E\u003Ccenter\u003E    \u003Cimg src\u003D\u0022/media/nick/d216eb37\u002Db0e1\u002D478c\u002Db170\u002D2270d7699ea2/repos/mturk_task_v2/generate/instr_screenshots//accept_2.jpg\u0022 width\u003D\u0022600\u0022 height\u003D\u0022600\u0022\u003E\u003C/center\u003E',
+
+                '\u003Cp\u003E    If you are ready to begin, click \u0027Next.\u0027 You will be given go through a series of segments. Before each segment, you will be told which kind of segment you are performing.\u003C/p\u003E',
+
+            ],
+    show_clickable_nav: true
+}
+
+    var keep_1_instr = {
+    type: 'instructions',
+    pages: [
+
+                '\u003Cp\u003E    You are about to begin a \u003Cb\u003EKEEP\u003C/b\u003E segment. In this segment, you will see a series of groups of images. For each group of images, select the one that you think is the \u003Cb\u003EMOST\u003C/b\u003E COOL. Once you click, it will be briefly highlighted in \u003Cfont color\u003D\u0022green\u0022\u003Egreen\u003C/font\u003E before advancing to the next trial.\u003C/p\u003E',
+
+            ],
+    show_clickable_nav: true
+}
+
+    var keep_1 = {
+    type: 'click-choice',
+    stimuli: [
+
+                [
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_0.jpg',
+                        'id':'starwars_0',
+                        'x':64,
+                        'y':33,
+                        'height':112,
+                        'width':199
+                    },
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_1.jpg',
+                        'id':'starwars_1',
+                        'x':267,
+                        'y':33,
+                        'height':112,
+                        'width':199
+                    },
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_2.jpg',
+                        'id':'starwars_2',
+                        'x':470,
+                        'y':33,
+                        'height':112,
+                        'width':199
+                    },
+
+                ],
+
+                [
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_0.jpg',
+                        'id':'starwars_0',
+                        'x':24,
+                        'y':329,
+                        'height':112,
+                        'width':199
+                    },
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_3.jpg',
+                        'id':'starwars_3',
+                        'x':227,
+                        'y':329,
+                        'height':112,
+                        'width':199
+                    },
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_4.jpg',
+                        'id':'starwars_4',
+                        'x':430,
+                        'y':329,
+                        'height':112,
+                        'width':199
+                    },
+
+                ],
+
+                [
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_1.jpg',
+                        'id':'starwars_1',
+                        'x':39,
+                        'y':157,
+                        'height':112,
+                        'width':199
+                    },
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_2.jpg',
+                        'id':'starwars_2',
+                        'x':242,
+                        'y':157,
+                        'height':112,
+                        'width':199
+                    },
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_3.jpg',
+                        'id':'starwars_3',
+                        'x':445,
+                        'y':157,
+                        'height':112,
+                        'width':199
+                    },
+
+                ],
+
+        ],
+    post_click_delay: 100,
+    response_ends_trial: true,
+    action_type: 'keep',
+    prompt: '',
+    trial_time: 1500
+}
+
+    var reject_1_instr = {
+    type: 'instructions',
+    pages: [
+
+                '\u003Cp\u003E    You are about to begin a \u003Cb\u003EREJECT\u003C/b\u003E segment. In this segment, you will see a series of groups of images. For each group of images, select the one that you think is the \u003Cb\u003ELEAST\u003C/b\u003E COOL. Once you click, it will be briefly highlighted in \u003Cfont color\u003D\u0022red\u0022\u003Ered\u003C/font\u003E before advancing to the next trial.\u003C/p\u003E',
+
+            ],
+    show_clickable_nav: true
+}
+
+    var reject_1 = {
+    type: 'click-choice',
+    stimuli: [
+
+                [
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_2.jpg',
+                        'id':'starwars_2',
+                        'x':188,
+                        'y':291,
+                        'height':112,
+                        'width':199
+                    },
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_1.jpg',
+                        'id':'starwars_1',
+                        'x':391,
+                        'y':291,
+                        'height':112,
+                        'width':199
+                    },
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_0.jpg',
+                        'id':'starwars_0',
+                        'x':594,
+                        'y':291,
+                        'height':112,
+                        'width':199
+                    },
+
+                ],
+
+                [
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_4.jpg',
+                        'id':'starwars_4',
+                        'x':29,
+                        'y':123,
+                        'height':112,
+                        'width':199
+                    },
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_3.jpg',
+                        'id':'starwars_3',
+                        'x':232,
+                        'y':123,
+                        'height':112,
+                        'width':199
+                    },
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_0.jpg',
+                        'id':'starwars_0',
+                        'x':435,
+                        'y':123,
+                        'height':112,
+                        'width':199
+                    },
+
+                ],
+
+                [
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_3.jpg',
+                        'id':'starwars_3',
+                        'x':117,
+                        'y':136,
+                        'height':112,
+                        'width':199
+                    },
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_2.jpg',
+                        'id':'starwars_2',
+                        'x':320,
+                        'y':136,
+                        'height':112,
+                        'width':199
+                    },
+
+                    {
+                        'file':'/repos/mturk_task_v2/images/starwars_1.jpg',
+                        'id':'starwars_1',
+                        'x':523,
+                        'y':136,
+                        'height':112,
+                        'width':199
+                    },
+
+                ],
+
+        ],
+    post_click_delay: 100,
+    response_ends_trial: true,
+    action_type: 'reject',
+    prompt: '',
+    trial_time: 1500
+}
+
+
+    var practice = true;
+
+  var debrief = {
+    type: 'instructions',
+    pages: [function() {return get_rt_string(300);},
+            function() {return get_missed_string(0.1);},
+            function() {return get_bias_string(0.9);},
+            function() {return get_contradictions_string(0.1, 'cool');}],
+    show_clickable_nav: true
+  }
+
+  var check_demographics = function(elem) {
+    if (!$("input:radio[name=gender]").is(":checked")){
+      alert("You must indicate your gender.");
+      return false;
+    }
+    if (!$("input:radio[name=age]").is(":checked")){
+      alert("You must indicate your age.");
+      return false;
+    }
+    if (!$("input:radio[name=location]").is(":checked")){
+      alert("You must indicate your location.");
+      return false;
+    }
+    jsPsych.data.write({
+      "gender":$('input[name=gender]:checked').val(),
+      "age":$('input[name=age]:checked').val(),
+      "location":$('input[name=location]:checked').val()
+      });
+    return true
+  }
+
+  var demo = {
+    type:'html',
+    pages: [{url: "external_html/demographics.html", cont_btn: "start", check_fn: check_demographics}]
+  }
+
+  var images = [
+
+            '/repos/mturk_task_v2/images/starwars_0.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_1.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_2.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_0.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_3.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_4.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_1.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_2.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_3.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_2.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_1.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_0.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_4.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_3.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_0.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_3.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_2.jpg',
+
+            '/repos/mturk_task_v2/images/starwars_1.jpg',
+
+    ];
+
+var circle = new ProgressBar.Circle('#jspsych-target', {
+color: '#FCB03C',
+strokeWidth: 3,
+trailWidth: 1,
+duration: 1000,
+text: {
+    value: '0'
+},
+step: function(state, bar) {
+    bar.setText((bar.value() * 100).toFixed(0));
+}
+});
+
+function updateLoadedCount(nLoaded){
+  var percentcomplete = nLoaded / images.length;
+  circle.animate(percentcomplete);
+}
+
+jsPsych.preloadImages(images, function(){ startExperiment(); }, function(nLoaded) { updateLoadedCount(nLoaded); });
+
+
+  function clearBox(elementID){
+    document.getElementById(elementID).innerHTML = "";
+  }
+
+var experiment_structure = [
+
+        start_block,
+
+        keep_1_instr,
+
+        keep_1,
+
+        reject_1_instr,
+
+        reject_1,
+
+];
+
+if (practice) {
+    experiment_structure.splice(0, 0, demo);
+    experiment_structure.push(debrief);
+}
+
+  function startExperiment(){
+    //clearBox("jspsych-target");
+    jsPsych.init({
+      display_element: $('#jspsych-target'),
+      experiment_structure: experiment_structure,
+      on_finish: function() {
+            if (practice){
+                jsPsych.data.addProperties({
+                    "is_practice":practice,
+                    "passed_practice":passed_practice
+                })
+            } else {
+                jsPsych.data.addProperties({
+                    "is_practice":practice,
+                    "passed_practice":true
+                })
+            }
+            var turk_info = jsPsych.turk.turkInfo();
+            jsPsych.data.addProperties({
+                "assignmentId": turk_info.assignmentId,
+                "hitId": turk_info.hitId,
+                "workerId": turk_info.workerId,
+                "previewMode": turk_info.previewMode,
+                "outsideTurk": turk_info.outsideTurk
+            })
+            jsPsych.data.displayData('csv');
+      }
+    });
+  }
+</script>
+</html>
