@@ -310,6 +310,52 @@ def _get_pair_dict(image1, image2, task_id, attribute):
     return _conv_dict_vals(pair_dict)
 
 
+def _find_demographics_element_in_json(resp_json):
+    """
+    Given the response json, it returns the block that contains the demographics data.
+
+    :param resp_json: The response JSON from mturk.
+    :return: The JSON block that contains the demographics element. If it cannot find any, then it returns None.
+    """
+    if type(resp_json) is dict:
+        if 'age' in resp_json:
+            return resp_json
+        elif 'location' in resp_json:
+            return resp_json
+        elif 'gender' in resp_json:
+            return resp_json
+        else:
+            return None
+    for i in resp_json:
+        if 'age' in i:
+            return resp_json
+        elif 'location' in i:
+            return resp_json
+        elif 'gender' in i:
+            return resp_json
+        else:
+            return None
+
+
+def _shuffle_tuples(image_tuples):
+    """
+    Shuffles a list of image tuples, both the list itself and within-tuple.
+
+    NOTE:
+        This shuffling is not done in place.
+
+    :param image_tuples: A list of image tuples.
+    :return: The shuffled list of image tuples.
+    """
+    n_tuples = []
+    for tup in image_tuples:
+        ltup = list(tup)
+        np.random.shuffle(ltup)
+        n_tuples.append(ltup)
+    np.random.shuffle(n_tuples)
+    return n_tuples
+
+
 """
 Main Classes - GET
 """
@@ -346,7 +392,7 @@ class Get(object):
         """
         table = self.conn.table(WORKER_TABLE)
         row_data = table.row(worker_id)
-        if len(row_data.get('demographics:age', '')):
+        if not len(row_data.get('demographics:age', '')):
             return True
         else:
             return False
@@ -508,7 +554,7 @@ class Get(object):
         :return: None
         """
         row_filter = general_filter([('status', 'awaiting_serve')],
-                                    [TRUE], key_only=True)
+                                    [TRUE], key_only=False)
         scanner = self.conn.table(TASK_TABLE).scan(filter=row_filter)
         awaiting_hit_cnt = 0
         for _ in scanner:
@@ -522,7 +568,7 @@ class Get(object):
         :return: None
         """
         row_filter = general_filter([('status', 'awaiting_hit_type'), ('status', 'awaiting_serve')],
-                                    [FALSE, TRUE], key_only=True)
+                                    [FALSE, TRUE], key_only=False)
         scanner = self.conn.table(TASK_TABLE).scan(filter=row_filter)
         awaiting_serve_cnt = 0
         for _ in scanner:
@@ -622,7 +668,7 @@ class Get(object):
         :return: An iterator over active hit types.
         """
         row_filter = general_filter([('status', 'active'), ('metadata', 'is_practice')],
-                                    values=[TRUE, FALSE], key_only=True)
+                                    values=[TRUE, FALSE], key_only=False)
         return self.conn.table(HIT_TYPE_TABLE).scan(filter=row_filter)
 
     def get_active_practice_hit_types(self):
@@ -632,7 +678,7 @@ class Get(object):
         :return: An iterator over active practice hit types.
         """
         row_filter = general_filter([('status', 'active'), ('metadata', 'is_practice')],
-                                    values=[TRUE, TRUE], key_only=True)
+                                    values=[TRUE, TRUE], key_only=False)
         return self.conn.table(HIT_TYPE_TABLE).scan(filter=row_filter)
 
     # GENERAL QUERIES
@@ -735,9 +781,9 @@ class Get(object):
         scanner = table.scan(columns=['stats:num_times_seen'],
                              filter=attribute_image_filter(image_attributes, only_active=True))
         been_seen = 0
-        for row_key, row_data in scanner:
+        for row_key, _ in scanner:
             been_seen += 1
-            cur_seen = row_data.get('stats:num_times_seen', 0)
+            cur_seen = table.counter.get(row_key, 'stats:num_times_seen')
             if cur_seen < obs_min:
                 obs_min = cur_seen
             if obs_min == 0:
@@ -810,7 +856,9 @@ class Get(object):
             return None
         np.random.shuffle(images)  # shuffle the images (remember its in-place! >.<)
         obs = _get_preexisting_pairs(self.conn, images)  # the set of observed tuples
-        for allvio in range(t):  # minimize the number of j-violations (i.e., elements appearing more than j-times)
+        for iocc in range(0, t + j):
+            # maximize the efficiency of the design, and also ensure that the number of j-violations (the number of
+            # times an image is shown over the whole task - j) is less than or equal to t.
             for c in comb(range(n), t):
                 if np.min(occ) == j:
                     return design  # you're done
@@ -819,16 +867,23 @@ class Get(object):
                 cur_tuple = tuple([images[x] for x in c])
                 if not _tuple_permitted(cur_tuple, obs):
                     continue
-                for i in c:
-                    cvio += max(0, occ[i] - j + 1)
-                if cvio > allvio:
+                occ_arr = occ[list(c)]
+                if max(occ_arr) > iocc:
+                    # check that the image hasn't occured too many times for this iteration.
                     continue
-                for x1, x2 in comb(c, 2):
+                if min(occ_arr) >= j:
+                    # make sure that at least one of these images even needs to be shown!
+                    continue
+                # ug, I was storing observed image indices instead of the keys. I'm an idiot.
+                for x1, x2 in comb(cur_tuple, 2):
                     obs.add(pair_to_tuple(x1, x2))
                 for i in c:
                     occ[i] += 1
                 design.append(cur_tuple)
         if not np.min(occ) >= j:
+            import ipdb
+            ipdb.set_trace()
+            _log.warning('Could not generate design.')
             return None
         return design
 
@@ -897,7 +952,9 @@ class Get(object):
         if image_tuples is None:
             return None, None, None, None
         # arrange them into blocks
+        image_tuples = _shuffle_tuples(image_tuples)
         keep_tuples = [x for x in chunks(image_tuples, n_keep_blocks)]
+        image_tuples = _shuffle_tuples(image_tuples)
         reject_tuples = [x for x in chunks(image_tuples, n_reject_blocks)]
         keep_blocks = []
         reject_blocks = []
@@ -1192,7 +1249,7 @@ class Set(object):
                           title=DEFAULT_TASK_NAME, description=DESCRIPTION,
                           reward=DEFAULT_TASK_PAYMENT, assignment_duration=HIT_TYPE_DURATION,
                           keywords=KEYWORDS, auto_approve_delay=AUTO_APPROVE_DELAY,
-                          is_practice=False, active=False):
+                          is_practice=False, active=True):
         """
         Registers a HIT type in the database.
 
@@ -1504,7 +1561,12 @@ class Set(object):
     def task_finished(self, task_id, worker_id, choices, choice_idxs, reaction_times, hit_id=None, assignment_id=None,
                       hit_type_id=None):
         """
-        Notes that a user has completed a task.
+        Notes that a user has completed a task, and stores the task completion date.
+
+        NOTES:
+            DEPRICATED
+
+            Does not store the demographic data.
 
         :param task_id: The ID of the task completed.
         :param worker_id: The ID of the worker (from MTurk)
@@ -1547,6 +1609,41 @@ class Set(object):
         table = self.conn.table(WORKER_TABLE)
         table.counter_dec(worker_id, 'stats:num_incomplete')
         table.counter_inc(worker_id, 'stats:num_pending_eval')
+
+    def task_finished_from_json(self, resp_json, hit_type_id=None, worker_ip=None):
+        """
+        Indicates a task is finished and stores the response data from a json request object. The HIT Type ID and the
+        worker IP address are the only things that cannot be fetched from the json, and hence has to be provided
+        separately.
+
+        NOTES:
+            This function may have to change if the response JSON structure changes significantly; however, this is
+            considered sufficiently unlikely to justify a relatively low-level function that interacts directly with
+            the database.
+
+        :param resp_json: The response JSON, from a MTurk task using jsPsych
+        :param hit_type_id: The HIT Type ID.
+        :param worker_ip: The worker's IP address.
+        :return: None
+        """
+        worker_id = resp_json[0]['workerId']
+        hit_id = resp_json[0]['hitId']
+        task_id = resp_json[0]['taskId']
+        # note: jsPsych does not provide a means to identify different tasks (say, for instance, by a trial name) hence
+        # to find the demographics trial (if present!) we will have to search through each of them. Guh.
+        dem_json = _find_demographics_element_in_json(resp_json)
+        age = dem_json['age']
+        gender = dem_json['gender']
+        # extract the experimental blocks
+        data = filter(lambda x: x.trial_type == 'click-choice', resp_json)
+        choices = []
+        rts = []
+        choice_idxs = []
+        for block in data:
+            choices.append(block['choice'])
+            rts.append(block['rt'])
+            choice_idxs.append(block.get('choice_idx', -1))
+            # TODO: choice_idx doesn't appear to be defined if the choice isn't made--make sure it is!
 
     def practice_pass(self, task_id):
         """

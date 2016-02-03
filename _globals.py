@@ -46,6 +46,7 @@ OTHER MTURK INFORMATION
 PREVIEW_ASSIGN_ID = 'ASSIGNMENT_ID_NOT_AVAILABLE'  # what the assignment ID is when they're just previewing
 # TODO: FUCK I HOPE PYRAMID SUPPORTS HTTPS!!
 EXTERNAL_QUESTION_ENDPOINT = 'https://127.0.0.1:12344/task'  # where to route external question urls
+EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = 'https://127.0.0.1:12344/submit'
 MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'  # the host for the mturk sandbox
 MTURK_HOST = 'mechanicalturk.amazonaws.com'  # the host for the vanilla sandbox
 HIT_CHUNK_SIZE = 1000  # the number of tasks to post in blocks.
@@ -120,7 +121,8 @@ HIT_PENDING = 0  # the HIT is: unexpired, unsubmitted (no assignments approved)
 HIT_EXPIRED = 1  # the HIT is: expired, unsubmitted (no assignments approved)
 HIT_COMPLETE = 2  # the HIT is: submitted (all assignments submitted)
 HIT_APPROVED = 3  # the HIT is: submitted, approved (all assignments submitted, approved)
-HIT_DISPOSED = 4  # the HIT is: disposed
+HIT_REJECTED = 4  # the HIT is: submitted, rejected (all assignments submitted, rejected)
+HIT_DISPOSED = 5  # the HIT is: disposed
 
 
 """

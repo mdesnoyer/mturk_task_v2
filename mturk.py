@@ -88,6 +88,26 @@ class MTurk(object):
         self.get_account_balance()  # get the current account balance
         _log.info('Current account funds: $%.2f' % self.current_balance)
 
+    def _get_all_hits_of_type_by_status_selector(self, hit_type_id=None, ids_only=False, selector=lambda x: True):
+        """
+        Gets all hits according to a selector based on the HIT status.
+
+        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
+        :param ids_only: If True, will return the IDs only.
+        :param selector: A lambda function, which accepts a HIT status (see: _globals.py) and returns a boolean.
+        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
+        """
+        iterator = self.mtconn.get_all_hits()
+        hits = []
+        for hit in iterator:
+            if selector(self.get_hit_status(hit=hit)):
+                if hit_type_id is None or hit.HITTypeId == hit_type_id:
+                    if ids_only:
+                        hits.append(hit.HITId)
+                    else:
+                        hits.append(hit)
+        return hits
+
     def _get_qualification_ids(self):
         """
         Gets the qualification IDs, and sets them internally.
@@ -179,37 +199,6 @@ class MTurk(object):
                         _LocaleRequirement('In', LOCALES)]
         self.practice_qualification_requirement = boto.mturk.qualification.Qualifications(requirements=requirements)
 
-    # def _create_qualification_type(self, name, description, status, keywords=None, is_requestable=False,
-    #                                auto_granted=False, auto_granted_value=1):
-    #     """
-    #     Replicates the function of the boto mturk connection function, but permits the caller of the function to
-    #     determine whether or not the created qualification type is requestable or not, which the current implementation
-    #     of create_qualification_type does not provision for.
-    #
-    #     NOTES:
-    #         I have opened an issue on the boto github for this.
-    #
-    #     :param name: The name of the qualification type, visible to workers.
-    #     :param description: Description shown to workers, max 2000 characters.
-    #     :param status: 'Active' or 'Inactive'
-    #     :param keywords: The keywords for this qualification type. [def: None]
-    #     :param is_requestable: If True, then worker are able to request this qualification type. [def: False]
-    #     :param auto_granted: If True, requests for this qualification type are granted immediately. [def: False]
-    #     :param auto_granted_value: The value that this qualification takes on if it was auto-granted.
-    #     :return: A response type containing a qualification type data structure, identical to the authentic boto
-    #              function.
-    #     """
-    #     # TODO: Create a fork on github for this on the boto repo and fix it then issue a pull request!
-    #     params = {'Name': name, 'Description': description, 'QualificationTypeStatus': status,
-    #               'IsRequestable': is_requestable}
-    #     if keywords:
-    #         params['Keywords'] = self.mtconn.get_keywords_as_string(keywords)
-    #     if auto_granted:
-    #         params['AutoGranted'] = True
-    #         params['AutoGrantedValue'] = auto_granted_value
-    #     return self.mtconn._process_request('CreateQualificationType', params,
-    #                                         [('QualificationType', boto.mturk.connection.QualificationType)])
-
     def get_account_balance(self):
         """
         Checks the account balance. Also sets its value internally.
@@ -232,90 +221,6 @@ class MTurk(object):
             if self.get_hit_status(hit=hit) == HIT_PENDING:
                 total_pending += 1
         return total_pending
-
-    def grant_worker_practice_passed(self, worker_id):
-        """
-        Grants worker the qualification necessary to begin attempting to complete our real tasks.
-
-        NOTE:
-            This does NOT update the database to reflect the fact that the worker has become qualified!
-
-        :param worker_id: The MTurk worker ID.
-        :return: None
-        """
-        try:
-            self.mtconn.assign_qualification(self.qualification_id, worker_id)
-            self.reset_worker_daily_quota(worker_id)  # be sure to grant them a daily quota
-        except boto.mturk.connection.MTurkRequestError as e:
-            _log.error('Error granting worker main qualification: %s' + e.message)
-
-    def reset_worker_daily_quota(self, worker_id):
-        """
-        Resets a worker's daily quota, allowing them to complete another round of tasks, as set by MAX_SUBMITS_PER_DAY
-        (see conf.py)
-
-        :param worker_id: The MTurk worker ID.
-        :return: None
-        """
-        try:
-            self.mtconn.assign_qualification(self.quota_id, worker_id, value=MAX_SUBMITS_PER_DAY,
-                                             send_notification=False)
-        except boto.mturk.connection.MTurkRequestError as e:
-            _log.error('Error resetting daily quota for worker: %s' + e.message)
-
-    def decrement_worker_daily_quota(self, worker_id):
-        """
-        Decrements the worker's daily quota for submittable tasks by one.
-
-        :param worker_id: The MTurk worker ID.
-        :return: None
-        """
-        try:
-            quota_val = self.mtconn.get_qualification_score(self.quota_id, worker_id)
-            if quota_val > 0:
-                quota_val -= 1
-            else:
-                _log.warn('Worker %s quota already at or below zero.' % worker_id)
-        except boto.mturk.connection.MTurkRequestError:
-            _log.warn('Could not obtain quota for worker %s' % worker_id)
-            quota_val = 0
-        self.mtconn.assign_qualification(self.quota_id, worker_id, value=quota_val, send_notification=False)
-
-    def revoke_worker_practice_passed(self, worker_id, reason=None):
-        """
-        Revokes the qualification necessary to begin attempting to complete our real tasks from a worker.
-
-        :param worker_id: The MTurk worker ID.
-        :param reason: Why the practice was revoked.
-        :return: None
-        """
-        try:
-            # NOTE: They refer to 'worker_id' idiosyncratically here as "subject_id"...
-            self.mtconn.revoke_qualification(worker_id, self.qualification_id, reason=reason)
-        except boto.mturk.connection.MTurkRequestError as e:
-            _log.error('Error revoking worker practice passed qualification: %s' + e.message)
-
-    def ban_worker(self, worker_id, reason=DEFAULT_BAN_REASON):
-        """
-        Bans a worker. Also revokes their qualification.
-
-        :param worker_id: The MTurk worker ID.
-        :param reason: The reason for the ban.
-        :return: None
-        """
-        # revoke the workers qualifications
-        self.revoke_worker_practice_passed(worker_id, reason=reason)
-        self.mtconn.block_worker(worker_id, reason=reason)
-
-    def unban_worker(self, worker_id):
-        """
-        Un-bans a worker.
-
-        :param worker_id: The MTurk worker ID.
-        :return: None
-        """
-        self.mtconn.unblock_worker(worker_id, reason='Your ban has expired, you are free to attempt our tasks '
-                                                     'once more.')
 
     def get_hit_complete(self, hit_id=None):
         """
@@ -352,12 +257,162 @@ class MTurk(object):
         if len(assignments) == hit.MaxAssignments:  # this is redundant, HITs should only ever have 1 assignment.
             if assignments[0].AssignmentStatus == 'Approved':
                 return HIT_APPROVED
+            elif assignments[0].AssignmentStatus == 'Rejected':
+                return HIT_REJECTED
             else:
                 return HIT_COMPLETE
         if hit.HITStatus == 'Available':
             return HIT_PENDING
         elif hit.HITStatus == 'Unavailable':
             return HIT_EXPIRED
+
+    def get_hit(self, hit_id):
+        """
+        Get information about a HIT.
+
+        :param hit_id: HIT ID, as a string, as supplied by MTurk.
+        :return: A boto.mturk HIT object, else returns None.
+        """
+        try:
+            hit_info = self.mtconn.get_hit(hit_id)[0]
+            return hit_info
+        except boto.mturk.connection.MTurkRequestError as e:
+            _log.warn('Getting HIT information failed with: %s' % e.message)
+            return None
+
+    def get_all_hits_of_type(self, hit_type_id=None, ids_only=False):
+        """
+        Gets all hits of a certain type. If no hit_type_id is specified, then it returns hit IDs from across all hit
+        types.
+
+        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
+        :param ids_only: If True, will return the IDs only.
+        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
+        """
+        return self._get_all_hits_of_type_by_status_selector(hit_type_id=hit_type_id,
+                                                             ids_only=ids_only,
+                                                             selector=lambda x: True)
+
+    def get_all_pending_hits_of_type(self, hit_type_id=None, ids_only=False):
+        """
+        Returns all pending HITs of a specified hit_type_id. If no hit_type_id is specified, then it returns hits
+        from across all hit types.
+
+        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
+        :param ids_only: If True, will return the IDs only.
+        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
+        """
+        return self._get_all_hits_of_type_by_status_selector(hit_type_id=hit_type_id,
+                                                             ids_only=ids_only,
+                                                             selector=lambda x: x == HIT_PENDING)
+
+    def get_all_incomplete_hits_of_type(self, hit_type_id=None, ids_only=False):
+        """
+        Returns all incomplete hits of a type.
+
+        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
+        :param ids_only: If True, will return the IDs only.
+        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
+        """
+        return self._get_all_hits_of_type_by_status_selector(hit_type_id=hit_type_id,
+                                                             ids_only=ids_only,
+                                                             selector=lambda x: x == HIT_PENDING or x == HIT_EXPIRED)
+
+    def get_all_processed_hits_of_type(self, hit_type_id=None, ids_only=False):
+        """
+        Returns all processed (i.e., approved / rejected) hits of a type.
+
+        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
+        :param ids_only: If True, will return the IDs only.
+        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
+        """
+        return self._get_all_hits_of_type_by_status_selector(hit_type_id=hit_type_id,
+                                                             ids_only=ids_only,
+                                                             selector=lambda x: x == HIT_APPROVED or x == HIT_REJECTED)
+
+    def grant_worker_practice_passed(self, worker_id):
+        """
+        Grants worker the qualification necessary to begin attempting to complete our real tasks.
+
+        NOTE:
+            This does NOT update the database to reflect the fact that the worker has become qualified!
+
+        :param worker_id: The MTurk worker ID.
+        :return: None
+        """
+        try:
+            self.mtconn.assign_qualification(self.qualification_id, worker_id)
+            self.reset_worker_daily_quota(worker_id)  # be sure to grant them a daily quota
+        except boto.mturk.connection.MTurkRequestError as e:
+            _log.error('Error granting worker main qualification: %s' + e.message)
+
+    def revoke_worker_practice_passed(self, worker_id, reason=None):
+        """
+        Revokes the qualification necessary to begin attempting to complete our real tasks from a worker.
+
+        :param worker_id: The MTurk worker ID.
+        :param reason: Why the practice was revoked.
+        :return: None
+        """
+        try:
+            # NOTE: They refer to 'worker_id' idiosyncratically here as "subject_id"...
+            self.mtconn.revoke_qualification(worker_id, self.qualification_id, reason=reason)
+        except boto.mturk.connection.MTurkRequestError as e:
+            _log.error('Error revoking worker practice passed qualification: %s' + e.message)
+
+    def reset_worker_daily_quota(self, worker_id):
+        """
+        Resets a worker's daily quota, allowing them to complete another round of tasks, as set by MAX_SUBMITS_PER_DAY
+        (see conf.py)
+
+        :param worker_id: The MTurk worker ID.
+        :return: None
+        """
+        try:
+            self.mtconn.assign_qualification(self.quota_id, worker_id, value=MAX_SUBMITS_PER_DAY,
+                                             send_notification=False)
+        except boto.mturk.connection.MTurkRequestError as e:
+            _log.error('Error resetting daily quota for worker: %s' + e.message)
+
+    def decrement_worker_daily_quota(self, worker_id):
+        """
+        Decrements the worker's daily quota for submittable tasks by one.
+
+        :param worker_id: The MTurk worker ID.
+        :return: None
+        """
+        try:
+            quota_val = self.mtconn.get_qualification_score(self.quota_id, worker_id)
+            if quota_val > 0:
+                quota_val -= 1
+            else:
+                _log.warn('Worker %s quota already at or below zero.' % worker_id)
+        except boto.mturk.connection.MTurkRequestError:
+            _log.warn('Could not obtain quota for worker %s' % worker_id)
+            quota_val = 0
+        self.mtconn.assign_qualification(self.quota_id, worker_id, value=quota_val, send_notification=False)
+
+    def ban_worker(self, worker_id, reason=DEFAULT_BAN_REASON):
+        """
+        Bans a worker. Also revokes their qualification.
+
+        :param worker_id: The MTurk worker ID.
+        :param reason: The reason for the ban.
+        :return: None
+        """
+        # revoke the workers qualifications
+        self.revoke_worker_practice_passed(worker_id, reason=reason)
+        self.mtconn.block_worker(worker_id, reason=reason)
+
+    def unban_worker(self, worker_id):
+        """
+        Un-bans a worker.
+
+        :param worker_id: The MTurk worker ID.
+        :return: None
+        """
+        self.mtconn.unblock_worker(worker_id, reason='Your ban has expired, you are free to attempt our tasks '
+                                                     'once more.')
 
     def approve_assignment(self, assignment_id):
         """
@@ -368,7 +423,7 @@ class MTurk(object):
         """
         self.mtconn.approve_assignment(assignment_id)
 
-    def reject_hit(self,  assignment_id, reason=None):
+    def reject_assignment(self,  assignment_id, reason=None):
         """
         Rejects a HIT.
 
@@ -378,7 +433,7 @@ class MTurk(object):
         """
         self.mtconn.reject_assignment(assignment_id, feedback=reason)
 
-    def soft_reject_hit(self, assignment_id, reason=None):
+    def soft_reject_assignment(self, assignment_id, reason=None):
         """
         Soft rejects a hit: i.e., approves a hit but provides feedback.
 
@@ -463,7 +518,8 @@ class MTurk(object):
         :return: None if successful, else raises an error.
         """
         question_object = boto.mturk.question.ExternalQuestion(external_url=EXTERNAL_QUESTION_ENDPOINT,
-                                                               frame_height=BOX_SIZE[1])
+                                                               frame_height=BOX_SIZE[1]+200)
+        # TODO: Make sure the frame_height is correct when the question is created.
         opobj = dict()
         opobj['hit_type'] = hit_type_id
         opobj['question'] = question_object
@@ -473,121 +529,51 @@ class MTurk(object):
         resp = self.mtconn.create_hit(**opobj)
         return resp[0].HITId
 
-    def get_hit(self, hit_id):
+    def dispose_of_hit_type(self, hit_type_id=None):
         """
-        Get information about a HIT.
+        Disposes of a hit type.
 
-        :param hit_id: HIT ID, as a string, as supplied by MTurk.
-        :return: A boto.mturk HIT object, else returns None.
+        :param hit_type_id: The HIT type ID, as a string, as provided by MTurk
+        :return: None
         """
-        try:
-            hit_info = self.mtconn.get_hit(hit_id)[0]
-            return hit_info
-        except boto.mturk.connection.MTurkRequestError as e:
-            _log.warn('Getting HIT information failed with: %s' % e.message)
-            return None
+        if hit_type_id is None:
+            _log.warn('Not Implemented: MTurk API currently does not support querying all hit types!')
+            return
+        self.dispose_hit(hit_type_id)
 
     def disable_all_hits_of_type(self, hit_type_id=None):
         """
-        Disables all hits of a certain hit type. If hit_type_id is undefined, it disables ALL
-        hits that have been posted. All submitted tasks are automatically approved.
+        Disposes all hits of a certain hit type. If hit_type_id is undefined, it disposes ALL
+        hits that have been posted. All submitted tasks are automatically approved. HITs that cannot be
 
         :param hit_type_id: The hit type ID, as a string. If None, all hit types are searched.
         :return: None.
         """
         hits = self.get_all_hits_of_type(hit_type_id=hit_type_id, ids_only=True)
-        for hit in hits:
-            self.disable_hit(hit)
-        _log.info('Disabled %i HITs' % len(hits))
+        fail_disabled = []
+        disabled = 0
+        fail_disposed = []
+        disposed = 0
+        for hit_id in hits:
+            if not self.disable_hit(hit_id):
+                fail_disabled.append(hit_id)
+            else:
+                disabled += 1
+        for hit_id in fail_disabled:
+            if not self.dispose_hit(hit_id):
+                fail_disposed.append(hit_id)
+            else:
+                disposed += 1
+        _log.info('Disposed of %i HITs, disabled %i HITs, %i still exist.' % (disabled, disposed, len(fail_disposed)))
 
-    def get_all_hits_of_type(self, hit_type_id=None, ids_only=False):
+    def dispose_handled_hits(self):
         """
-        Gets all hits of a certain type. If no hit_type_id is specified, then it returns hit IDs from across all hit
-        types.
+        Disposes of all HITs with approved or rejected assignments.
 
-        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
-        :param ids_only: If True, will return the IDs only.
-        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
-        """
-        return self._get_all_hits_of_type_by_status_selector(hit_type_id=hit_type_id,
-                                                             ids_only=ids_only,
-                                                             selector=lambda x: True)
-
-    def get_all_pending_hits_of_type(self, hit_type_id=None, ids_only=False):
-        """
-        Returns all pending HITs of a specified hit_type_id. If no hit_type_id is specified, then it returns hits
-        from across all hit types.
-
-        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
-        :param ids_only: If True, will return the IDs only.
-        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
-        """
-        return self._get_all_hits_of_type_by_status_selector(hit_type_id=hit_type_id,
-                                                             ids_only=ids_only,
-                                                             selector=lambda x: x == HIT_PENDING)
-
-    def get_all_incomplete_hits_of_type(self, hit_type_id=None, ids_only=False):
-        """
-        Returns all incomplete hits of a type.
-
-        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
-        :param ids_only: If True, will return the IDs only.
-        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
-        """
-        return self._get_all_hits_of_type_by_status_selector(hit_type_id=hit_type_id,
-                                                             ids_only=ids_only,
-                                                             selector=lambda x: x == HIT_PENDING or x == HIT_EXPIRED)
-
-    def _get_all_hits_of_type_by_status_selector(self, hit_type_id=None, ids_only=False, selector=lambda x: True):
-        """
-        Gets all hits according to a selector based on the HIT status.
-
-        :param hit_type_id: The HIT type ID, as a string. If None, all hit types are searched.
-        :param ids_only: If True, will return the IDs only.
-        :param selector: A lambda function, which accepts a HIT status (see: _globals.py) and returns a boolean.
-        :return: A list of HIT objects. Or a list of HIT IDs, as strings.
-        """
-        iterator = self.mtconn.get_all_hits()
-        hits = []
-        for hit in iterator:
-            if selector(self.get_hit_status(hit=hit)):
-                if hit_type_id is None or hit.HITTypeId == hit_type_id:
-                    if ids_only:
-                        hits.append(hit.HITId)
-                    else:
-                        hits.append(hit)
-        return hits
-
-    def disable_hit(self, hit_id):
-        """
-        Disables a HIT.
-
-        :param hit_id: The HIT ID, as provided by MTurk, as a string.
         :return: None
         """
-        _log.info('Disabling hit %s' % hit_id)
-        self.mtconn.disable_hit(hit_id)
-
-    def dispose_hit(self, hit_id):
-        """
-        Disposes of a hit.
-
-        :param hit_id: The HIT ID, as provided by MTurk, as a string.
-        :return: None
-        """
-        _log.info('Disposing of hit %s' % hit_id)
-        self.mtconn.dispose_hit(hit_id)
-
-    def extend_hit(self, hit_id, extension_amount=DEF_EXTENSION_TIME):
-        """
-        Extends a HIT by extension_amount.
-
-        :param hit_id: The HIT ID, as a string.
-        :param extension_amount: The length of time to extend it by in seconds.
-        :return: None.
-        """
-        _log.info('Extending hit %s by %.0f seconds' % (hit_id, extension_amount))
-        self.mtconn.extend_hit(hit_id, expiration_increment=extension_amount)
+        # TODO: Implement this!
+        raise NotImplementedError()
 
     def extend_all_hits_of_type(self, hit_type_id=None, extension_amount=DEF_EXTENSION_TIME):
         """
@@ -602,14 +588,43 @@ class MTurk(object):
         for hit in hits:
             self.extend_hit(hit, extension_amount)
 
-    def dispose_of_hit_type(self, hit_type_id=None):
+    def disable_hit(self, hit_id):
         """
-        Disposes of a hit type.
+        Disables a HIT.
 
-        :param hit_type_id: The HIT type ID, as a string, as provided by MTurk
-        :return: None
+        :param hit_id: The HIT ID, as provided by MTurk, as a string.
+        :return: True if successful, False otherwise.
         """
-        hits = self.get_all_hits_of_type(hit_type_id=hit_type_id, ids_only=True)
-        for hit in hits:
-            self.dispose_hit(hit)
-        _log.info('Disposed of %i HITs' % len(hits))
+        try:
+            self.mtconn.disable_hit(hit_id)
+            _log.debug('Disabled hit %s' % hit_id)
+            return True
+        except boto.mturk.connection.MTurkRequestError as e:
+            _log.debug('Could not disable hit %s: %s' % (hit_id, e.message))
+            return False
+
+    def dispose_hit(self, hit_id):
+        """
+        Disposes of a hit.
+
+        :param hit_id: The HIT ID, as provided by MTurk, as a string.
+        :return: True if successful, False otherwise.
+        """
+        try:
+            self.mtconn.dispose_hit(hit_id)
+            _log.debug('Disposed of hit %s' % hit_id)
+            return True
+        except boto.mturk.connection.MTurkRequestError as e:
+            _log.debug('Could not dispose of hit %s: %s' % (hit_id, e.message))
+            return False
+
+    def extend_hit(self, hit_id, extension_amount=DEF_EXTENSION_TIME):
+        """
+        Extends a HIT by extension_amount.
+
+        :param hit_id: The HIT ID, as a string.
+        :param extension_amount: The length of time to extend it by in seconds.
+        :return: None.
+        """
+        _log.info('Extending hit %s by %.0f seconds' % (hit_id, extension_amount))
+        self.mtconn.extend_hit(hit_id, expiration_increment=extension_amount)

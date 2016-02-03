@@ -94,6 +94,9 @@ def _get_static_urls():
         static_urls[os.path.basename(resource).replace('.', '_').replace('-', '_')] = os.path.join('static', resource)
     for script in scripts:
         static_urls[os.path.basename(script).replace('.', '_').replace('-', '_')] = os.path.join('static', script)
+    static_urls['demographics'] = 'static/html/demographics.html'
+    static_urls['success'] = 'static/html/success.html'
+    static_urls['submit'] = EXTERNAL_QUESTION_SUBMISSION_ENDPOINT
     return static_urls
 
 static_urls = _get_static_urls()
@@ -122,6 +125,28 @@ def task():
     task_id = hit_info.RequesterAnnotation
     response = fetch_task(dbget, dbset, task_id, worker_id, is_preview=is_preview, static_urls=static_urls)
     return response
+
+
+@app.route('/submit', methods=['POST', 'GET'])
+def submit():
+    """
+    Allows a user to submit a task, and inputs all the relevant data into the database.
+
+    :return: Success page.
+    """
+    worker_ip = request.remote_addr
+    hit_id = request.json[0]['hitId']
+    hit_info = mt.get_hit(hit_id)
+    try:
+        hit_type_id = hit_info.HITTypeId
+    except AttributeError as e:
+        _log.warn('No HIT type ID associated with hit %s' % hit_id)
+        hit_type_id = ''
+    dbset.task_finished_from_json(request.json, hit_type_id=hit_type_id, worker_ip=worker_ip)
+    # TODO: Implement this!
+    import ipdb
+    ipdb.set_trace()
+
 
 # make sure the damn thing can use HTTPS
 context = ('%s/%s.crt' % (CERT_DIR, CERT_NAME), '%s/%s.key' % (CERT_DIR, CERT_NAME))

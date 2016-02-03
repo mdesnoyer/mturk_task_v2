@@ -99,6 +99,8 @@ def practice_id_gen():
 """
 GET utils (for db.get)
 """
+
+
 def pair_to_tuple(image1, image2):
     """
     Converts an image pair into a sorted tuple.

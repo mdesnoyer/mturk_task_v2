@@ -37,7 +37,7 @@ DEF_NUM_IMAGES_PER_TASK = 100  # the default number of images that appear in a b
 # TODO: test that this is an appropriate number
 DEF_NUM_IMAGE_APPEARANCE_PER_TASK = 3  # the default number of image appearances per task. [no practice analogue]
 # TODO: test that this is an appropriate number
-DEF_PRACTICE_NUM_IMAGES_PER_TASK = 21  # the default number of images per practice.
+DEF_PRACTICE_NUM_IMAGES_PER_TASK = 9  # the default number of images per practice.
 # The practice instruction sequence
 PRACTICE_INSTRUCTION_SEQUENCE = ['instructions/practice/practice-1.html',
                                  'instructions/practice/practice-2-keep-1.html',
@@ -54,8 +54,9 @@ HIT_SIZE = [600, 400]  # the hit box size, which is where the images will be con
 POS_TYPE = 'random'  # the position type, see make_html.py
 ATTRIBUTE = 'interesting'  # the default attribute to use
 IMAGE_ATTRIBUTES = []  # the types of images to be included in the task.
+TIMING_POST_TRIAL = 200  # Sets the time, in milliseconds, between the current trial and the next trial.
 DEF_FEEDBACK_TIME = 100  # the amount of time to display feedback
-DEF_TRIAL_TIME = 1500  # the maximum amount of time each trial is allowed to go for
+DEF_TRIAL_TIME = 200  # the maximum amount of time each trial is allowed to go for
 DEF_INSTRUCTIONS = ''  # the default instructions to display before each SEGMENT
 DEF_RESPONSE_ENDS_TRIAL = 'true'  # whether or not a response ends a trial
 DEF_TRIAL_TYPE = KEEP_BLOCK  # the default trial type

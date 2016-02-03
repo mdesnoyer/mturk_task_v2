@@ -105,6 +105,8 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
                                        [def: DEF_RESPONSE_ENDS_TRIAL]
         block['prompt'] = a string, the prompt to display during the trial, above the image block. The default prompt
                           will vary based on whether or not this is a practice task, see the configuration python file.
+        block['timing_post_trial'] = numeric, the time that elapses between each trial (not counting the feedback_time)
+                                     in milliseconds.
 
     For configuration details, see conf.py.
 
@@ -164,6 +166,7 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
         block['trial_time'] = block.get('trial_time', DEF_TRIAL_TIME)
         block['prompt'] = block.get('prompt', DEF_PROMPT)
         block['response_ends_trial'] = block.get('response_ends_trial', DEF_RESPONSE_ENDS_TRIAL)
+        block['timing_post_trial'] = block.get('timing_post_trial', TIMING_POST_TRIAL)
         if block['instructions']:
             # get the filled instruction template
             inst_block, inst_block_name = _make_instr_block(block, attribute)
@@ -294,6 +297,7 @@ def _make_exp_block(block, box_size, hit_size, pos_type):
     rblock['trial_time'] = block['trial_time']
     rblock['response_ends_trial'] = block['response_ends_trial']
     rblock['prompt'] = block['prompt']
+    rblock['timing_post_trial'] = block['timing_post_trial']
     template = templateEnv.get_template(TRIAL_BLOCK_TEMPLATE)
     filled_template = template.render(block=rblock)
     return filled_template, images
@@ -328,12 +332,16 @@ def _fit_images(images, hit_size):
         im_dims[idx] = [x, y]
     max_height = max([x[1] for x in im_dims]) + 2 * MARGIN_SIZE
     if max_height > hit_size[1]: # resize them a third time if at least one image is too tall
-        height_ratio = float(hit_size[1]) / max_height
+        # beware of a slight numerical error that can occur here, do not calculate height ratio based on max_height
+        # since that has the margin size added in, but this is not modified by the ratio multiplier.
+        # the extra -1 is to prevent it from being numerically too close
+        height_ratio = float(hit_size[1] - 2 * MARGIN_SIZE - 1) / max([x[1] for x in im_dims])
         for idx in range(len(im_dims)):
             x, y = im_dims[idx]
             x *= height_ratio
             y *= height_ratio
             im_dims[idx] = [x, y]
+        max_height = max([x[1] for x in im_dims]) + 2 * MARGIN_SIZE
     cur_x_pos = MARGIN_SIZE # current x position
     res = [] # the results
     # compute the height offset

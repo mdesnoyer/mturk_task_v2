@@ -105,7 +105,16 @@ if (practice) {
                 "outsideTurk": turk_info.outsideTurk,
                 "taskId": task_id
             })
-            jsPsych.data.displayData('csv');
+            $.ajax({
+              type: 'post',
+              cache: false,
+              url: '{{ submit }}',
+              data: JSON.stringify(jsPsych.data.getData()),
+              contentType: 'application/json;charset=UTF-8',
+              success: function(response){
+                $('body').html(response);
+              }
+            });
       }
     });
   }
