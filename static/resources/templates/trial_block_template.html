@@ -21,5 +21,7 @@ var {{ block.name }} = {
     action_type: '{{ block.type }}',
     prompt: '{{ block.prompt }}',
     trial_time: {{ block.trial_time }},
-    timing_post_trial: {{ block.timing_post_trial }}
+    timing_post_trial: {{ block.timing_post_trial }},
+    global_tup_idxs: {{ block.global_tup_idxs }},
+    image_idx_map: {{ block.image_idx_map }},
 }

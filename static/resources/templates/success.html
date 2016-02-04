@@ -5,18 +5,24 @@ The template version of the success page.
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Ban</title>
+    <title>Thank you</title>
+    <script src="{{ jspsych_js }}"></script>
     <link rel="stylesheet" href="{{ jspsych_css }}">
     <link rel="stylesheet" href="{{ jquery_ui_css }}">
 </head>
 <body>
     <center>
         <br><br>
-        <img src="check_png" alt="success" style="width:300px;height:300px;">
-        <br><br>
-        Your task has been submitted. Thank you!
-        <br><br>
-        <!-- TODO: Implement 'contact us' -->
+        <img src="{{ check_png }}" alt="success" style="width:300px;height:300px;">
+        <p>You have completed the task, and your data has been sent to the server! Click the button below to submit.</p>
+        <button onclick="sendData();">Submit HIT</button>
     </center>
 </body>
+<script>
+    function sendData() {
+        jsPsych.turk.submitToTurk({
+            code: 'completed'
+        });
+    }
+</script>
 </html>

@@ -41,6 +41,10 @@
                     "action_type": params.action_type || 'keep',
                     // how long to display the click feedback
                     "post_click_delay": params.post_click_delay || 0,
+                    // see db.py
+                    "global_tup_idx": params.global_tup_idxs[i],
+                    // see db.py
+                    "image_idx_map": params.image_idx_map[i],
 				};
 				trials[i].type = "click-choice";
                 // other information needed for the trial method can be added here
@@ -140,7 +144,9 @@
 				    choice: response.choice,
 				    choice_idx: response.choice_idx,
 				    stims: trial.stimuli,
-				    rt: response.rt
+				    rt: response.rt,
+				    global_tup_idx: trial.global_tup_idx,
+				    image_idx_map: trial.image_idx_map
 				};
 
 				jsPsych.data.write(trial_data)

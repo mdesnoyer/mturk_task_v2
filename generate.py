@@ -107,6 +107,12 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
                           will vary based on whether or not this is a practice task, see the configuration python file.
         block['timing_post_trial'] = numeric, the time that elapses between each trial (not counting the feedback_time)
                                      in milliseconds.
+        block['image_idx_map'] = A list of lists, with the same structure as 'images', but with task-global indices
+                                 instead of strings. This is to facilitate the detection of contradictions under
+                                 independent randomization of block types.
+        block['global_tup_idxs'] = A list of indices corresponding to the 'identity' index of each tuple. This has a
+                                   similar purpose to 'image_idx_map', in that it maps the shuffled image tuples back
+                                   to their "original" order.
 
     For configuration details, see conf.py.
 
@@ -167,6 +173,8 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
         block['prompt'] = block.get('prompt', DEF_PROMPT)
         block['response_ends_trial'] = block.get('response_ends_trial', DEF_RESPONSE_ENDS_TRIAL)
         block['timing_post_trial'] = block.get('timing_post_trial', TIMING_POST_TRIAL)
+        block['global_tup_idxs'] = block.get('global_tup_idxs', None)
+        block['image_idx_map'] = block.get('image_idx_map', None)
         if block['instructions']:
             # get the filled instruction template
             inst_block, inst_block_name = _make_instr_block(block, attribute)
@@ -298,6 +306,8 @@ def _make_exp_block(block, box_size, hit_size, pos_type):
     rblock['response_ends_trial'] = block['response_ends_trial']
     rblock['prompt'] = block['prompt']
     rblock['timing_post_trial'] = block['timing_post_trial']
+    rblock['global_tup_idxs'] = block['global_tup_idxs']
+    rblock['image_idx_map'] = block['image_idx_map']
     template = templateEnv.get_template(TRIAL_BLOCK_TEMPLATE)
     filled_template = template.render(block=rblock)
     return filled_template, images

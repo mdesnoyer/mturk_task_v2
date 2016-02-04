@@ -9,7 +9,8 @@ from dill import loads
 from itertools import combinations as comb
 from datetime import datetime
 import time
-import warnings
+from collections import Counter
+import scipy.stats as stats
 
 """
 LOGGING
@@ -328,11 +329,11 @@ def _find_demographics_element_in_json(resp_json):
             return None
     for i in resp_json:
         if 'age' in i:
-            return resp_json
+            return i
         elif 'location' in i:
-            return resp_json
+            return i
         elif 'gender' in i:
-            return resp_json
+            return i
         else:
             return None
 
@@ -345,15 +346,18 @@ def _shuffle_tuples(image_tuples):
         This shuffling is not done in place.
 
     :param image_tuples: A list of image tuples.
-    :return: The shuffled list of image tuples.
+    :return: The shuffled list of image tuples and a global mapping of tuples to invariant indices based on their
+             initial position in the input array (so they can be easily mapped back).
     """
-    n_tuples = []
-    for tup in image_tuples:
+    tup_indices = np.arange(len(image_tuples))
+    np.random.shuffle(tup_indices)  # shuffle the tuple indices in-place.
+    n_tuples = list(np.array(image_tuples)[tup_indices])
+    for n, tup in enumerate(n_tuples):
         ltup = list(tup)
         np.random.shuffle(ltup)
-        n_tuples.append(ltup)
-    np.random.shuffle(n_tuples)
-    return n_tuples
+        n_tuples[n] = ltup
+    # make make absolutely sure that tup_indices is cast to a list, since numpy arrays do *not* work well with jinja2
+    return n_tuples, list(tup_indices)
 
 
 """
@@ -910,6 +914,13 @@ class Get(object):
 
             This does NOT register the task. It returns a dictionary that befits dbset, but does not do it itself.
 
+            In order to check for contradictions given the fact that the tuple order and the within-tuple image order is
+            randomized, this function also establishes a mapping from tuples to invariant indices as well as a mapping
+            from the images within a tuple to a similarly invariant mapping.
+
+            N.B. "global_image_idx_map" is not truly "global" -- it is global only up to the current ask. The mapping
+            mapping does not extend to the global set of ALL images, of course.
+
         :param n: The number of distinct elements involved in the experiment.
         :param t: The number of elements to present each trial.
         :param j: The number of times each element should appear during the experiment.
@@ -951,26 +962,38 @@ class Get(object):
         image_tuples = self.gen_design(n, t, j, image_attributes=image_attributes)
         if image_tuples is None:
             return None, None, None, None
+        # assemble a dict mapping image_tuples images to an index
+        global_image_idx_map = dict()
+        for image_tuple in image_tuples:
+            for image in image_tuple:
+                if image not in global_image_idx_map:
+                    global_image_idx_map[image] = len(global_image_idx_map)
         # arrange them into blocks
-        image_tuples = _shuffle_tuples(image_tuples)
-        keep_tuples = [x for x in chunks(image_tuples, n_keep_blocks)]
-        image_tuples = _shuffle_tuples(image_tuples)
-        reject_tuples = [x for x in chunks(image_tuples, n_reject_blocks)]
+        keep_shuf_tups, keep_shuf_idxs = _shuffle_tuples(image_tuples)
+        keep_tuples = [x for x in chunks(keep_shuf_tups, n_keep_blocks)]
+        keep_idxs = [x for x in chunks(keep_shuf_idxs, n_keep_blocks)]
+        rej_shuf_tups, rej_shuf_idxs = _shuffle_tuples(image_tuples)
+        reject_tuples = [x for x in chunks(rej_shuf_tups, n_reject_blocks)]
+        reject_idxs = [x for x in chunks(rej_shuf_idxs, n_reject_blocks)]
         keep_blocks = []
         reject_blocks = []
-        for kt in keep_tuples:
+        for kt, kt_idxs in zip(keep_tuples, keep_idxs):
             block = dict()
             block['images'] = [list(x) for x in kt]
+            block['image_idx_map'] = [[global_image_idx_map[y] for y in x] for x in kt]
             block['type'] = KEEP_BLOCK
             block['instructions'] = DEF_KEEP_BLOCK_INSTRUCTIONS
             block['prompt'] = prompt
+            block['global_tup_idxs'] = kt_idxs
             keep_blocks.append(block)
-        for kt in reject_tuples:
+        for rt, rt_idxs in zip(reject_tuples, reject_idxs):
             block = dict()
-            block['images'] = [list(x) for x in kt]
+            block['images'] = [list(x) for x in rt]
+            block['image_idx_map'] = [[global_image_idx_map[y] for y in x] for x in rt]
             block['type'] = REJECT_BLOCK
             block['instructions'] = DEF_REJECT_BLOCK_INSTRUCTIONS
             block['prompt'] = prompt
+            block['global_tup_idxs'] = rt_idxs
             reject_blocks.append(block)
         blocks = []
         while len(keep_blocks) or len(reject_blocks):
@@ -1635,15 +1658,49 @@ class Set(object):
         age = dem_json['age']
         gender = dem_json['gender']
         # extract the experimental blocks
-        data = filter(lambda x: x.trial_type == 'click-choice', resp_json)
+        data = filter(lambda x: x['trial_type'] == 'click-choice', resp_json)
         choices = []
         rts = []
         choice_idxs = []
+        actions = []
+        contradiction_dict = dict()
         for block in data:
-            choices.append(block['choice'])
-            rts.append(block['rt'])
+            choices.append(block.get('choice', -1))
+            rts.append(block.get('rt', -1))
             choice_idxs.append(block.get('choice_idx', -1))
-            # TODO: choice_idx doesn't appear to be defined if the choice isn't made--make sure it is!
+            actions.append(block.get('action_type', -1))
+            global_tup_idx = block.get('global_tup_idx', None)
+            # TODO: The below isn't very robust. Robustify it.
+            if block.get('choice', -1) != -1 and block.get('choice_idx', -1) != -1:
+                # if the choice was made, see if it was contradictory
+                taskwide_im_idx = block['image_idx_map'][block['choice_idx']]
+                if global_tup_idx is not None:
+                    contradiction_dict[global_tup_idx] = (contradiction_dict.get(global_tup_idx, []) +
+                                                          [taskwide_im_idx])
+        # compute the number unanswered
+        num_unanswered = sum([x == -1 for x in choices])
+        # compute the number of contradictory statements
+        num_contradictions = 0
+        for key in contradiction_dict:
+            if len(contradiction_dict[key]) > 1:
+                if contradiction_dict[key][0] == contradiction_dict[key][1]:
+                    num_contradictions += 1
+        # compute the distribution of clicks.
+        total_observations = 0
+        max_index = 0
+        counts_by_index = Counter()
+        for idx in choice_idxs:
+            if idx > -1:
+                counts_by_index[idx] += 1
+                total_observations += 1
+                if max_index < idx:
+                    max_index = idx
+        # compute the p value
+        obs = [float(counts_by_index[key]) / total_observations for key in range(max_index)]
+        expected = [float(total_observations) / max_index for _ in range(max_index)]
+        chi_stat, p_value = stats.chisquare(obs, expected)
+        import ipdb
+        ipdb.set_trace()
 
     def practice_pass(self, task_id):
         """

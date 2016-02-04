@@ -15,6 +15,7 @@ NOTES:
 from db import Get
 from db import Set
 from generate import fetch_task
+from generate import make_success
 # from generate import make_demographics
 from mturk import MTurk
 # from daemon import Daemon
@@ -136,16 +137,21 @@ def submit():
     """
     worker_ip = request.remote_addr
     hit_id = request.json[0]['hitId']
+    # -------------------------- THIS STUFF PURELY FOR TESTING
+    import json
+    with open('/repos/mturk_task_v2/request', 'w') as f:
+        json.dump(request.json, f)
+    # -------------------------- END PURELY FOR TESTING
     hit_info = mt.get_hit(hit_id)
     try:
         hit_type_id = hit_info.HITTypeId
     except AttributeError as e:
         _log.warn('No HIT type ID associated with hit %s' % hit_id)
         hit_type_id = ''
-    dbset.task_finished_from_json(request.json, hit_type_id=hit_type_id, worker_ip=worker_ip)
-    # TODO: Implement this!
-    import ipdb
-    ipdb.set_trace()
+    # dbset.task_finished_from_json(request.json, hit_type_id=hit_type_id, worker_ip=worker_ip)
+    return make_success(static_urls)
+
+
 
 
 # make sure the damn thing can use HTTPS

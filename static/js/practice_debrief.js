@@ -182,12 +182,12 @@ function get_chi_square(counts, total, n){
     // items presented each trial.
     with (Math) {
         var chiSquare = 0;
-        var E = (1.0 / n) * total; // the expected value
+        var exp_val = (1.0 / n) * total; // the expected value
         for (var key = 0; key < n; key++){
             if (counts.hasOwnProperty(key)){
-                chiSquare += Math.pow((counts[key] - E), 2) / E;
+                chiSquare += Math.pow((counts[key] - exp_val), 2) / exp_val;
             } else {
-                chiSquare += Math.pow(-E, 2) / E;
+                chiSquare += Math.pow(-exp_val, 2) / exp_val;
             }
         }
     }
@@ -263,13 +263,74 @@ function get_bias_string(thresh){
   };
 
 function get_contradictions_string(thresh, attribute){
-    /*
-    * Returns a string to inform the worker of the number of contradictions they have created. It gives them an
-    * example of their contradictions.
-    */
+    var keep_tuple_index = {};
+    var reject_tuple_index = {};
+    var trials = jsPsych.data.getTrialsOfType("click-choice");
+    var valid_trials_count = 0;
+    var tot_conts = 0;
+    var exemplar_trial = 0;
+    var exemplar_trial_idx = 0;
+    for (var i = 0; i < trials.length; i++){
+        if (trials[i].choice < 0){
+            continue;
+        } else {
+            valid_trials_count++;
+        }
+        if (trials[i].action_type == 'keep'){
+            keep_tuple_index[trials[i].global_tup_idx] = trials[i].image_idx_map[trials[i].choice_idx];
+        } else {
+            reject_tuple_index[trials[i].global_tup_idx] = trials[i].image_idx_map[trials[i].choice_idx];
+        }
+    }
+    for (var key in keep_tuple_index) {
+        if(key in reject_tuple_index){
+            if (keep_tuple_index[key] == reject_tuple_index[key]){
+                exemplar_trial_idx = key;
+                tot_conts++;
+            }
+        }
+    }
+    /* fetch the actual exemplar idx */
+    for (var i = 0; i < trials.length; i++){
+        if (trials[i].global_tup_idx == exemplar_trial_idx){
+            exemplar_trial = i;
+            break;
+        }
+    }
+    var mean_conts = tot_conts * 1.0 / valid_trials_count;
+    var rstring = "The last measure, but possibly the most important, is the number of times a worker contradicts ";
+    rstring += "themselves. If they pick the same image as both the most " + attribute + " and the least " + attribute;
+    rstring += " then it is clear that they are not following directions.</br></br>"
+    if (tot_conts == 0){
+        rstring += '<font color="green">However, you never contradicted yourself! Congratulations.</font>';
+        return rstring
+    }
+    rstring += 'For instance, when asked to choose among these images: </br></br><center>';
+    for (var i = 0; i < trials[exemplar_trial].stims.length; i++){
+        rstring += '<img src="' + trials[exemplar_trial].stims[i].file + '" style="width:' + trials[exemplar_trial].stims[i].width + 'px;height:' + trials[exemplar_trial].stims[i].height +'px;">';
+    }
+    rstring += '</center></br></br>you chose</br></br>';
+    rstring += '<center><img src="' + trials[exemplar_trial].stims[trials[exemplar_trial].choice_idx].file + '" style="width:' + trials[exemplar_trial].stims[trials[exemplar_trial].choice_idx].width + 'px;height:' + trials[exemplar_trial].stims[trials[exemplar_trial].choice_idx].height +'px;"></center>';
+    rstring += '</br></br>as both the most ' + attribute + ' and the least ' + attribute + '. ';
+    rstring += 'In total, <strong>' + Math.floor(mean_conts * 200.0) + '%</strong> of choices were contradicted. <br><br>';
+    if (mean_conts > thresh){
+        rstring += '<font color="red">Unfortunately you made too many contradictions! Please repeat the practice.</font>';
+        passed_practice = false;
+    } else {
+        rstring += '<font color="green">You are within limits for contradictions.</font>';
+    }
+    return rstring;
+}
+
+// this is the old get_contradictions_string, which wasn't robust against independent trial type randomization
+// see: db.py, generate.py
+/*
+function get_contradictions_string(thresh, attribute){
+    // Returns a string to inform the worker of the number of contradictions they have created. It gives them an
+    // example of their contradictions.
     var kept = {};
     var rejected = {};
-    var start_time = (new Date()).getTime();
+    var start_time = (new Date()).getTime();  // why are we fetching this!?
     var trials = jsPsych.data.getTrialsOfType("click-choice");
     var valid_trials_count = 0;
     var tot_conts = 0;
@@ -318,6 +379,7 @@ function get_contradictions_string(thresh, attribute){
     }
     return rstring;
 }
+*/
 
 function get_missed_string(thresh){
     /*
