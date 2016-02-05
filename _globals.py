@@ -65,6 +65,7 @@ PRACTICE_IM_DIR = 'instr_screenshots/'
 ERROR_TEMPLATE = 'error.html'
 DEMOGRAPHICS_TEMPLATE = 'demographics.html'
 SUCCESS_TEMPLATE = 'success.html'
+PREVIEW_TEMPLATE = 'preview_template.html'
 
 
 """
@@ -155,6 +156,7 @@ WORKER_FAMILIES = {'status': dict(max_versions=1),
 TASK_FAMILIES = {'metadata': dict(max_versions=1),
                  'status': dict(max_versions=1),
                  'completed_data': dict(max_versions=1),
+                 'validation_statistics': dict(max_versions=1),
                  'blocks': dict(max_versions=1),
                  'html': dict(max_versions=1)}
 IMAGE_FAMILIES = {'metadata': dict(max_versions=1),

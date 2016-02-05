@@ -98,6 +98,7 @@ def _get_static_urls():
     static_urls['demographics'] = 'static/html/demographics.html'
     static_urls['success'] = 'static/html/success.html'
     static_urls['submit'] = EXTERNAL_QUESTION_SUBMISSION_ENDPOINT
+    static_urls['attribute'] = ATTRIBUTE
     return static_urls
 
 static_urls = _get_static_urls()
@@ -137,25 +138,45 @@ def submit():
     """
     worker_ip = request.remote_addr
     hit_id = request.json[0]['hitId']
-    # -------------------------- THIS STUFF PURELY FOR TESTING
-    import json
-    with open('/repos/mturk_task_v2/request', 'w') as f:
-        json.dump(request.json, f)
-    # -------------------------- END PURELY FOR TESTING
+    worker_id = request.json[0]['workerId']
+    task_id = request.json[0]['taskId']
+    assignment_id = request.json[0]['assignmentId']
+    # # -------------------------- THIS STUFF PURELY FOR TESTING
+    # import json
+    # with open('/repos/mturk_task_v2/request', 'w') as f:
+    #     json.dump(request.json, f)
+    # # -------------------------- END PURELY FOR TESTING
     hit_info = mt.get_hit(hit_id)
     try:
         hit_type_id = hit_info.HITTypeId
     except AttributeError as e:
         _log.warn('No HIT type ID associated with hit %s' % hit_id)
         hit_type_id = ''
-    # dbset.task_finished_from_json(request.json, hit_type_id=hit_type_id, worker_ip=worker_ip)
+    is_practice = request.json[0]['is_practice']
+    if is_practice:
+        dbset.register_demographics(request.json)
+        passed_practice = request.json[0]['passed_practice']
+        if passed_practice:
+            dbset.practice_pass(request.json)
+            mt.grant_worker_practice_passed(worker_id)
+    else:
+        mt.decrement_worker_daily_quota(worker_id)
+        frac_contradictions, frac_unanswered, mean_rt, prob_random = \
+            dbset.task_finished_from_json(request.json, hit_type_id=hit_type_id, worker_ip=worker_ip)
+        is_valid, reason = dbset.validate_task(task_id=None, frac_contradictions=frac_contradictions,
+                                               frac_unanswered=frac_unanswered, mean_rt=mean_rt,
+                                               prob_random=prob_random)
+        if not is_valid:
+            mt.soft_reject_assignment(assignment_id, reason)
+            dbset.reject_task(task_id, reason)
+        else:
+            mt.approve_assignment(assignment_id)
+            dbset.accept_task(task_id)
     return make_success(static_urls)
 
 
-
-
-# make sure the damn thing can use HTTPS
 context = ('%s/%s.crt' % (CERT_DIR, CERT_NAME), '%s/%s.key' % (CERT_DIR, CERT_NAME))
+
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=12344,

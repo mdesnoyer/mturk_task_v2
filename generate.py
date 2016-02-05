@@ -83,9 +83,9 @@ def make_success(static_urls=None):
     return success.render(**_get_static_url_dict(SUCCESS_TEMPLATE, static_urls))
 
 
-def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_SIZE, hit_size=HIT_SIZE,
-              pos_type=POS_TYPE, attribute=ATTRIBUTE, instruction_sequence=TASK_INSTRUCTION_SEQUENCE, practice=False,
-              collect_demo=False, is_preview=False, static_urls=None):
+def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE, pos_type=POS_TYPE, attribute=ATTRIBUTE,
+              practice=False, collect_demo=False, is_preview=False, static_urls=None,
+              intro_instructions=DEF_INTRO_INSTRUCTIONS):
     """
     Produces an experimental HTML document. By assembling blocks of html code into a single html document. Note that
     this will fill in missing values in place!
@@ -119,24 +119,25 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
     :param blocks: These are individual trials, and take the form of dictionaries, called 'blocks'. For the fields, see
                    the readme above.
     :param task_id: The ID of the task, as provided by MTurk
-    :param preload_images: Boolean, whether or not to fetch images ahead of time. [def: True]
     :param box_size: The size of the images to display in pixels, [w, h]. {def: [800, 800]}
     :param hit_size: The size of the box that contains the images, [w, h]. This is a subbox that will either be (a)
                      centered or (b) randomly positioned. {def: [600, 600]}
     :param pos_type: Either 'random', in which the hit box is placed anywhere inside the box, or 'fixed', where it is
                      centered. [def: 'random']
     :param attribute: The attribute that you want people to judge, e.g., 'interesting'
-    :param instruction_sequence: The sequence of instruction pages to display at the outset of the experiment.
     :param practice: Boolean. If True, will display the debrief pages.
     :param collect_demo: Boolean. If True, will collect demographic information.
     :param is_preview: Boolean. If True, will assume that this is a preview of the experiment and only render the
                        instructions. This should only be true if the worker is previewing the HIT, i.e., the value
                        of assignmentId is ASSIGNMENT_ID_NOT_AVAILABLE
     :param static_urls: A dictionary of static URLs. See webserver.py.
+    :param intro_instructions: A </sep>-separated html file containing the instruction templates.
     :return The appropriate HTML for this experiment.
     """
     if static_urls is None:
         static_urls = {}
+    if is_preview:
+        return _make_preview_page(static_urls)
     # TODO: Make sure this thing uses task_id and preload_images!
     images = []
     counts = {KEEP_BLOCK: 0, REJECT_BLOCK: 0}
@@ -150,15 +151,10 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
         d_val = 'true'
     else:
         d_val = 'false'
-    if instruction_sequence:
-        block, start_inst_name = _make_start_block(instruction_sequence, attribute)
+    if intro_instructions:
+        block, start_inst_name = _make_start_block(intro_instructions, attribute)
         rblocks.append(block)
         blocknames.append(start_inst_name)
-    if is_preview:
-        base = templateEnv.get_template(BASE_TEMPLATE)
-        html = base.render(blocks=rblocks, blocknames=blocknames, attribute='None',
-                           practice='false', collect_demo='false', taskId='preview')
-        return html
     for n, block in enumerate(blocks):
         # fill in any missing values
         block['type'] = block.get('type', DEF_TRIAL_TYPE)
@@ -189,10 +185,15 @@ def make_html(blocks, task_id=None, preload_images=PRELOAD_IMAGES, box_size=BOX_
     base = templateEnv.get_template(BASE_TEMPLATE)
     # fill the preload template
     filled_preload = preload.render(images=images)
-    html = base.render(blocks=rblocks, preload=filled_preload, blocknames=blocknames, attribute=attribute,
-                       practice=p_val, collect_demo=d_val, taskId=str(task_id),
-                       **_get_static_url_dict(BASE_TEMPLATE, static_urls))
-    return html
+    arg_dict = _get_static_url_dict(BASE_TEMPLATE, static_urls)
+    arg_dict['blocks'] = rblocks
+    arg_dict['preload'] = filled_preload
+    arg_dict['blocknames'] = blocknames
+    arg_dict['attribute'] = attribute
+    arg_dict['practice'] = p_val
+    arg_dict['collect_demo'] = d_val
+    arg_dict['taskId'] = str(task_id)
+    return base.render(**arg_dict)
 
 
 def make_ban_html(dbget, worker_id):
@@ -413,7 +414,6 @@ def _create_instruction_page(instruction, attribute, static_urls=None):
     if static_urls is None:
         static_urls = {}
     try:
-        _log.info('Attempting to get template: %s' % instruction)
         template_class = templateEnv.get_template(instruction)
     except:
         return instruction
@@ -430,22 +430,28 @@ def _create_instruction_page(instruction, attribute, static_urls=None):
     return filled_template
 
 
-def _make_start_block(instruction_sequence, attribute, static_urls=None):
+def _make_start_block(intro_instructions, attribute, static_urls=None):
     """
     Accepts the attribute that we will be scoring, a sequence of instruction templates, and converts them into an
     instruction block.
 
-    :param instruction_sequence: A list of filenames, in order, which points to template files.
+    :param intro_instructions: A </sep>-separated html file containing the instruction templates.
     :param attribute: The attribute that will be scored.
     :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: An instruction block as a filled template.
     """
     if static_urls is None:
         static_urls = {}
-    pages = []
-    for ist in instruction_sequence: # ist = instruction template
-        pages.append(_create_instruction_page(ist, attribute, static_urls=static_urls))
-    block = {'instructions':pages, 'name': 'start_block'}
+    template_class = templateEnv.get_template(intro_instructions)
+    var_dict = _get_static_url_dict(intro_instructions, static_urls=static_urls)
+    vars = _get_template_variables(intro_instructions)
+    # create a dict of variables to set in the template
+    if 'attribute' in vars:
+        var_dict['attribute'] = attribute
+    filled_template = template_class.render(**var_dict)
+    pages = filled_template.split('</sep>')
+    pages = filter(lambda x: len(x), pages)
+    block = {'instructions': pages, 'name': 'start_block'}
     template = templateEnv.get_template('inst_template.html')
     filled_template = template.render(block=block)
     return filled_template, 'start_block'
@@ -461,6 +467,19 @@ def _get_template_variables(template):
     src = templateEnv.loader.get_source(templateEnv, template)
     vars = meta.find_undeclared_variables(templateEnv.parse(src))
     return vars
+
+
+def _make_preview_page(static_urls=None):
+    """
+    Returns the HTML for a 'preview' page, which users are presented when they begin to preview a task.
+
+    :param static_urls: A dictionary of static URLs. See webserver.py.
+    :return: HTML for the preview page.
+    """
+    if static_urls is None:
+        static_urls = {}
+    template = templateEnv.get_template(PREVIEW_TEMPLATE)
+    return template.render(**_get_static_url_dict(PREVIEW_TEMPLATE, static_urls))
 
 
 def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False, static_urls=None):
@@ -493,9 +512,9 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False, static_u
     is_practice = dbget.task_is_practice(task_id)
     collect_demo = False
     if is_practice:
-        instruction_sequence = PRACTICE_INSTRUCTION_SEQUENCE
+        intro_instructions = DEF_PRACTICE_INTO_INSTRUCTIONS
     else:
-        instruction_sequence = TASK_INSTRUCTION_SEQUENCE
+        intro_instructions = DEF_INTRO_INSTRUCTIONS
     if not is_preview:
         if is_practice:
             if dbget.worker_need_demographics(worker_id):
@@ -511,7 +530,7 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False, static_u
     else:
         blocks = []  # do not show them anything if this is just a preview.
     html = make_html(blocks, practice=is_practice, collect_demo=collect_demo, is_preview=is_preview,
-                     static_urls=static_urls, instruction_sequence=instruction_sequence, task_id=task_id)
+                     static_urls=static_urls, intro_instructions=intro_instructions, task_id=task_id)
     if not is_practice and not is_preview:
         dbset.set_task_html(task_id, html)
     return html

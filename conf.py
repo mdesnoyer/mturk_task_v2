@@ -39,16 +39,10 @@ DEF_NUM_IMAGE_APPEARANCE_PER_TASK = 3  # the default number of image appearances
 # TODO: test that this is an appropriate number
 DEF_PRACTICE_NUM_IMAGES_PER_TASK = 9  # the default number of images per practice.
 # The practice instruction sequence
-PRACTICE_INSTRUCTION_SEQUENCE = ['instructions/practice/practice-1.html',
-                                 'instructions/practice/practice-2-keep-1.html',
-                                 'instructions/practice/practice-3-keep-2.html',
-                                 'instructions/practice/practice-4-reject-1.html',
-                                 'instructions/practice/practice-5-reject-2.html',
-                                 'instructions/practice/practice-6.html']
-TASK_INSTRUCTION_SEQUENCE = []  # The default task instruction sequence for 'real' tasks
+DEF_INTRO_INSTRUCTIONS = '/instructions/normal_template.html'  # the default introduction instructions
+DEF_PRACTICE_INTO_INSTRUCTIONS = '/instructions/practice_template.html'  # the default practice introduction
 DEF_KEEP_BLOCK_INSTRUCTIONS = ['/instructions/segment_preface/keep.html']  # def in-task keep segment instructions
 DEF_REJECT_BLOCK_INSTRUCTIONS = ['/instructions/segment_preface/reject.html']  # def in-task reject segment instructions
-PRELOAD_IMAGES = True  # Whether or not to preload the images for the task.
 BOX_SIZE = [800, 500]  # The box size for serving images, [w, h]
 HIT_SIZE = [600, 400]  # the hit box size, which is where the images will be constrained to occur in, [w, h]
 POS_TYPE = 'random'  # the position type, see make_html.py
@@ -56,7 +50,7 @@ ATTRIBUTE = 'interesting'  # the default attribute to use
 IMAGE_ATTRIBUTES = []  # the types of images to be included in the task.
 TIMING_POST_TRIAL = 200  # Sets the time, in milliseconds, between the current trial and the next trial.
 DEF_FEEDBACK_TIME = 100  # the amount of time to display feedback
-DEF_TRIAL_TIME = 2000  # the maximum amount of time each trial is allowed to go for
+DEF_TRIAL_TIME = 3000  # the maximum amount of time each trial is allowed to go for
 DEF_INSTRUCTIONS = ''  # the default instructions to display before each SEGMENT
 DEF_RESPONSE_ENDS_TRIAL = 'true'  # whether or not a response ends a trial
 DEF_TRIAL_TYPE = KEEP_BLOCK  # the default trial type
@@ -85,6 +79,28 @@ DESCRIPTION = 'Choosing %s images' % ATTRIBUTE  # The default ask description.
 PRACTICE_DESCRIPTION = 'Practice for choosing %s images (you only need pass the practice once)' % ATTRIBUTE
 ASSIGNMENT_DURATION = 60*60*2  # How long after accepting a task does a worker have to complete it.
 DEF_EXTENSION_TIME = 60*60*3  # The default time to extend a hit for during extension. The current value is 3 days.
+
+
+"""
+TASK_VALIDATION
+"""
+# TODO: Change debrief js to use these values.
+MAX_MEAN_RT = np.inf
+MIN_MEAN_RT = 200
+MAX_PROB_RANDOM = 0.8
+MAX_FRAC_CONTRADICTIONS = 0.3
+MAX_FRAC_UNANSWERED = 0.3
+
+"""
+TASK VALIDATION FEEDBACK
+"""
+BAD_DATA_TOO_SLOW = 'Your responses are too slow, please try to work fast.'
+BAD_DATA_TOO_FAST = 'Your responses are too fast! Be sure you are not clicking randomly.'
+BAD_DATA_CLICKING = 'You are clicking in the same place too often. Pleased click based on the images themselves, ' \
+                    'not their position.'
+BAD_DATA_TOO_CONTRADICTORY = 'You are making too many contradictions. Please do not click around randomly, but make ' \
+                             'deliberate choices.'
+BAD_DATA_TOO_MANY_UNANSWERED = 'You are not answering too many of the trials.'
 
 
 """

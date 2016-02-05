@@ -11,6 +11,7 @@ from datetime import datetime
 import time
 from collections import Counter
 import scipy.stats as stats
+import json
 
 """
 LOGGING
@@ -815,10 +816,9 @@ class Get(object):
             # TODO: Add a statemon here?
             return None
         min_seen = self.image_get_min_seen(image_attributes)
-        if min_seen > SAMPLES_REQ_PER_IMAGE(n_active):
-            _log.warning('Images are sufficiently sampled, activating %i images.' % ACTIVATION_CHUNK_SIZE)
-            # TODO: Add a statemon here?
-            return None
+        # if min_seen > SAMPLES_REQ_PER_IMAGE(n_active):
+        #     _log.warning('Images are sufficiently sampled')
+        #     # TODO: Add a statemon here?
         if base_prob is None:
             base_prob = float(n) / n_active
         p = _prob_select(base_prob, min_seen)
@@ -1647,16 +1647,12 @@ class Set(object):
         :param resp_json: The response JSON, from a MTurk task using jsPsych
         :param hit_type_id: The HIT Type ID.
         :param worker_ip: The worker's IP address.
-        :return: None
+        :return: The fraction of missed trials and contradictions as well as the chisquare pval.
         """
         worker_id = resp_json[0]['workerId']
         hit_id = resp_json[0]['hitId']
         task_id = resp_json[0]['taskId']
-        # note: jsPsych does not provide a means to identify different tasks (say, for instance, by a trial name) hence
-        # to find the demographics trial (if present!) we will have to search through each of them. Guh.
-        dem_json = _find_demographics_element_in_json(resp_json)
-        age = dem_json['age']
-        gender = dem_json['gender']
+        assignment_id = resp_json[0]['assignmentId']
         # extract the experimental blocks
         data = filter(lambda x: x['trial_type'] == 'click-choice', resp_json)
         choices = []
@@ -1695,39 +1691,171 @@ class Set(object):
                 total_observations += 1
                 if max_index < idx:
                     max_index = idx
-        # compute the p value
+            # compute the p value
         obs = [float(counts_by_index[key]) / total_observations for key in range(max_index)]
         expected = [float(total_observations) / max_index for _ in range(max_index)]
         chi_stat, p_value = stats.chisquare(obs, expected)
-        import ipdb
-        ipdb.set_trace()
+        frac_contradictions = float(num_contradictions) / len(data)
+        frac_unanswered = float(num_unanswered) / len(data)
+        mean_rt = np.mean(filter(lambda x: x > -1, rts))
+        table = self.conn.table(TASK_TABLE)
+        table.put(task_id, {'metadata:worker_id': worker_id,
+                            'metadata:hit_id': hit_id,
+                            'metadata:assignment_id': assignment_id,
+                            'completion_data:choices': dumps(choices),
+                            'completion_data:action': dumps(actions),
+                            'completion_data:reaction_times': dumps(rts),
+                            'completion_data:response_json': json.dumps(resp_json),
+                            'completion_data:worker_ip': str(worker_ip),
+                            'metadata:hit_type_id': str(hit_type_id),
+                            'validation_statistics:prob_random': '%.4f' % p_value,
+                            'validation_statistics:frac_contradictions': '%.4f' % frac_contradictions,
+                            'validation_statistics:frac_no_response': '%.4f' % frac_unanswered,
+                            'validation_statistics:mean_rt': '%.4f' % mean_rt})
+        return frac_contradictions, frac_unanswered, mean_rt, p_value
 
-    def practice_pass(self, task_id):
+    def validate_task(self, task_id=None, frac_contradictions=None, frac_unanswered=None, mean_rt=None,
+                      prob_random=None):
+        """
+        Validates a task, either by providing it with the task id or the numbers themselves. Violating any one of the
+        constraints established by the TASK_VALIDATION section in conf.py results in the data being discarded.
+
+        :param task_id: The task ID, as a string.
+        :param frac_contradictions: The fraction of contradictory selections in the task.
+        :param frac_unanswered: The fraction of missed selections in the task.
+        :param mean_rt: The average reaction time, in milliseconds.
+        :param prob_random: The Chisquare distribution p-value for whether or not this individual behaved randomly.
+        :return: A boolean indicating whether or not this task is acceptable as well as a reason for the rejection (if
+                 it is unacceptable) or None.
+        """
+        table = self.conn.table(TASK_TABLE)
+
+        def validate_rt(task_id, mean_rt):
+            """validates based on reaction time"""
+            if mean_rt is None:
+                if task_id is None:
+                    _log.warning('Average reaction time not provided nor is task_id. '
+                                 'Task will not be judged on reaction time.')
+                    return True, None
+                else:
+                    try:
+                        mean_rt_str = float(table.row(task_id).get('validation_statistics:mean_rt', None))
+                    except TypeError:
+                        _log.warning(('Could not acquire mean_rt for task %s. '
+                                      'Task will not be judged on reaction time') % task_id)
+                        return True, None
+                    mean_rt = float(mean_rt_str)
+            if mean_rt < MIN_MEAN_RT:
+                return False, BAD_DATA_TOO_FAST
+            if mean_rt > MAX_MEAN_RT:
+                return False, BAD_DATA_TOO_SLOW
+            return True, None
+
+        def validate_frac_unanswered(task_id, frac_unanswered):
+            """validates based on the fraction unanswered."""
+            if frac_unanswered is None:
+                if task_id is None:
+                    _log.warning('Fraction of unanswered not provided nor is task_id. '
+                                 'Task will not be judged on the fraction unanswered.')
+                    return True, None
+                else:
+                    try:
+                        frac_unanswered_str = float(table.row(task_id).get('validation_statistics:frac_no_response', None))
+                    except TypeError:
+                        _log.warning(('Could not acquire frac_no_response for task %s. '
+                                      'Task will not be judged on the fraction unanswered') % task_id)
+                        return True, None
+                    frac_unanswered = float(frac_unanswered_str)
+            if frac_unanswered > MAX_FRAC_UNANSWERED:
+                return False, BAD_DATA_TOO_MANY_UNANSWERED
+            return True, None
+
+        def validate_frac_contradictions(task_id, frac_contradictions):
+            """validates based on the fraction of contradictions."""
+            if frac_contradictions is None:
+                if task_id is None:
+                    _log.warning('Fraction of contradictions not provided nor is task_id. '
+                                 'Task will not be judged on the fraction of contradictions.')
+                    return True, None
+                else:
+                    try:
+                        frac_contradictions_str = float(
+                            table.row(task_id).get('validation_statistics:frac_contradictions', None))
+                    except TypeError:
+                        _log.warning(('Could not acquire frac_contradictions for task %s. '
+                                      'Task will not be judged on the fraction of contradictions') % task_id)
+                        return True, None
+                    frac_contradictions = float(frac_contradictions_str)
+            if frac_contradictions > MAX_FRAC_CONTRADICTIONS:
+                return False, BAD_DATA_TOO_CONTRADICTORY
+            return True, None
+
+        def validate_prob_random(task_id, prob_random):
+            """validates based on the probability that they are behaving randomly."""
+            if prob_random is None:
+                if task_id is None:
+                    _log.warning('Probability of random behavior not provided nor is task_id. '
+                                 'Task will not be judged on the probability of random behavior.')
+                    return True, None
+                else:
+                    try:
+                        prob_random_str = float(
+                            table.row(task_id).get('validation_statistics:prob_random', None))
+                    except TypeError:
+                        _log.warning(('Could not acquire prob_random for task %s. '
+                                      'Task will not be judged on the probability of random behavior') % task_id)
+                        return True, None
+                    prob_random = float(prob_random_str)
+            if prob_random > MAX_PROB_RANDOM:
+                return False, BAD_DATA_CLICKING
+            return True, None
+
+        val, reason = validate_frac_unanswered(task_id, frac_unanswered)
+        if not val:
+            return val, reason
+        val, reason = validate_rt(task_id, mean_rt)
+        if not val:
+            return val, reason
+        val, reason = validate_prob_random(task_id, prob_random)
+        if not val:
+            return val, reason
+        val, reason = validate_frac_contradictions(task_id, frac_contradictions)
+        if not val:
+            return val, reason
+
+    def register_demographics(self, resp_json):
+        """
+        Registers the demographics of a worker.
+
+        :param resp_json: The response JSON of a task from MTurk.
+        :return: None
+        """
+        worker_id = resp_json[0]['workerId']
+        table = self.conn.table(WORKER_TABLE)
+        # note: jsPsych does not provide a means to identify different tasks (say, for instance, by a trial name) hence
+        # to find the demographics trial (if present!) we will have to search through each of them. Guh.
+        dem_json = _find_demographics_element_in_json(resp_json)
+        if dem_json is None:
+            return
+        age = dem_json['age']
+        gender = dem_json['gender']
+        table.put(worker_id, {'demographics:age': str(age),
+                              'demographics:gender': str(gender)})
+
+    def practice_pass(self, resp_json):
         """
         Notes a pass of a practice task.
 
-        :param task_id: The ID of the practice to reject.
+        :param resp_json: The response JSON of the practice task that was just passed.
         :return: None.
         """
-        table = self.conn.table(TASK_TABLE)
-        # check if the table exists
-        if not self._table_has_row(table, task_id):
-            _log.warning('No practice data for finished practice %s' % task_id)
-            return
-        worker_id = table.row(task_id, columns=['task_meta:worker_id']).get('task_meta:worker_id', None)
-        # check if there is a worker associated with it
-        if worker_id is None:
-            _log.error('Passed practice %s is not associated with a worker.' % task_id)
-            return
-        is_practice = table.row(task_id, columns=['task_meta:is_practice']).get('task_meta:is_practice', False)
-        if not is_practice:
-            _log.warning('Task %s is not a practice.' % task_id)
-            return
-        _log.info('Practice passed for worker %s' % worker_id)
-        table.put(task_id, {'status:complete': '1'})
         table = self.conn.table(WORKER_TABLE)
-        table.put(worker_id, {'worker_status:passed_practice': '1'})
-        # TODO: grant the worker the passed practice qualification from webserver.mturk
+        # note: jsPsych does not provide a means to identify different tasks (say, for instance, by a trial name) hence
+        # to find the demographics trial (if present!) we will have to search through each of them. Guh.
+        worker_id = resp_json[0]['workerId']
+        task_id = resp_json[0]['taskId']
+        table.put(worker_id, {'status:passed_practice': TRUE,
+                              'stats:passed_practice_id': task_id})
 
     def practice_failure(self, task_id, reason=None):
         """
