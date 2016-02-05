@@ -1362,8 +1362,9 @@ class Set(object):
                     pair_list.add(tuple(sorted(imPair)))
                 im_tuples.append(im_tuple)
                 im_tuple_types.append(seg_type)
-        for img in image_list:
-            table.counter_inc(img, 'stats:num_times_seen')
+        if not is_practice:
+            for img in image_list:
+                table.counter_inc(img, 'stats:num_times_seen')
         task_dict['metadata:images'] = dumps(images)  # note: not in order of presentation!
         task_dict['metadata:tuples'] = dumps(im_tuples)
         task_dict['metadata:tuple_types'] = dumps(im_tuple_types)

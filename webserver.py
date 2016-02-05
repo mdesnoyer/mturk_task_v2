@@ -16,23 +16,22 @@ from db import Get
 from db import Set
 from generate import fetch_task
 from generate import make_success
-# from generate import make_demographics
 from mturk import MTurk
-# from daemon import Daemon
 import boto.mturk.connection
 import happybase
 from conf import *
 from flask import Flask
 from flask import request
-# from flask import url_for
+import celery
 
 _log = logger.setup_logger(__name__)
 
-conn = happybase.Connection(DATABASE_LOCATION)  # make sure to instantiate the database connection.
+conn = happybase.ConnectionPool(NUM_THREADS, host=DATABASE_LOCATION)
 if MTURK_SANDBOX:
     mturk_host = MTURK_SANDBOX_HOST
 else:
     mturk_host = MTURK_HOST
+
 MTURK_ACCESS_ID = os.environ['MTURK_ACCESS_ID']
 MTURK_SECRET_KEY = os.environ['MTURK_SECRET_KEY']
 
@@ -104,6 +103,61 @@ def _get_static_urls():
 static_urls = _get_static_urls()
 
 
+@celery.task
+def create_hit(hit_type_id=None):
+    """
+    The background task for creating new hits, which enables us to maintain a constant number of tasks at all times.
+    Note that this should be only used for generating 'real' tasks--i.e., NOT practices!
+
+    :param hit_type_id: The HIT type ID, as a string.
+    :return: None.
+    """
+    _log.info('Generating a new HIT')
+    task_id, exp_seq, attribute, register_task_kwargs = \
+        dbget.gen_task(DEF_PRACTICE_NUM_IMAGES_PER_TASK, 3, DEF_NUM_IMAGE_APPEARANCE_PER_TASK, n_keep_blocks=1,
+                       n_reject_blocks=1, hit_type_id=hit_type_id)
+    _log.info('Registering task in the database')
+    dbset.register_task(task_id, exp_seq, attribute, **register_task_kwargs)
+    _log.info('Adding task %s to mturk as hit under hit type id %s' % (task_id, hit_type_id))
+    hid = mt.add_hit_to_hit_type(hit_type_id, task_id)
+    _log.info('Hit %s is ready.' % hid)
+
+
+@celery.task
+def check_practices(hit_type_id=None):
+    """
+    Checks to make sure that the practices are up, etc. If not, rebuilds them.
+
+    :param hit_type_id: The HIT type ID, as a string.
+    :return: None.
+    """
+    # TODO: Implement this!
+    return NotImplementedError()
+
+
+@celery.task
+def check_ban(worker_id=None):
+    """
+    Checks to see if a worker needs to be banned
+
+    :param worker_id: The worker ID, as a string
+    :return: None
+    """
+    # TODO: Implement this!
+    return NotImplementedError()
+
+
+@celery.task
+def unban_workers():
+    """
+    Designed to run periodically, checks to see the workers -- if any -- that need to be unbanned.
+
+    :return: None
+    """
+    # TODO: Implement this!
+    return NotImplementedError()
+
+
 @app.route('/task', methods=['POST', 'GET'])
 def task():
     """
@@ -115,7 +169,6 @@ def task():
 
     :return: The Task / Practice / Error page / etc HTML.
     """
-    assignment_id = request.values.get('assignmentId', '')
     is_preview = request.values.get('assignmentId') == PREVIEW_ASSIGN_ID
     hit_id = request.values.get('hitId', '')
     hit_info = mt.get_hit(hit_id)
@@ -141,11 +194,6 @@ def submit():
     worker_id = request.json[0]['workerId']
     task_id = request.json[0]['taskId']
     assignment_id = request.json[0]['assignmentId']
-    # # -------------------------- THIS STUFF PURELY FOR TESTING
-    # import json
-    # with open('/repos/mturk_task_v2/request', 'w') as f:
-    #     json.dump(request.json, f)
-    # # -------------------------- END PURELY FOR TESTING
     hit_info = mt.get_hit(hit_id)
     try:
         hit_type_id = hit_info.HITTypeId

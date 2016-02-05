@@ -7,8 +7,6 @@ This amounts to:
 
     - Banning workers
     - Unbanning workers
-    - Approving / rejecting tasks in the database
-    - Approving / rejecting tasks on MTurk
     - Renewing tasks that have expired
     - Building new practices
     - Activating new images.

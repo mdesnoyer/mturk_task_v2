@@ -44,7 +44,6 @@ REJECT_BLOCK = 'reject'
 OTHER MTURK INFORMATION
 """
 PREVIEW_ASSIGN_ID = 'ASSIGNMENT_ID_NOT_AVAILABLE'  # what the assignment ID is when they're just previewing
-# TODO: FUCK I HOPE PYRAMID SUPPORTS HTTPS!!
 EXTERNAL_QUESTION_ENDPOINT = 'https://127.0.0.1:12344/task'  # where to route external question urls
 EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = 'https://127.0.0.1:12344/submit'
 MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'  # the host for the mturk sandbox
