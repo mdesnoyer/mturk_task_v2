@@ -1,8 +1,10 @@
 """
-This file contains globals that are not meant to be readily edited. It was necessitated for two reasons:
+This file contains globals that are not meant to be readily edited. It was
+necessitated for two reasons:
     - conf import utils, but utils required parameters in conf
     - conf became too large.
-There are no hard-and-fast rules about what belongs in _globals vs. what belongs in _conf.
+There are no hard-and-fast rules about what belongs in _globals vs. what belongs
+in _conf.
 """
 
 import os
@@ -11,26 +13,37 @@ import numpy as np
 """
 MTURK QUALIFICATIONS
 """
-# These names are misleading. QUALIFICATION_NAME is a relic from when there was only one qualification; in reality, both
-# QUALIFICATION_NAME and DAILY_QUOTA_QUALIFICATION each represent distinct qualifications.
+# These names are misleading. QUALIFICATION_NAME is a relic from when there was
+# only one qualification; in reality, both QUALIFICATION_NAME and
+# DAILY_QUOTA_QUALIFICATION each represent distinct qualifications.
 
 # this is the 'main' qualification -- which allows them to take the task.
 QUALIFICATION_NAME = 'Practice for image selection task passed.'
-QUALIFICATION_DESCRIPTION = 'You have passed the practices for the image selection task, and are now free to ' \
-                            'complete the full tasks. Thank you! NOTE: This qualification should not be requested! ' \
-                            'It will be granted automatically after a short delay following you completing the ' \
-                            'practice task. NOTE: While our tasks have no wrong answers, if we believe that you ' \
-                            'are not giving your attention to the task or behaving randomly, you could be ' \
-                            'temporarily banned in which case this qualification will be revoked. Once the ban ' \
+QUALIFICATION_DESCRIPTION = 'You have passed the practices for the image ' \
+                            'selection task, and are now free to ' \
+                            'complete the full tasks. Thank you! NOTE: This ' \
+                            'qualification should not be requested! ' \
+                            'It will be granted automatically after a short ' \
+                            'delay following you completing the ' \
+                            'practice task. NOTE: While our tasks have no ' \
+                            'wrong answers, if we believe that you ' \
+                            'are not giving your attention to the task or ' \
+                            'behaving randomly, you could be ' \
+                            'temporarily banned in which case this ' \
+                            'qualification will be revoked. Once the ban ' \
                             'expires, you will be able to re-take the practice.'
 
-# This is the qualification counter qualification. This limits the number of tasks they can complete per day. It is
-# internally set, every day, to the value of MAX_SUBMITS_PER_DAY.
+# This is the qualification counter qualification. This limits the number of
+# tasks they can complete per day. It is  internally set, every day, to the
+# value of MAX_SUBMITS_PER_DAY.
 DAILY_QUOTA_NAME = 'Daily task limit'
-DAILY_QUOTA_DESCRIPTION = 'This is the number of tasks you can submit per day. Every time you submit a task, it ' \
-                          'decreases by one. Each day it is reset, so you can resume doing tasks tomorrow. NOTE: ' \
-                          'You do not need to apply for this. This is qualification is granted automatically ' \
-                          'when you have received the qualification "%s"' % QUALIFICATION_NAME
+DAILY_QUOTA_DESCRIPTION = 'This is the number of tasks you can submit per ' \
+                          'day.  Every time you submit a task, it ' \
+                          'decreases by one. Each day it is reset, so you ' \
+                          'can resume doing tasks tomorrow. NOTE: You do ' \
+                          'not need to apply for this. This is qualification' \
+                          ' is granted automatically when you have received' \
+                          ' the qualification "%s"' % QUALIFICATION_NAME
 
 
 """
@@ -43,12 +56,17 @@ REJECT_BLOCK = 'reject'
 """
 OTHER MTURK INFORMATION
 """
-PREVIEW_ASSIGN_ID = 'ASSIGNMENT_ID_NOT_AVAILABLE'  # what the assignment ID is when they're just previewing
-EXTERNAL_QUESTION_ENDPOINT = 'https://127.0.0.1:12344/task'  # where to route external question urls
+# what the assignment ID is when they're just previewing
+PREVIEW_ASSIGN_ID = 'ASSIGNMENT_ID_NOT_AVAILABLE'
+# where to route external question urls
+EXTERNAL_QUESTION_ENDPOINT = 'https://127.0.0.1:12344/task'
 EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = 'https://127.0.0.1:12344/submit'
-MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'  # the host for the mturk sandbox
-MTURK_HOST = 'mechanicalturk.amazonaws.com'  # the host for the vanilla sandbox
-HIT_CHUNK_SIZE = 1000  # the number of tasks to post in blocks.
+# the host for the mturk sandbox
+MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'
+# the host for the vanilla sandbox
+MTURK_HOST = 'mechanicalturk.amazonaws.com'
+# the number of tasks to post in blocks.
+HIT_CHUNK_SIZE = 1000
 
 
 """
@@ -71,32 +89,42 @@ PREVIEW_TEMPLATE = 'preview_template.html'
 DIRECTORIES
 """
 ROOT = os.path.dirname(os.path.abspath(__file__))
-TEMPLATE_DIR = os.path.join(ROOT, 'static/resources/templates/')  # The template location
-EXPERIMENT_DIR = os.path.join(ROOT, 'experiments/')  # The destination of experiments
+# The template location
+TEMPLATE_DIR = os.path.join(ROOT, 'static/resources/templates/')
+# The destination of experiments
+EXPERIMENT_DIR = os.path.join(ROOT, 'experiments/')
 
 
 """
 TASK ID OPTIONS
 """
-TASK_PREFIX = 't_'  # the prefix for every true task ID
-PRACTICE_PREFIX = 'p_'  # the prefix for every practice task ID
+# the prefix for every true task ID
+TASK_PREFIX = 't_'
+# the prefix for every practice task ID
+PRACTICE_PREFIX = 'p_'
 
 
 """
 DATABASE OPTIONS
 """
 DATABASE_LOCATION = 'localhost'
-STORE_PRACTICE_PAIRS = False  # if True, will store all practice pairs as if they were in real trials.
-ACTIVATION_CHUNK_SIZE = 500  # The number of images to activate in a chunk.
-DEFAULT_BAN_LENGTH = float(60*60*24*7)  # the default length of time for a ban
-TASK_COMPLETION_TIMEOUT = float(60*60*24)  # the amount of time a task may be pending without being completed
+# if True, will store all practice pairs as if they were in real trials.
+STORE_PRACTICE_PAIRS = False
+# The number of images to activate in a chunk.
+ACTIVATION_CHUNK_SIZE = 500
+# the default length of time for a ban
+DEFAULT_BAN_LENGTH = float(60*60*24*7)
+# the amount of time a task may be pending without being completed
+TASK_COMPLETION_TIMEOUT = float(60*60*24)
 
 
 """
 DATABASE FLAGS
 """
-ANY = 'OR'  # used in filter generators, to indicate whether or not it must pass ANY filters
-ALL = 'AND'  # used in filter generators, to indicate whether or not it must pass ALL filters
+# used in filter generators, to indicate whether or not it must pass ANY filters
+ANY = 'OR'
+# used in filter generators, to indicate whether or not it must pass ALL filters
+ALL = 'AND'
 
 
 """
@@ -117,12 +145,26 @@ REJECTED = '6'  # the task has been rejected
 HIT STATUSES
 """
 HIT_UNDEFINED = -1  # the HIT status is undefined.
-HIT_PENDING = 0  # the HIT is: unexpired, unsubmitted (no assignments approved)
-HIT_EXPIRED = 1  # the HIT is: expired, unsubmitted (no assignments approved)
-HIT_COMPLETE = 2  # the HIT is: submitted (all assignments submitted)
-HIT_APPROVED = 3  # the HIT is: submitted, approved (all assignments submitted, approved)
-HIT_REJECTED = 4  # the HIT is: submitted, rejected (all assignments submitted, rejected)
-HIT_DISPOSED = 5  # the HIT is: disposed
+HIT_PENDING = 0  # unexpired, unsubmitted (no assignments approved)
+HIT_EXPIRED = 1  # expired, unsubmitted (no assignments approved)
+HIT_COMPLETE = 2  # submitted (all assignments submitted)
+HIT_APPROVED = 3  # submitted, approved (all assignments submitted, approved)
+HIT_REJECTED = 4  # submitted, rejected (all assignments submitted, rejected)
+HIT_DISPOSED = 5  # disposed
+HIT_DEAD= 6  # the hit isn't complete or expired but is unavailable
+
+
+"""
+PRACTICE STATUSES
+
+Notes: DEAD supercedes COMPLETE
+"""
+
+PRACTICE_UNDEFINED = -1  # undefined status
+PRACTICE_PENDING = 0  # practice is pending (not all complete)
+PRACTICE_COMPLETE = 1  # practice is complete (all jobs finished)
+PRACTICE_EXPIRED = 2  # th epractice is expired
+PRACTICE_DEAD = 3  # practice is unavailable but not expired / complete
 
 
 """
@@ -173,12 +215,18 @@ HIT_TYPE_FAMILIES = {'metadata': dict(max_versions=1),
 
 """
 SAMPLES REQ PER IMAGE
+
+Notes:
+
+This is a lambda function that accepts the number of active images and
+computes the number of samples required for effective ranking. This is
+adapted from the paper by Shah et al on Rank Centrality, which indicates that
+the number of samples should be O(epsilon^-2 * n * poly(log(n))) where epsilon
+is the  spectral gap of the Laplacian of the graph. If pairs are chosen at
+random, the graph is Erdos-Renyi and the spectral gap has a lower bound by
+some probability and hence the complexity is O(n * poly(log(n))). poly(x)
+denotes x^O(1), which we assume to be x^1.
 """
-#   This is a lambda function that accepts the number of active images and computes the number of samples required for
-#   effective ranking. This is adapted from the paper by Shah et al on Rank Centrality, which indicates that the number
-#   of samples should be O(epsilon^-2 * n * poly(log(n))) where epsilon is the spectral gap of the Laplacian of the
-#   graph. If pairs are chosen at random, hte graph is Erdos-Renyi and the spectral gap has a lower bound by some
-#   probability and hence the complexity is O(n * poly(log(n))). poly(x) denotes x^O(1), which we assume to be x^1.
 SAMPLES_REQ_PER_IMAGE = lambda n_active: n_active * np.log(n_active)
 
 
@@ -186,12 +234,18 @@ SAMPLES_REQ_PER_IMAGE = lambda n_active: n_active * np.log(n_active)
 VARIOUS IMPORTANT FILTERS
 """
 # Finds active images.
-ACTIVE_FILTER = ("SingleColumnValueFilter ('metadata','is_active',=,'regexstring:^%s$')" % TRUE)
+ACTIVE_FILTER = ("SingleColumnValueFilter ('metadata','is_active',=,"
+                 "'regexstring:^%s$')" % TRUE)
 # Finds tasks that are awaiting serving.
-AWAITING_SERVE_FILTER = ("SingleColumnValueFilter ('status', 'awaiting_serve', =, 'regexstring:^%s$')" % TRUE)
+AWAITING_SERVE_FILTER = ("SingleColumnValueFilter ('status', 'awaiting_serve', "
+                         "=, 'regexstring:^%s$')" % TRUE)
 # Finds practice tasks.
-IS_PRACTICE_FILTER = ("SingleColumnValueFilter ('metadata', 'is_practice', =, 'regexstring:^%s$')" % TRUE)
+IS_PRACTICE_FILTER = ("SingleColumnValueFilter ('metadata', 'is_practice', =, "
+                      "'regexstring:^%s$')" % TRUE)
 # Finds inactive images.
-INACTIVE_FILTER = ("SingleColumnValueFilter ('metadata','is_active',=,'regexstring:^%s$')" % FALSE)
+INACTIVE_FILTER = ("SingleColumnValueFilter ('metadata','is_active',=,"
+                   "'regexstring:^%s$')" % FALSE)
 # Finds tasks that are pending completion
-PENDING_COMPLETION_FILTER = ("SingleColumnValueFilter ('status', 'pending_completion', =, 'regexstring:^%s$')" % TRUE)
+PENDING_COMPLETION_FILTER = ("SingleColumnValueFilter ('status', "
+                             "'pending_completion', =, "
+                             "'regexstring:^%s$')" % TRUE)

@@ -1,6 +1,7 @@
 """
-Exports functions specific to integrating information from MTurk and the database to generate the task HTML itself.
-The external resources in ./resources are specifically in the purview of generate.py.
+Exports functions specific to integrating information from MTurk and the
+database to generate the task HTML itself.  The external resources in
+./resources are specifically in the purview of generate.py.
 """
 
 from conf import *
@@ -17,8 +18,10 @@ _log = logger.setup_logger(__name__)
 # create the jinja escape filter
 def jinja2_escapejs_filter(value):
     # Perform Jinja2 Escapes
-    _js_escapes = {'\\': '\\u005C', '\'': '\\u0027', '"': '\\u0022', '>': '\\u003E', '<': '\\u003C', '&': '\\u0026',
-                   '=': '\\u003D', '-': '\\u002D', ';': '\\u003B', u'\u2028': '\\u2028', u'\u2029': '\\u2029'}
+    _js_escapes = {'\\': '\\u005C', '\'': '\\u0027', '"': '\\u0022',
+                   '>': '\\u003E', '<': '\\u003C', '&': '\\u0026',
+                   '=': '\\u003D', '-': '\\u002D', ';': '\\u003B', u'\u2028':
+                       '\\u2028', u'\u2029': '\\u2029'}
     _js_escapes.update(('%c' % z, '\\u%04X' % z) for z in xrange(32))
     retval = []
     for letter in value:
@@ -37,10 +40,13 @@ templateEnv.filters['escapejs'] = jinja2_escapejs_filter
 
 def _get_static_url_dict(template, static_urls=None):
     """
-    Returns a dictionary with the appropriate key/value pairs to generate a template. Originally, it attempted to fill
-    in all undeclared static variables in a template, however, it does not seem possible to sequentially render a
-    template -- it has to be done all at once. This seems like a bizarre design choice, but perhaps jinja2 has no
-    provision for storing the value of variables without rendering the whole template to unicode? idk...
+    Returns a dictionary with the appropriate key/value pairs to generate a
+    template. Originally, it attempted to fill  in all undeclared static
+    variables in a template, however, it does not seem possible to
+    sequentially render a template -- it has to be done all at once. This
+    seems like a bizarre design choice, but perhaps jinja2 has no provision
+    for storing the value of variables without rendering the whole template
+    to unicode? idk...
 
     :param template: A jinja2 template filename.
     :param static_urls: A dictionary of static URLs. See webserver.py.
@@ -57,8 +63,9 @@ def _get_static_url_dict(template, static_urls=None):
 
 def make_demographics(static_urls=None):
     """
-    Generates the demographic HTML. Since this is constant across workers, all that's necessary for it to work is the
-    dictionary of static URLs so it knows where to get the jsPsych javascript from.
+    Generates the demographic HTML. Since this is constant across workers,
+    all that's necessary for it to work is the dictionary of static URLs so
+    it knows where to get the jsPsych javascript from.
 
     :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The demographics acquisition page HTML.
@@ -66,16 +73,19 @@ def make_demographics(static_urls=None):
     if static_urls is None:
         static_urls = {}
     demographics = templateEnv.get_template(DEMOGRAPHICS_TEMPLATE)
-    return demographics.render(**_get_static_url_dict(DEMOGRAPHICS_TEMPLATE, static_urls))
+    return demographics.render(**_get_static_url_dict(DEMOGRAPHICS_TEMPLATE,
+                                                      static_urls))
 
 
 def make_success(static_urls=None):
     """
-    Functions just like make_demographics, but returns a 'success page' indicating that the task was successfully
-    submitted. It needs static_urls for the same reason.
+    Functions just like make_demographics, but returns a 'success page'
+    indicating that the task was successfully submitted. It needs
+    static_urls for the same reason.
 
     :param static_urls: A dictionary of static URLs. See webserver.py.
-    :return: HTML for a page indicating the worker has successfully completed a task.
+    :return: HTML for a page indicating the worker has successfully completed a
+             task.
     """
     if static_urls is None:
         static_urls = {}
@@ -83,55 +93,81 @@ def make_success(static_urls=None):
     return success.render(**_get_static_url_dict(SUCCESS_TEMPLATE, static_urls))
 
 
-def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE, pos_type=POS_TYPE, attribute=ATTRIBUTE,
-              practice=False, collect_demo=False, is_preview=False, static_urls=None,
+def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
+              pos_type=POS_TYPE, attribute=ATTRIBUTE, practice=False,
+              collect_demo=False, is_preview=False, static_urls=None,
               intro_instructions=DEF_INTRO_INSTRUCTIONS):
     """
-    Produces an experimental HTML document. By assembling blocks of html code into a single html document. Note that
-    this will fill in missing values in place!
+    Produces an experimental HTML document. By assembling blocks of html code
+    into a single html document. Note that this will fill in missing values
+    in place!
 
     INFO
-    Similar to JsPsych, this script accepts a list of data structures that each represent a portion of the experiment.
+    Similar to JsPsych, this script accepts a list of data structures that
+    each represent a portion of the experiment.
     These take the form of dictionaries, called 'blocks':
-        block['images'] = a list of lists, where each sublist is of the form [image1, ...].
-        block['type'] = 'keep' or 'reject', depending on the trial type. [def: DEF_TRIAL_TYPE]
+        block['images'] = a list of lists, where each sublist is of the form
+                         [image1, ...].
+        block['type'] = 'keep' or 'reject', depending on the trial type. [
+                        def: DEF_TRIAL_TYPE]
         block['name'] = The block name. If absent, will be dynamically named.
-        block['instructions'] = A list of strings, the instructions to be displayed before the trial begins. This uses
-                                the format of JsPsych, i.e., each element of the list is a separate page. Alternatively,
-                                each of these may be files that point to jinja templates. [def: DEF_INSTRUCTIONS]
-        block['feedback_time'] = an int, how long (in ms) to display selection feedback. [def: DEF_FEEDBACK_TIME]
-        block['trial_time'] = the time for each trial (in ms). [def: DEF_TRIAL_TIME]
-        block['response_ends_trial'] = boolean, whether or not a click causes the trial to advance.
-                                       [def: DEF_RESPONSE_ENDS_TRIAL]
-        block['prompt'] = a string, the prompt to display during the trial, above the image block. The default prompt
-                          will vary based on whether or not this is a practice task, see the configuration python file.
-        block['timing_post_trial'] = numeric, the time that elapses between each trial (not counting the feedback_time)
+        block['instructions'] = A list of strings, the instructions to be
+                                displayed before the trial begins. This uses
+                                the format of JsPsych, i.e., each element of
+                                the list is a separate page. Alternatively,
+                                each of these may be files that point to
+                                jinja templates. [def: DEF_INSTRUCTIONS]
+        block['feedback_time'] = an int, how long (in ms) to display
+                                 selection feedback. [def: DEF_FEEDBACK_TIME]
+        block['trial_time'] = the time for each trial (in ms). [def:
+                              DEF_TRIAL_TIME]
+        block['response_ends_trial'] = boolean, whether or not a click causes
+                                       the trial to advance. [def:
+                                       DEF_RESPONSE_ENDS_TRIAL]
+        block['prompt'] = a string, the prompt to display during the trial,
+                          above the image block. The default prompt  will
+                          vary based on whether or not this is a practice
+                          task, see the configuration python file.
+        block['timing_post_trial'] = numeric, the time that elapses between
+                                     each trial (not counting the feedback_time)
                                      in milliseconds.
-        block['image_idx_map'] = A list of lists, with the same structure as 'images', but with task-global indices
-                                 instead of strings. This is to facilitate the detection of contradictions under
+        block['image_idx_map'] = A list of lists, with the same structure as
+                                 'images', but with task-global indices
+                                 instead of strings. This is to facilitate
+                                 the detection of contradictions under
                                  independent randomization of block types.
-        block['global_tup_idxs'] = A list of indices corresponding to the 'identity' index of each tuple. This has a
-                                   similar purpose to 'image_idx_map', in that it maps the shuffled image tuples back
-                                   to their "original" order.
+        block['global_tup_idxs'] = A list of indices corresponding to the
+                                   'identity' index of each tuple. This has a
+                                   similar purpose to 'image_idx_map',
+                                   in that it maps the shuffled image tuples
+                                   back to their "original" order.
 
     For configuration details, see conf.py.
 
-    :param blocks: These are individual trials, and take the form of dictionaries, called 'blocks'. For the fields, see
-                   the readme above.
+    :param blocks: These are individual trials, and take the form of
+                   dictionaries, called 'blocks'. For the fields, see the
+                   readme above.
     :param task_id: The ID of the task, as provided by MTurk
-    :param box_size: The size of the images to display in pixels, [w, h]. {def: [800, 800]}
-    :param hit_size: The size of the box that contains the images, [w, h]. This is a subbox that will either be (a)
+    :param box_size: The size of the images to display in pixels, [w,
+                     h]. {def: [800, 800]}
+    :param hit_size: The size of the box that contains the images, [w,
+                     h]. This is a subbox that will either be (a)
                      centered or (b) randomly positioned. {def: [600, 600]}
-    :param pos_type: Either 'random', in which the hit box is placed anywhere inside the box, or 'fixed', where it is
-                     centered. [def: 'random']
-    :param attribute: The attribute that you want people to judge, e.g., 'interesting'
+    :param pos_type: Either 'random', in which the hit box is placed anywhere
+                     inside the box, or 'fixed', where it is centered.
+                     [def: 'random']
+    :param attribute: The attribute that you want people to judge, e.g.,
+                      'interesting'
     :param practice: Boolean. If True, will display the debrief pages.
     :param collect_demo: Boolean. If True, will collect demographic information.
-    :param is_preview: Boolean. If True, will assume that this is a preview of the experiment and only render the
-                       instructions. This should only be true if the worker is previewing the HIT, i.e., the value
-                       of assignmentId is ASSIGNMENT_ID_NOT_AVAILABLE
+    :param is_preview: Boolean. If True, will assume that this is a preview
+                       of the experiment and only render the instructions.
+                       This should only be true if the worker is previewing
+                       the HIT, i.e., the value of assignmentId is
+                       ASSIGNMENT_ID_NOT_AVAILABLE
     :param static_urls: A dictionary of static URLs. See webserver.py.
-    :param intro_instructions: A </sep>-separated html file containing the instruction templates.
+    :param intro_instructions: A </sep>-separated html file containing the
+                               instruction templates.
     :return The appropriate HTML for this experiment.
     """
     if static_urls is None:
@@ -152,7 +188,8 @@ def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE, pos_ty
     else:
         d_val = 'false'
     if intro_instructions:
-        block, start_inst_name = _make_start_block(intro_instructions, attribute)
+        block, start_inst_name = _make_start_block(intro_instructions,
+                                                   attribute)
         rblocks.append(block)
         blocknames.append(start_inst_name)
     for n, block in enumerate(blocks):
@@ -162,13 +199,16 @@ def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE, pos_ty
             counts[block['type']] += 1
         except:
             raise ValueError("Unknown block type for block %i"%n)
-        block['name'] = block.get('name', block['type'] + '_' + str(counts[block['type']]))
+        block['name'] = \
+            block.get('name', block['type'] + '_' + str(counts[block['type']]))
         block['instructions'] = block.get('instructions', DEF_INSTRUCTIONS)
         block['feedback_time'] = block.get('feedback_time', DEF_FEEDBACK_TIME)
         block['trial_time'] = block.get('trial_time', DEF_TRIAL_TIME)
         block['prompt'] = block.get('prompt', DEF_PROMPT)
-        block['response_ends_trial'] = block.get('response_ends_trial', DEF_RESPONSE_ENDS_TRIAL)
-        block['timing_post_trial'] = block.get('timing_post_trial', TIMING_POST_TRIAL)
+        block['response_ends_trial'] = \
+            block.get('response_ends_trial', DEF_RESPONSE_ENDS_TRIAL)
+        block['timing_post_trial'] = \
+            block.get('timing_post_trial', TIMING_POST_TRIAL)
         block['global_tup_idxs'] = block.get('global_tup_idxs', None)
         block['image_idx_map'] = block.get('image_idx_map', None)
         if block['instructions']:
@@ -233,7 +273,8 @@ def make_no_avail_tasks_html(static_urls=None):
     Creates the 'no tasks are available' html.
 
     NOTE:
-        For now, we will be using make_error_fetching_task_html as the page for the no-tasks-available situation.
+        For now, we will be using make_error_fetching_task_html as the page
+        for the no-tasks-available situation.
 
         This is now unused, since banning is done implicitly.
 
@@ -273,15 +314,17 @@ def make_error_submitting_task_html(static_urls=None):
 
 def _make_exp_block(block, box_size, hit_size, pos_type):
     """
-    Accepts a block dict (see readme) and returns an appropriate experimental block, which consists of sequential images
-    to be presented to the mturk worker.
+    Accepts a block dict (see readme) and returns an appropriate experimental
+    block, which consists of sequential images to be presented to the mturk
+    worker.
 
     :param block: A dictionary that defines a block; see the readme.
     :param box_size: The box size, see make()
     :param hit_size: The hit box size, see make()
     :param pos_type: How to position the hit box in the box, see make()
-    :return: An experimental block, a dictionary that can be used to fill the experimental template. Additionally
-    returns a list of images involved in this block, which can be used for image preloading.
+    :return: An experimental block, a dictionary that can be used to fill the
+             experimental template. Additionally returns a list of images
+             involved in this block, which can be used for image preloading.
     """
     rblock = dict()
     rblock['stimset'] = []
@@ -316,25 +359,29 @@ def _make_exp_block(block, box_size, hit_size, pos_type):
 
 def _fit_images(images, hit_size):
     """
-    Computes the x- and y-positions for a list of images and their widths and heights such that the following
-    constraints are obeyed:
+    Computes the x- and y-positions for a list of images and their widths and
+    heights such that the following constraints are obeyed:
         - No image exceeds the height of the hit box.
         - Every image has an equal size.
-        - The images, laid side-by-side, occupy as much of the hit box's width as possible.
+        - The images, laid side-by-side, occupy as much of the hit box's
+          width as possible.
 
     :param images: A list of image filenames or URLs.
     :param hit_size: The size of the hitbox, see make()
     :return: A list of dictionaries with fields (x, y, width, height) tuples.
     """
-    im_dims = [_get_im_dims(im) for im in images] # gets the sizes for each image in [w, h]
-    max_area = max([x*y for x, y in im_dims]) # compute the maximum area, scale each image up so they're equal
+    # gets the sizes for each image in [w, h]
+    im_dims = [_get_im_dims(im) for im in images]
+    # compute the maximum area, scale each image up so they're equal
+    max_area = max([x*y for x, y in im_dims])
     for idx in range(len(im_dims)):
         x, y = im_dims[idx]
         area_ratio = float(max_area) / (x*y)
         x *= np.sqrt(area_ratio)
         y *= np.sqrt(area_ratio)
         im_dims[idx] = [x, y]
-    width_sum = np.sum([x[0] for x in im_dims]) + MARGIN_SIZE * (len(im_dims) * 2 + 2)
+    width_sum = np.sum([x[0] for x in im_dims]) + MARGIN_SIZE * (len(im_dims)
+                                                                 * 2 + 2)
     width_ratio = float(hit_size[0]) / width_sum
     for idx in range(len(im_dims)):
         x, y = im_dims[idx]
@@ -342,11 +389,15 @@ def _fit_images(images, hit_size):
         y *= width_ratio
         im_dims[idx] = [x, y]
     max_height = max([x[1] for x in im_dims]) + 2 * MARGIN_SIZE
-    if max_height > hit_size[1]: # resize them a third time if at least one image is too tall
-        # beware of a slight numerical error that can occur here, do not calculate height ratio based on max_height
-        # since that has the margin size added in, but this is not modified by the ratio multiplier.
-        # the extra -1 is to prevent it from being numerically too close
-        height_ratio = float(hit_size[1] - 2 * MARGIN_SIZE - 1) / max([x[1] for x in im_dims])
+    if max_height > hit_size[1]:
+        # resize them a third time if at least one image is too tall beware
+        # of a slight numerical error that can occu r here, do not calculate
+        # height ratio based on max_height since that has the margin size
+        # added in, but this is not modified by the ratio multiplier. The
+        # extra -1 is to prevent it from being numerically too close
+        height_ratio = \
+            float(hit_size[1] - 2 * MARGIN_SIZE - 1) / \
+            max([x[1] for x in im_dims])
         for idx in range(len(im_dims)):
             x, y = im_dims[idx]
             x *= height_ratio
@@ -371,9 +422,11 @@ def _fit_images(images, hit_size):
 
 def _get_im_dims(image):
     """
-    Returns the dimensions of an image file in pixels as [width, height]. This is unfortunately somewhat time
-    consuming as the images have to be loaded in order to determine their dimensions. Its likely that this can be
-    accomplished in pure javascript, however I (a) don't know enough javascript and (b) want more explicit control.
+    Returns the dimensions of an image file in pixels as [width, height].
+    This is unfortunately somewhat time consuming as the images have to be
+    loaded in order to determine their dimensions. Its likely that this can
+    be accomplished in pure javascript, however I (a) don't know enough
+    javascript and (b) want more explicit control.
 
     :param image: The filename or URL of an image.
     :return: A list, the dimensions of the image in pixels, as [width, height].
@@ -386,15 +439,17 @@ def _get_im_dims(image):
 
 def _make_instr_block(block, attribute):
     """
-    Accepts a block dict (see readme) and returns an appropriate instruction block.
+    Accepts a block dict (see readme) and returns an appropriate instruction
+    block.
 
     :param block: A dictionary that defines a block; see the readme.
-    :return: Instruction block, a dictionary that can be used to fill the instruction template, and the instruction
-    block name.
+    :return: Instruction block, a dictionary that can be used to fill the
+             instruction template, and the instruction block name.
     """
     rblock = dict()
     rblock['name'] = block['name'] + '_instr'
-    rblock['instructions'] = [_create_instruction_page(x, attribute) for x in block['instructions']]
+    rblock['instructions'] = [_create_instruction_page(x, attribute) for x in
+                              block['instructions']]
     template = templateEnv.get_template(INSTRUCTION_TEMPLATE)
     filled_template = template.render(block=rblock, attribute=attribute)
     return filled_template, rblock['name']
@@ -402,11 +457,13 @@ def _make_instr_block(block, attribute):
 
 def _create_instruction_page(instruction, attribute, static_urls=None):
     """
-    Creates a single instruction page, and attempts to intelligently define the items that require filling. Note that
-    if a template file (or one that does not exist) is not provided, then it will simply return whatever is passed in
-    as the instructions.
+    Creates a single instruction page, and attempts to intelligently define
+    the items that require filling. Note that if a template file (or one that
+    does not exist) is not provided, then it will simply return whatever is
+    passed in as the instructions.
 
-    :param instruction: The template filename, or a string that will be the instructions.
+    :param instruction: The template filename, or a string that will be the
+                        instructions.
     :param attribute: The study attribute.
     :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The instruction page as a filled template.
@@ -424,18 +481,20 @@ def _create_instruction_page(instruction, attribute, static_urls=None):
         var_dict['attribute'] = attribute
     filled_template = template_class.render(**var_dict)
     # perform replacements
-    filled_template = filled_template.replace('\n', '')  # must eliminate the carriage returns!
-    filled_template = filled_template.replace('"', '\"')  # escape quotes!
-    filled_template = filled_template.replace("'", "\'")  # escape quotes!
+    # must eliminate the carriage returns, quotes
+    filled_template = filled_template.replace('\n', '')
+    filled_template = filled_template.replace('"', '\"')
+    filled_template = filled_template.replace("'", "\'")
     return filled_template
 
 
 def _make_start_block(intro_instructions, attribute, static_urls=None):
     """
-    Accepts the attribute that we will be scoring, a sequence of instruction templates, and converts them into an
-    instruction block.
+    Accepts the attribute that we will be scoring, a sequence of instruction
+    templates, and converts them into an instruction block.
 
-    :param intro_instructions: A </sep>-separated html file containing the instruction templates.
+    :param intro_instructions: A </sep>-separated html file containing the
+                               instruction templates.
     :param attribute: The attribute that will be scored.
     :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: An instruction block as a filled template.
@@ -461,8 +520,10 @@ def _get_template_variables(template):
     """
     Accepts a template file, returns the undeclared variables.
 
-    :param template: A jinja2 template filename, from which we will extract the variables.
-    :return: The undeclared variables (i.e., those that still need to be defined) as a set of strings.
+    :param template: A jinja2 template filename, from which we will extract
+                     the variables.
+    :return: The undeclared variables (i.e., those that still need to be
+             defined) as a set of strings.
     """
     src = templateEnv.loader.get_source(templateEnv, template)
     vars = meta.find_undeclared_variables(templateEnv.parse(src))
@@ -471,7 +532,8 @@ def _get_template_variables(template):
 
 def _make_preview_page(static_urls=None):
     """
-    Returns the HTML for a 'preview' page, which users are presented when they begin to preview a task.
+    Returns the HTML for a 'preview' page, which users are presented when
+    they begin to preview a task.
 
     :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: HTML for the preview page.
@@ -479,32 +541,36 @@ def _make_preview_page(static_urls=None):
     if static_urls is None:
         static_urls = {}
     template = templateEnv.get_template(PREVIEW_TEMPLATE)
-    return template.render(**_get_static_url_dict(PREVIEW_TEMPLATE, static_urls))
+    return template.render(**_get_static_url_dict(PREVIEW_TEMPLATE,
+                                                  static_urls))
 
 
-def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False, static_urls=None):
+def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False,
+               static_urls=None):
     """
-    Constructs a task after a request hits the webserver. In contrast to build_task, this is for requests that have a
-    task ID encoded in them--i.e., the request is for a specific task. It does not check if the worker is banned or if
-    they need a practice instead of a normal task. Instead, these data are presumed to be encoded in the MTurk
-    structure.
+    Constructs a task after a request hits the webserver. In contrast to
+    build_task, this is for requests that have a task ID encoded in
+    them--i.e., the request is for a specific task. It does not check if the
+    worker is banned or if they need a practice instead of a normal task.
+    Instead, these data are presumed to be encoded in the MTurk structure.
 
     NOTES:
-        'build_task' is a relic of an earlier iteration, in mt2_generate.request_for_task.
+        'build_task' is a relic of an earlier iteration,
+        in mt2_generate.request_for_task.
 
     :param dbget: An instance of db.Get
     :param dbset: An instance of db.Set.
     :param task_id: The task ID, as a string.
-    :param worker_id: The worker ID, as a string. If this is a preview, you cannot obtain the worker ID, thus supply
-                      None.
+    :param worker_id: The worker ID, as a string. If this is a preview,
+                      you cannot obtain the worker ID, thus supply None.
     :param is_preview: The task to be served up is a 'preview' task.
     :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The HTML for the requested task.
     """
     if static_urls is None:
         static_urls = {}
-    # check that the worker exists, else register them. We want to have their information in the database so we don't
-    # spawn errors down the road.
+    # check that the worker exists, else register them. We want to have their
+    #  information in the database so we don't spawn errors down the road.
     if not is_preview:
         if not dbget.worker_exists(worker_id):
             dbset.register_worker(worker_id)
@@ -529,8 +595,13 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False, static_u
             return make_error_fetching_task_html(static_urls=static_urls)
     else:
         blocks = []  # do not show them anything if this is just a preview.
-    html = make_html(blocks, practice=is_practice, collect_demo=collect_demo, is_preview=is_preview,
-                     static_urls=static_urls, intro_instructions=intro_instructions, task_id=task_id)
+    html = make_html(blocks,
+                     practice=is_practice,
+                     collect_demo=collect_demo,
+                     is_preview=is_preview,
+                     static_urls=static_urls,
+                     intro_instructions=intro_instructions,
+                     task_id=task_id)
     if not is_practice and not is_preview:
         dbset.set_task_html(task_id, html)
     return html

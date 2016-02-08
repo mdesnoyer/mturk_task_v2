@@ -1,8 +1,9 @@
 """
 GLOBAL UTILITY FUNCTIONS
 
-Warning: This cannot be used in isolation (right now), mostly because I  haven't had time to fix up all the imports,
-and this requires global variables defined in conf.
+Warning: This cannot be used in isolation (right now), mostly because I
+haven't had time to fix up all the imports, and this requires global
+variables defined in conf.
 """
 
 import random
@@ -29,11 +30,13 @@ _all_cap_re = re.compile('([a-z0-9])([A-Z])')
 
 def convert(name):
     """
-    Converts a camelCase string to camel_case. I only needed to use this once for a README document about the database
-    schema; however, I liked it so much I want to save it.
+    Converts a camelCase string to camel_case. I only needed to use this once
+    for a README document about the database schema; however, I liked it so
+    much I want to save it.
 
     NOTES:
-        source: http://stackoverflow.com/questions/1175208/elegant-python-function-to-convert-camelcase-to-camel-case
+        source: http://stackoverflow.com/questions/1175208/
+        elegant-python-function-to-convert-camelcase-to-camel-case
 
     :param name: A string.
     :return: name, only with camelCase replaced with camel_case.
@@ -75,9 +78,12 @@ def _rand_id_gen(n):
     """
     Generates random IDs
     :param n: The number of characters in the random ID
-    :return: A raw ID string, composed of n upper- and lowercase letters as well as digits.
+    :return: A raw ID string, composed of n upper- and lowercase letters
+    as well as digits.
     """
-    return ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(n))
+    return ''.join(random.choice(string.ascii_uppercase +
+                                 string.ascii_lowercase +
+                                 string.digits) for _ in range(n))
 
 
 def task_id_gen():
@@ -117,9 +123,11 @@ def pair_to_tuple(image1, image2):
 
 def get_im_dims(imageUrl):
     """
-    Returns the dimensions of an image file in pixels as [width, height]. This is unfortunately somewhat time
-    consuming as the images have to be loaded in order to determine their dimensions. Its likely that this can be
-    accomplished in pure javascript, however I (a) don't know enough javascript and (b) want more explicit control.
+    Returns the dimensions of an image file in pixels as [width, height].
+    This is unfortunately somewhat time consuming as the images have to be
+    loaded in order to determine their dimensions. Its likely that this can
+    be accomplished in pure javascript, however I (a) don't know enough
+    javascript and (b) want more explicit control.
 
     :param image: The filename or URL of an image.
     :return: A list, the dimensions of the image in pixels, as (width, height).
@@ -138,29 +146,36 @@ def get_im_dims(imageUrl):
     return width, height
 
 
-def attribute_image_filter(attributes=[], filter_type=None, only_active=False, only_inactive=False):
+def attribute_image_filter(attributes=[], filter_type=None, only_active=False,
+                           only_inactive=False):
     """
-    Returns a filter appropriate to HBase / HappyBase that will find images based on a list of their attributes and
-    (optionally) whether or not they are active.
+    Returns a filter appropriate to HBase / HappyBase that will find images
+    based on a list of their attributes and (optionally) whether or not they
+    are active.
 
     :param attributes: A list of attributes as strings.
-    :param filter_type: Whether all columns are required or at least one column is required. By default, having any of
-                        the required columns is sufficient. [default: ANY]
-    :param only_active: A boolean. If true, will find only active images. [default: False]
-    :param only_inactive: A boolean. If true, will find only inactive images. [default: False]
+    :param filter_type: Whether all columns are required or at least one column
+                        is required. By default, having any of the required
+                        columns is sufficient. [default: ANY]
+    :param only_active: A boolean. If true, will find only active images.
+                        [default: False]
+    :param only_inactive: A boolean. If true, will find only inactive images.
+                          [default: False]
     :return: An image filter, as a string.
     """
     if filter_type is None:
         filter_type = ANY
     if only_active and only_inactive:
-        raise ValueError('Cannot filter for images that are both active and inactive')
+        raise ValueError('Cannot filter for images that are both active '
+                         'and inactive')
     if filter_type is not ALL and filter_type is not ANY:
         raise ValueError('Filter types may either be ANY or ALL')
     if only_active and not len(attributes):
         return ACTIVE_FILTER
     if only_inactive and not len(attributes):
         return INACTIVE_FILTER
-    f = [column_boolean_filter('attributes', attribute, TRUE) for attribute in attributes]
+    f = [column_boolean_filter('attributes', attribute, TRUE) for
+         attribute in attributes]
     f = (' ' + filter_type.strip() + ' ').join(f)
     if only_active:
         f = '(' + ACTIVE_FILTER + ')' + ' AND ' + '(' + f + ')'
@@ -178,27 +193,33 @@ def column_boolean_filter(column_family, column_name, value):
     :param value: The required value for that column.
     :return: The filter, as a string.
     """
-    f = "SingleColumnValueFilter ('%s', '%s', =, 'regexstring:^%s$', true, true)"
+    f = "SingleColumnValueFilter ('%s', '%s', =, 'regexstring:^%s$', true, " \
+        "true)"
     f = f % (column_family, column_name, str(value))
     return f
 
 
 def general_filter(column_tuples, values, filter_type=None, key_only=False):
     """
-    General filter for tables, creating a filter that returns rows that satisfy the specified requirements.
+    General filter for tables, creating a filter that returns rows that satisfy
+    the specified requirements.
 
-    :param column_tuples: A list of column tuples of the form [[column family 1, column name 1], ...]
+    :param column_tuples: A list of column tuples of the form
+                         [[column family 1, column name 1], ...]
     :param values: A list of values that the columns should have, in-order.
-    :param filter_type: Either ALL or ANY. If ALL, all the column values must be satisfied. If ANY, at least one column
-                        value match must be met. [default: ALL]
-    :param key_only: The filter will only return row keys and not the entire rows. [default: False]
+    :param filter_type: Either ALL or ANY. If ALL, all the column values must
+                        be satisfied. If ANY, at least one column value match
+                        must be met. [default: ALL]
+    :param key_only: The filter will only return row keys and not the entire
+                     rows. [default: False]
     :return: The appropriate filter under the specification.
     """
     if filter_type is None:
         filter_type = ALL
     if filter_type is not ALL and filter_type is not ANY:
         raise ValueError('Filter types may either be ANY or ALL')
-    f = [column_boolean_filter(x, y, v) for ((x, y), v) in zip(column_tuples, values)]
+    f = [column_boolean_filter(x, y, v) for ((x, y), v) in
+         zip(column_tuples, values)]
     f = (' ' + filter_type.strip() + ' ').join(f)
     if key_only:
         f += ' AND KeyOnlyFilter() AND FirstKeyOnlyFilter()'
@@ -212,40 +233,54 @@ TASK GENERATION UTILS
 
 def get_design(n, t, j):
     """
-    Creates an experimental design by creating a series of fixed-length subsets of N elements such that each element
-    appears at least some number of times and no pairs of elements occurs in any subset more than once. The number of
-    subsets is minimized. Each subset can be appropriately conceptualized as a "trial."
+    Creates an experimental design by creating a series of fixed-length
+    subsets of N elements such that each element appears at least some number
+    of times and no pairs of elements occurs in any subset more than once. The
+    number of subsets is minimized. Each subset can be appropriately
+    conceptualized as a "trial."
 
-    This constitutes an incomplete t-Design. It effectively extends t-Designs to a new type of design,
-    t_min-(v, k, lambda, x), which is an incidence structure such that:
+    This constitutes an incomplete t-Design. It effectively extends t-Designs
+    to a new type of design, t_min-(v, k, lambda, x), which is an incidence
+    structure such that:
         - (1) There are v points.
         - (2) Each block contains k points.
-        - (3) For any t points there are exactly lambda blocks that contain all these points.
+        - (3) For any t points there are exactly lambda blocks that contain
+              all these points.
         - (4) Each point occurs in at least x blocks.
-        - (5) No block can be removed without violating 1-4, i.e., it is 'minimal' in a sense.
+        - (5) No block can be removed without violating 1-4, i.e., it is
+              'minimal' in a sense.
 
     See:
-        --- The general format is a T-design: http://mathworld.wolfram.com/t-Design.html
-        --- In our case, because pairs must occur precisely once, it is a Steiner System:
-            http://mathworld.wolfram.com/SteinerSystem.html
+        --- The general format is a T-design:
+                http://mathworld.wolfram.com/t-Design.html
+        --- In our case, because pairs must occur precisely once, it is a
+            Steiner System:
+                http://mathworld.wolfram.com/SteinerSystem.html
 
     If no such design is possible, returns None.
 
-    This generates a Steiner system deterministically--due to the hypergeometric rate of expansion, it is not possible
-    to generate unique Steiner systems each time without using a random component, which makes things so much messier.
-    I may introduce such a method later on. It is not clear if this determinism will introduce a bias in the responses.
-    My guess is that, under random assignment of images to indices, no bias is possible--but I'm not sure if thats true.
+    This generates a Steiner system deterministically--due to the
+    hypergeometric rate of expansion, it is not possible to generate unique
+    Steiner systems each time without using a random component, which makes
+    things so much messier. I may introduce such a method later on. It is not
+    clear if this determinism will introduce a bias in the responses. My guess
+    is that, under random assignment of images to indices, no bias is
+    possible--but I'm not sure if thats true.
 
     :param n: The number of distinct elements involved in the experiment.
     :param t: The number of elements to present each trial.
-    :param j: The number of times each element should appear during the experiment.
-    :return: A list of tuples representing each subset. Elements may be randomized within element and subset order may
+    :param j: The number of times each element should appear during the
+              experiment.
+    :return: A list of tuples representing each subset. Elements may be
+             randomized within element and subset order may
     be randomized without consequence.
     """
     obs = np.zeros((n, n)) # pair observation matrix
     occ = np.zeros(n) # counter for the number of observations
     combs = [] # the combinations that will be returned.
-    for allvio in range(t): # minimize the number of j-violations (i.e., elements appearing more than j-times)
+    # minimize the number of j-violations (i.e., elements appearing more than
+    # j-times)
+    for allvio in range(t):
         for c in comb(range(n), t):
             if np.min(occ) == j:
                 return combs # you're done
