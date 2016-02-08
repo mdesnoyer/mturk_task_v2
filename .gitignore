@@ -78,3 +78,7 @@ CTestResults.xml
 
 ### all the friggin images ###
 *.jpeg
+
+### experiments ###
+experiments/
+certificates/
