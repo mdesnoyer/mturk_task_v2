@@ -65,8 +65,6 @@ EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = 'https://127.0.0.1:12344/submit'
 MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'
 # the host for the vanilla sandbox
 MTURK_HOST = 'mechanicalturk.amazonaws.com'
-# the number of tasks to post in blocks.
-HIT_CHUNK_SIZE = 1000
 
 
 """
@@ -157,7 +155,7 @@ HIT_DEAD= 6  # the hit isn't complete or expired but is unavailable
 """
 PRACTICE STATUSES
 
-Notes: DEAD supercedes COMPLETE
+Notes: DEAD supersedes COMPLETE
 """
 
 PRACTICE_UNDEFINED = -1  # undefined status

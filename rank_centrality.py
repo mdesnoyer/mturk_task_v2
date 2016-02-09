@@ -6,12 +6,12 @@ RankCentrality method  as described by Negahban, Oh and Shah, 2014.
 """
 
 
-import logging
+import logger
 import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import gmres, spsolve
 
-_log = logging.getLogger(__name__)
+_log = logger.setup_logger(__name__)
 
 
 def _comp_dmax(W):
@@ -66,7 +66,7 @@ def _markov_stationary_components(P, mean=1.0, tol=1e-12):
         sparse.csgraph.connected_components(P, directed=True,
                                             connection='strong')
     sizes = [(labels == j).sum() for j in range(n_components)]
-    _log.debug('%i components, larges is %i'%(max(labels) + 1, max(sizes)))
+    _log.debug('%i components, largest is %i'%(max(labels) + 1, max(sizes)))
     p = np.zeros(n)
     for comp in range(n_components):
         indices = np.flatnonzero(labels == comp)
@@ -75,13 +75,13 @@ def _markov_stationary_components(P, mean=1.0, tol=1e-12):
     return p
 
 
-def _markov_stationary_component(subP, mean=1.0, tol=1e-12, direct=False):
+def _markov_stationary_component(subP, mean=None, tol=1e-12, direct=False):
     """
     Returns the stationary state of the Markov chain for a single connected
     component P called subP.
 
     :param subP: An M x M single connected component of P
-    :param mean: The mean value of the rankings, as in rank()
+    :param mean: The mean value of the rankings, as in rank().
     :param tol: The tolerance of the estimate, as in rank()
     :param direct: If True, uses a direct method (spsolve), else it uses an
                    iterative method.
@@ -95,7 +95,10 @@ def _markov_stationary_component(subP, mean=1.0, tol=1e-12, direct=False):
     dP = subP - sparse.eye(n)
     A = sparse.vstack([np.ones(n), dP.T[1:, :]])
     rhs = np.zeros((n,))
-    rhs[0] = n * mean
+    if mean is None:
+        rhs[0] = 1
+    else:
+        rhs[0] = n * mean
     if direct:
         return spsolve(A, rhs)
     else:
@@ -116,7 +119,8 @@ def rank(W, mean=1.0, tol=1e-12):
     :param W: An N x N matrix whose entries i,j are integers, indicating the
               number of times i has been chosen over j.
     :param mean: The mean value of the rankings, such that the average score
-                 is equal to mean.
+                 is equal to mean. If this is None, then the sum of the
+                 rankings will be 1, and their mean will be 1./N.
     :param tol: The epsilon tolerance, used during iterative estimation of
                 the ranks.
     :return: A length-N numpy array of floats corresponding to the ranks of

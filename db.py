@@ -5,9 +5,9 @@ into the database: nothing in Get() modifies the database. Elements of Set()
 may read from the database internally, but this is never surfaced to the
 invoking frame.
 
-Note that the 'weekly' counts for workers is deprecated; they no longer
-correspond to weekly counts; instead, they are reset once the number of
-completed tasks exceeds some value.
+For workers, interval counts are the most recent 'buckets' of results. These
+data are used for bans, etc. They are reset once the number of tasks that are
+in the bucket exceeds a value set in conf.py, or once a worker is unbanned.
 """
 
 from conf import *
@@ -121,7 +121,7 @@ def _prob_select(base_prob, min_seen):
                      in a task.
     :return: A lambda function that accepts a single parameter (times_seen) and
              returns the probability of selecting
-    this image.
+             this image.
     """
     return lambda time_seen: base_prob + (1. - base_prob) * \
                                          (2 ** (time_seen - min_seen))
@@ -204,7 +204,7 @@ def _get_timedelta_string(timestamp1, timestamp2):
     :param timestamp2: Second timestamp, as an int in HBase / Happybase style
                        (msec since epoch)
     :return: The timedelta, in weeks, days, hours, minutes and seconds,
-    as a string.
+             as a string.
     """
     week_len = 7 * 24 * 60 * 60.
     day_len = 24 * 60 * 60.
@@ -254,7 +254,7 @@ def _create_table(conn, table, families, clobber):
     :param table: The table name.
     :param families: The table families, see conf.py
     :param clobber: Boolean, if true will erase old workers table if it exists.
-           [def: False]
+                    [def: False]
     :return: True if table was created. False otherwise.
     """
     if table in conn.tables():
@@ -475,7 +475,7 @@ class Get(object):
         table = self.conn.table(WORKER_TABLE)
         row_data = table.row(worker_id)
         return int(row_data.get(
-            'status:num_practices_attempted_this_week', '0'))
+            'status:num_practices_attempted_interval', '0'))
 
     def worker_is_banned(self, worker_id):
         """
@@ -508,7 +508,7 @@ class Get(object):
         return _get_timedelta_string(int(ban_time * 1000), timestamp), \
                ban_reason
 
-    def worker_attempted_this_week(self, worker_id):
+    def worker_attempted_interval(self, worker_id):
         """
         Returns the number of tasks this worker has attempted this week.
 
@@ -517,8 +517,8 @@ class Get(object):
                  week.
         """
         table = self.conn.table(WORKER_TABLE)
-        data = table.row(worker_id, columns=['stats:num_attempted_this_week'])
-        return int(data.get('stats:num_attempted_this_week', '0'))
+        data = table.row(worker_id, columns=['stats:num_attempted_interval'])
+        return int(data.get('stats:num_attempted_interval', '0'))
 
     def worker_attempted_too_much(self, worker_id):
         """
@@ -530,7 +530,7 @@ class Get(object):
         """
         _log.warning('DEPRECATED: This functionality is now performed '
                      'implicitly by the MTurk task structure')
-        return self.worker_attempted_this_week(worker_id) > \
+        return self.worker_attempted_interval(worker_id) > \
                (7 * MAX_SUBMITS_PER_DAY)
 
     def worker_weekly_rejected(self, worker_id):
@@ -542,7 +542,7 @@ class Get(object):
                  tasks accepted.
         """
         table = self.conn.table(WORKER_TABLE)
-        return table.counter_get(worker_id, 'stats:num_rejected_this_week')
+        return table.counter_get(worker_id, 'stats:num_rejected_interval')
 
     def worker_weekly_reject_accept_ratio(self, worker_id):
         """
@@ -554,9 +554,9 @@ class Get(object):
         """
         table = self.conn.table(WORKER_TABLE)
         num_acc = float(table.counter_get(worker_id,
-                                          'stats:num_accepted_this_week'))
+                                          'stats:num_accepted_interval'))
         num_rej = float(table.counter_get(worker_id,
-                                          'stats:num_rejected_this_week'))
+                                          'stats:num_rejected_interval'))
         return num_rej / num_acc
 
     # TASK
@@ -1781,7 +1781,7 @@ class Set(object):
         # TODO: Check that worker exists
         table = self.conn.table(WORKER_TABLE)
         table.counter_inc(worker_id, 'stats:num_practices_attempted')
-        table.counter_inc(worker_id, 'stats:num_practices_attempted_this_week')
+        table.counter_inc(worker_id, 'stats:num_practices_attempted_interval')
 
     def task_served(self, task_id, worker_id, hit_id=None, hit_type_id=None,
                     payment=None):
@@ -2286,24 +2286,24 @@ class Set(object):
         table.counter_dec(worker_id, 'stats:num_pending_eval')
         # increment rejected count
         table.counter_inc(worker_id, 'stats:num_rejected')
-        table.counter_inc(worker_id, 'stats:num_rejected_this_week')
+        table.counter_inc(worker_id, 'stats:num_rejected_interval')
 
     def reset_worker_counts(self, worker_id):
         """
-        Resets the weekly counters back to 0, for a particular worker.
+        Resets the interval counters back to 0, for a particular worker.
 
         :param worker_id: The worker ID, as a string, as provided by MTurk.
         :return: None.
         """
         table = self.conn.table(WORKER_TABLE)
         table.counter_set(worker_id,
-                          'stats:num_practices_attempted_this_week',
+                          'stats:num_practices_attempted_interval',
                           value=0)
         table.counter_set(worker_id,
-                          'stats:num_attempted_this_week',
+                          'stats:num_attempted_interval',
                           value=0)
         table.counter_set(worker_id,
-                          'stats:num_rejected_this_week',
+                          'stats:num_rejected_interval',
                           value=0)
         table.counter_set(worker_id,
                           'stats:interval_completed_count',

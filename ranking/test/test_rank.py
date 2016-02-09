@@ -22,7 +22,7 @@ class TestRank(unittest.TestCase):
 
     def test_rank_centrality(self):
         p = np.random.rand(self.n) + self.eps
-        p /= np.mean(p)
+        p /= np.mean(p)  # hmmm...I've forgotten why I do this?
         WM = np.zeros((self.n, self.n))
         for n, i in enumerate(p):
             for m, j in enumerate(p):
