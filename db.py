@@ -5,6 +5,10 @@ into the database: nothing in Get() modifies the database. Elements of Set()
 may read from the database internally, but this is never surfaced to the
 invoking frame.
 
+Note:
+    The above is no longer strictly true; Get() methods for obtaining images
+    do modify the database, but only counters that are not surfaced to the user.
+
 For workers, interval counts are the most recent 'buckets' of results. These
 data are used for bans, etc. They are reset once the number of tasks that are
 in the bucket exceeds a value set in conf.py, or once a worker is unbanned.
@@ -951,27 +955,23 @@ class Get(object):
         if n > n_active:
             _log.warning('Insufficient number of active images, '
                          'activating %i more.' % ACTIVATION_CHUNK_SIZE)
-            # TODO: Add a statemon here?
             return None
-        min_seen = self.image_get_min_seen(image_attributes)
-        # if min_seen > SAMPLES_REQ_PER_IMAGE(n_active):
-        #     _log.warning('Images are sufficiently sampled')
-        #     # TODO: Add a statemon here?
-        if base_prob is None:
-            base_prob = float(n) / n_active
-        p = _prob_select(base_prob, min_seen)
         table = self.conn.table(IMAGE_TABLE)
         images = set()
+        rem = n - len(images)
         while len(images) < n:
-            # repeatedly scan the database, selecting images -- don't bother
-            # selecting the num_times_seen column, since it wont be defined
-            # for images that have yet to be seen.
             scanner = table.scan(filter=attribute_image_filter(
                 image_attributes, only_active=True))
-            for row_key, row_data in scanner:
-                cur_seen = row_data.get('stats:num_times_seen', 0)
-                if np.random.rand() < p(cur_seen):
-                    images.add(row_key)
+            for n, (row_key, row_data) in enumerate(scanner):
+                p = 1. / (n_active - n)
+                for _ in range(rem):
+                    if np.random.rand() < p:
+                        table.counter_inc(row_key, 'stats:sampling_deficit')
+                        sd = row_data.get('stats:sampling_deficit', 0)
+                        if sd > 0:
+                            images.add(row_key)
+                            rem = n - len(images)
+                        break
         return list(images)
 
     # TASK DESIGN STUFF
@@ -1579,8 +1579,6 @@ class Set(object):
                             _log.warning('Image %s is not active or does not '
                                          'exist.' % im)
                             continue
-                    # TODO: Check that pair does not exist - function should
-                    # be in get.xxx
                     images.add(im)
                     image_list.append(im)
                 for imPair in comb(im_tuple, 2):
@@ -1733,6 +1731,32 @@ class Set(object):
             b.put(iid, up_dict)
         b.send()
 
+    def _reset_sampling_counts(self):
+        """
+        In order to ensure that the comparison graph is an Erdos-Renyi random
+        graph, the probability of any two nodes having an edge must be
+        independent. However, we induce a dependency by growing the graph
+        over time, i.e., with activate_images(.).
+
+        To ameliorate this, the function defined here resets the sampling
+        counts such that an image sampled n times before will not be sampled
+        again until it has been chosen again n times. Hence, if the
+        time_sampled value was n before calling this function, it becomes -n
+        after and the image will only be resampled after the value is >= 0
+
+        :return: None.
+        """
+        _log.info('Resetting sampling counts')
+        table = self.conn.table(IMAGE_TABLE)
+        scanner = table.scan(columns=['metadata:is_active'],
+                             filter=attribute_image_filter(only_active=True))
+        for im_key, _ in scanner:
+            cur_im_sample_deficit = \
+                table.counter_Get(im_key, 'stats:num_times_seen')
+            table.counter_set(im_key,
+                              'stats:sampling_deficit',
+                              -cur_im_sample_deficit)
+
     def activate_images(self, image_ids):
         """
         Activates some number of images, i.e., makes them available for tasks.
@@ -1749,6 +1773,7 @@ class Set(object):
                 continue
             b.put(iid, {'metadata:is_active': TRUE})
         b.send()
+        self._reset_sampling_counts()
 
     def activate_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES):
         """
@@ -1761,7 +1786,7 @@ class Set(object):
         table = self.conn.table(IMAGE_TABLE)
         scanner = table.scan(columns=['metadata:is_active'],
                              filter=attribute_image_filter(image_attributes,
-                                                           only_active=True))
+                                                           only_inactive=True))
         to_activate = []
         for row_key, rowData in scanner:
             to_activate.append(row_key)
