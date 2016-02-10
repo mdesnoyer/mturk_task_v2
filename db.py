@@ -718,8 +718,9 @@ class Get(object):
         table = self.conn.table(HIT_TYPE_TABLE)
         return table.row(hit_type_id)
 
-    def hit_type_matches(self, hit_type_id, task_attribute=None,
-                         image_attributes=None):
+    def hit_type_matches(self, hit_type_id,
+                         task_attribute=ATTRIBUTE,
+                         image_attributes=IMAGE_ATTRIBUTES):
         """
         Indicates whether or not the hit is an appropriate match for.
     
@@ -739,7 +740,7 @@ class Get(object):
         if type_info == {}:
             _log.warning('No such hit type')
             return False
-        if task_attribute != type_info.get('status:task_attribute', None):
+        if task_attribute != type_info.get('metadata:task_attribute', None):
             return False
         try:
             db_hit_type_image_attributes = \
@@ -751,8 +752,8 @@ class Get(object):
             return False
         return True
 
-    def get_active_hit_type_for(self, task_attribute=None,
-                                image_attributes=None):
+    def get_active_hit_type_for(self, task_attribute=ATTRIBUTE,
+                                image_attributes=IMAGE_ATTRIBUTES):
         """
         Returns an active hit type ID for some given constraints (
         task_attribute and image_attributes).
@@ -763,14 +764,14 @@ class Get(object):
                                  assigned to this HIT type.
         :return: The active HIT Type ID, otherwise returns None.
         """
-        for hit_type in self.get_active_hit_types():
-            if self.hit_type_matches(hit_type,
+        for hid_type_id, _ in self.get_active_hit_types():
+            if self.hit_type_matches(hid_type_id,
                                      task_attribute,
                                      image_attributes):
-                return hit_type
+                return hid_type_id
 
-    def get_active_practice_hit_type_for(self, task_attribute=None,
-                                          image_attributes=None):
+    def get_active_practice_hit_type_for(self, task_attribute=ATTRIBUTE,
+                                         image_attributes=IMAGE_ATTRIBUTES):
         """
         Returns an active practice hit type ID for some given constraints (
         task_attribute and image_attributes).
@@ -781,11 +782,11 @@ class Get(object):
                                  assigned to this HIT type.
         :return: The active HIT Type ID, otherwise returns None.
         """
-        for hit_type in self.get_active_practice_hit_types():
-            if self.hit_type_matches(hit_type,
+        for hid_type_id, _ in self.get_active_practice_hit_types():
+            if self.hit_type_matches(hid_type_id,
                                      task_attribute,
                                      image_attributes):
-                return hit_type
+                return hid_type_id
 
     def get_active_hit_types(self):
         """
@@ -924,7 +925,7 @@ class Get(object):
         been_seen = 0
         for row_key, _ in scanner:
             been_seen += 1
-            cur_seen = table.counter.get(row_key, 'stats:num_times_seen')
+            cur_seen = table.counter_get(row_key, 'stats:num_times_seen')
             if cur_seen < obs_min:
                 obs_min = cur_seen
             if obs_min == 0:
@@ -934,8 +935,8 @@ class Get(object):
             # been seen.
         return obs_min
     
-    def get_n_images(self, n, base_prob=None,
-                     image_attributes=IMAGE_ATTRIBUTES):
+    def get_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES,
+                     is_practice=False):
         """
         Returns n images from the database, sampled according to some
         probability. These are fit for use in design generation.
@@ -945,12 +946,15 @@ class Get(object):
             the number of active images.
 
         :param n: Number of images to choose.
-        :param base_prob: The base probability of selecting any image.
         :param image_attributes: The image attributes that the images return
                                  must satisfy.
+        :param is_practice: Boolean indicating whether or not the images are
+                            for a practice or a real task. If its for a
+                            practice, it will ignore the sampling deficit.
         :return: A list of image IDs, unless it cannot get enough images --
                  then returns None.
         """
+        # TODO: Have them read the image keys in all at once!
         n_active = self.get_n_active_images_count(image_attributes)
         if n > n_active:
             _log.warning('Insufficient number of active images, '
@@ -958,20 +962,23 @@ class Get(object):
             return None
         table = self.conn.table(IMAGE_TABLE)
         images = set()
-        rem = n - len(images)
         while len(images) < n:
             scanner = table.scan(filter=attribute_image_filter(
                 image_attributes, only_active=True))
-            for n, (row_key, row_data) in enumerate(scanner):
-                p = 1. / (n_active - n)
-                for _ in range(rem):
-                    if np.random.rand() < p:
-                        table.counter_inc(row_key, 'stats:sampling_deficit')
-                        sd = row_data.get('stats:sampling_deficit', 0)
-                        if sd > 0:
-                            images.add(row_key)
-                            rem = n - len(images)
+            for row_num, (row_key, row_data) in enumerate(scanner):
+                p = 1. / (n_active - row_num)
+                if np.random.rand() < p:
+                    if is_practice:
+                        images.add(row_key)
                         break
+                    sd = \
+                        table.counter_get(row_key, 'stats:sampling_deficit')
+                    if sd >= 0:
+                        images.add(row_key)
+                        break
+                    else:
+                        table.counter_inc(row_key,
+                                          'stats:sampling_deficit')
         return list(images)
 
     # TASK DESIGN STUFF
@@ -1001,7 +1008,7 @@ class Get(object):
         occ = np.zeros(n)  # an array which stores the number of times an
         # image has been used.
         design = []
-        images = self.get_n_images(n, 0.05, image_attributes=image_attributes)
+        images = self.get_n_images(n, image_attributes=image_attributes)
         if images is None:
             _log.error('Unable to fetch images to generate design!')
             return None
@@ -1752,7 +1759,7 @@ class Set(object):
                              filter=attribute_image_filter(only_active=True))
         for im_key, _ in scanner:
             cur_im_sample_deficit = \
-                table.counter_Get(im_key, 'stats:num_times_seen')
+                table.counter_get(im_key, 'stats:num_times_seen')
             table.counter_set(im_key,
                               'stats:sampling_deficit',
                               -cur_im_sample_deficit)

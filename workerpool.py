@@ -30,6 +30,7 @@ from mturk import MTurk
 import boto
 import happybase
 from conf import *
+import traceback
 
 _log = logger.setup_logger(__name__)
 
@@ -72,7 +73,7 @@ class _Worker(Thread):
                 func, args, kwargs = self.tasks.get()
                 func(self.mt, self.dbget, self.dbset, *args, **kwargs)
             except Exception as e:
-                print e
+                traceback.print_exc()
             finally:
                 self.tasks.task_done()
 
@@ -160,7 +161,10 @@ class _ScheduledTask(Thread):
             for task, args, kwargs in zip(self.task_list,
                                           self.arg_list,
                                           self.kwarg_list):
-                task(*args, **kwargs)
+                try:
+                    task(self.mt, self.dbget, self.dbset, *args, **kwargs)
+                except Exception as e:
+                    traceback.print_exc()
         _log.info('Terminating')
 
 
@@ -182,7 +186,7 @@ class Scheduler:
         self.arg_list = []
         self.kwarg_list = []
 
-    def add_task(self, func, args, kwargs):
+    def add_task(self, func, *args, **kwargs):
         """
         Adds a task to the scheduled list of tasks.
 
@@ -204,12 +208,13 @@ class Scheduler:
 
         :return: None
         """
+        _log.info('Starting scheduler')
         mtconn = boto.mturk.connection.MTurkConnection(
                         aws_access_key_id=MTURK_ACCESS_ID,
                         aws_secret_access_key=MTURK_SECRET_KEY,
                         host=mturk_host)
         dbconn = happybase.Connection(host=DATABASE_LOCATION)
-        thread = _ScheduledTask(self.event,
+        thread = _ScheduledTask(self.stopped,
                                 self.interval,
                                 self.task_list,
                                 self.arg_list,
@@ -225,7 +230,7 @@ class Scheduler:
 
         :return: None
         """
-        self.event.set()
+        self.stopped.set()
         self.started = False
 
 

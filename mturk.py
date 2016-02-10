@@ -302,7 +302,7 @@ class MTurk(object):
                 return PRACTICE_UNDEFINED
         if hit.expired:
             return PRACTICE_EXPIRED
-        if hit.HITSTatus == 'Disposed':
+        if hit.HITStatus == 'Disposed':
             return PRACTICE_DEAD
         if hit.HITStatus == 'Unavailable':
             assignments = self.mtconn.get_assignments(hit.HITId)

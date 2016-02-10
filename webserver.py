@@ -36,6 +36,7 @@ from conf import *
 from flask import Flask
 from flask import request
 from workerpool import ThreadPool
+from workerpool import Scheduler
 
 _log = logger.setup_logger(__name__)
 
@@ -181,6 +182,7 @@ def check_practices(mt, dbget, dbset, hit_type_id=None):
     :param hit_type_id: The HIT type ID, as a string.
     :return: None.
     """
+    _log.info('Checking practices...')
     to_generate = 0
     practice_hits = mt.get_all_hits_of_type(hit_type_id=hit_type_id)
     to_generate += NUM_PRACTICES - len(practice_hits)
@@ -225,9 +227,25 @@ def unban_workers(mt, dbget, dbset):
     :param dbset: A database Set object.
     :return: None
     """
+    # TODO: Finally figure out the damn filters
+    _log.info('Checking if any bans can be lifted...')
     for worker_id in dbget.get_all_workers():
         if not dbset.worker_ban_expires_in(worker_id):
+            # TODO: Only unban if the worker is banned in the first place!
             mt.unban_worker(worker_id)
+
+
+def reset_worker_quotas(mt, dbget, dbset):
+    """
+    Designed to run periodically, resets all the worker completion quotas.
+
+    :param mt: A MTurk object.
+    :param dbget: A database Get object.
+    :param dbset: A database Set object.
+    :return: None
+    """
+    for worker_id in dbget.get_all_workers():
+        mt.reset_worker_daily_quota(worker_id)
 
 
 def handle_accepted_task(mt, dbget, dbset, assignment_id, task_id):
@@ -361,15 +379,21 @@ if __name__ == '__main__':
     _log.info('Building missing tasks')
     num_extant_hits = mt.get_all_pending_hits_of_type(
         TASK_HIT_TYPE_ID, ids_only=True)
-    to_generate = NUM_TASKS - num_extant_hits
+    to_generate = NUM_TASKS - len(num_extant_hits)
     if to_generate:
         _log.info('Building %i new tasks and posting them' % to_generate)
-        for _ in to_generate:
+        for _ in range(to_generate):
             pool.add_task(create_hit, TASK_HIT_TYPE_ID)
     # note that this must be done *after* the tasks are generated, since it
     # is the tasks that actually activate new images.
     _log.info('Checking practice validity')
     pool.add_task(check_practices, PRACTICE_HIT_TYPE_ID)
+    _log.info('Starting scheduler')
+    sched = Scheduler(60*60*24)
+    sched.add_task(unban_workers)
+    sched.add_task(reset_worker_quotas, hit_type_id=PRACTICE_HIT_TYPE_ID)
+    sched.add_task(check_practices)
+    sched.start()
     _log.info('Starting webserver')
     app.run(host='127.0.0.1', port=12344,
-            debug=True, ssl_context=context)
+            debug=False, ssl_context=context)

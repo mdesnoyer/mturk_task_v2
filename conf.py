@@ -175,7 +175,7 @@ LOCALES = [
 """
 WEBSERVER CONFIGURATION
 """
-NUM_THREADS = 3  # the number of threads to use on the webserver.
+NUM_THREADS = 1  # the number of threads to use on the webserver.
 ENABLE_BANNING = True  # whether or not to ban poor-performing workers.
 CONTINUOUS_MODE = True  # whether or not to run the task continuously.
 
@@ -184,7 +184,7 @@ CONTINUOUS_MODE = True  # whether or not to run the task continuously.
 MTURK OPTIONS
 """
 NUM_PRACTICES = 5  # how many practices to post at once
-NUM_TASKS = 500  # how many tasks to maintain online
+NUM_TASKS = 5  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 500  # how many people can take a given practice?
 PRACTICE_TASK_LIFETIME = 60 * 24 * 7  # the time a practice task exists for.
                                       # default is 1 week.
