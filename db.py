@@ -887,6 +887,25 @@ class Get(object):
             active_image_count += 1
         return active_image_count
 
+    def get_active_images(self, image_attributes=IMAGE_ATTRIBUTES):
+        """
+        Gets the IDs of all active images.
+
+        :param image_attributes: The image attributes that the images
+                                 considered must satisfy.
+        :return: A list of active images
+        """
+        table = self.conn.table(IMAGE_TABLE)
+        # note: do NOTE use binary prefix, because 1 does not correspond to the
+        # string 1, but to the binary 1.
+        scanner = table.scan(columns=['metadata:is_active'],
+                             filter=attribute_image_filter(image_attributes,
+                                                           only_active=True))
+        active_images = []
+        for im_key, im_data in scanner:
+            active_images.append(im_key)
+        return active_images
+
     def image_is_active(self, image_id):
         """
         Returns True if an image has been registered into the database and is
@@ -934,9 +953,42 @@ class Get(object):
             return 0  # this is an edge case, where none of the images have
             # been seen.
         return obs_min
-    
+
     def get_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES,
-                     is_practice=False):
+                            is_practice=False):
+        """
+        Replicates the function of get_n_images_sequential but reads all the
+        image keys into memory all at once. While (in principle! or at least
+        theory) they should work the same, the mechanics of doing multiple
+        selection in a uniformly random manner a stream of sequential items
+        is complex and I'm not confident that it's perfect yet. As the image
+        list grows, this might become a problem but right now it's not much
+        of a concern.
+
+        :param n: Number of images to choose.
+        :param image_attributes: The image attributes that the images return
+                                 must satisfy.
+        :param is_practice: Boolean indicating whether or not the images are
+                            for a practice or a real task. If its for a
+                            practice, it will ignore the sampling deficit.
+        :return: A list of image IDs, unless it cannot get enough images --
+                 then returns None.
+        """
+        table = self.conn.table(IMAGE_TABLE)
+        active_ims = self.get_active_images(image_attributes=image_attributes)
+        images = set()
+        while len(images) < n:
+            cand = np.random.choice(active_ims)
+            if is_practice:
+                images.add(cand)
+            sd = table.counter_get(cand, 'stats:sampling_deficit')
+            if sd >= 0:
+                images.add(cand)
+            else:
+                table.counter_inc(cand, 'stats:sampling_deficit')
+
+    def get_n_images_sequential(self, n, image_attributes=IMAGE_ATTRIBUTES,
+                                is_practice=False):
         """
         Returns n images from the database, sampled according to some
         probability. These are fit for use in design generation.
