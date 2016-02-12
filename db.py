@@ -23,7 +23,7 @@ import time
 from collections import Counter
 import scipy.stats as stats
 import json
-import happybase
+from geoip import geolite2
 
 """
 LOGGING
@@ -359,18 +359,14 @@ def _find_demographics_element_in_json(resp_json):
              cannot find any, then it returns None.
     """
     if type(resp_json) is dict:
-        if 'age' in resp_json:
-            return resp_json
-        elif 'location' in resp_json:
+        if 'birthyear' in resp_json:
             return resp_json
         elif 'gender' in resp_json:
             return resp_json
         else:
             return None
     for i in resp_json:
-        if 'age' in i:
-            return i
-        elif 'location' in i:
+        if 'birthyear' in i:
             return i
         elif 'gender' in i:
             return i
@@ -418,6 +414,7 @@ class Get(object):
         :return: A Get instance.
         """
         self.conn = conn
+        self._last_active_im = None  # stores the last active image scanned
     
     def worker_exists(self, worker_id):
         """
@@ -868,6 +865,50 @@ class Get(object):
 
     # IMAGE STUFF
 
+    def get_active_image_scanner(self, image_attributes=IMAGE_ATTRIBUTES):
+        """
+        Returns a generator over active images. I'm not sure about the
+        behavior of persistent scan() objects, so this function will modify
+        the _last_active_im attribute of the class so it can 'remember' where
+        it left off each time. This will iterate indefinitely over images,
+        looping over the list again and again, until it is destructed. When a
+        new one is instaniated, it will pick up where the previous one left off.
+
+        :param image_attributes: The image attributes that the images
+                                 considered must satisfy.
+        :return: A generator over active images which match the attribute
+                 criteria.
+        """
+        table = self.conn.table(IMAGE_TABLE)
+        scanner = table.scan(row_start=self._last_active_im,
+                             columns=['metadata:is_active'],
+                             filter=attribute_image_filter(image_attributes,
+                                                           only_active=True))
+        if self._last_active_im is not None:
+            # the row_start argument is inclusive, so if _last_active_im is not
+            # none, then it will first return the last seen image--so we need
+            # to omit it.
+            try:
+                _ = scanner.next()
+            except StopIteration:
+                self._last_active_im = None
+                scanner = table.scan(row_start=self._last_active_im,
+                             columns=['metadata:is_active'],
+                             filter=attribute_image_filter(image_attributes,
+                                                           only_active=True))
+        while True:
+            try:
+                im_id, _ = scanner.next()
+            except StopIteration:
+                self._last_active_im = None
+                scanner = table.scan(row_start=self._last_active_im,
+                             columns=['metadata:is_active'],
+                             filter=attribute_image_filter(image_attributes,
+                                                           only_active=True))
+                im_id, _ = scanner.next()
+            self._last_active_im = im_id
+            yield im_id
+
     def get_n_active_images_count(self, image_attributes=IMAGE_ATTRIBUTES):
         """
         Gets a count of active images.
@@ -955,15 +996,11 @@ class Get(object):
         return obs_min
 
     def get_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES,
-                            is_practice=False):
+                     is_practice=False):
         """
-        Replicates the function of get_n_images_sequential but reads all the
-        image keys into memory all at once. While (in principle! or at least
-        theory) they should work the same, the mechanics of doing multiple
-        selection in a uniformly random manner a stream of sequential items
-        is complex and I'm not confident that it's perfect yet. As the image
-        list grows, this might become a problem but right now it's not much
-        of a concern.
+        Randomly samples n active images from the database and returns their
+        IDs in accordance with their sampling surplus (or not, if it's a
+        practice)
 
         :param n: Number of images to choose.
         :param image_attributes: The image attributes that the images return
@@ -975,62 +1012,27 @@ class Get(object):
                  then returns None.
         """
         table = self.conn.table(IMAGE_TABLE)
-        active_ims = self.get_active_images(image_attributes=image_attributes)
-        images = set()
-        while len(images) < n:
-            cand = np.random.choice(active_ims)
-            if is_practice:
-                images.add(cand)
-            sd = table.counter_get(cand, 'stats:sampling_deficit')
-            if sd >= 0:
-                images.add(cand)
-            else:
-                table.counter_inc(cand, 'stats:sampling_deficit')
-
-    def get_n_images_sequential(self, n, image_attributes=IMAGE_ATTRIBUTES,
-                                is_practice=False):
-        """
-        Returns n images from the database, sampled according to some
-        probability. These are fit for use in design generation.
-    
-        NOTES:
-            If not given, the base_prob is defined to be n / N, where N is
-            the number of active images.
-
-        :param n: Number of images to choose.
-        :param image_attributes: The image attributes that the images return
-                                 must satisfy.
-        :param is_practice: Boolean indicating whether or not the images are
-                            for a practice or a real task. If its for a
-                            practice, it will ignore the sampling deficit.
-        :return: A list of image IDs, unless it cannot get enough images --
-                 then returns None.
-        """
-        # TODO: Have them read the image keys in all at once!
-        n_active = self.get_n_active_images_count(image_attributes)
-        if n > n_active:
+        count = self.get_n_active_images_count(
+            image_attributes=image_attributes)
+        if n > count:
             _log.warning('Insufficient number of active images, '
                          'activating %i more.' % ACTIVATION_CHUNK_SIZE)
             return None
-        table = self.conn.table(IMAGE_TABLE)
+        generator = \
+            self.get_active_image_scanner(image_attributes=image_attributes)
+        prob = float(n) / count
         images = set()
         while len(images) < n:
-            scanner = table.scan(filter=attribute_image_filter(
-                image_attributes, only_active=True))
-            for row_num, (row_key, row_data) in enumerate(scanner):
-                p = 1. / (n_active - row_num)
-                if np.random.rand() < p:
-                    if is_practice:
-                        images.add(row_key)
-                        break
-                    sd = \
-                        table.counter_get(row_key, 'stats:sampling_deficit')
-                    if sd >= 0:
-                        images.add(row_key)
-                        break
-                    else:
-                        table.counter_inc(row_key,
-                                          'stats:sampling_deficit')
+            im_id = generator.next()
+            if np.random.rand() > prob:
+                continue
+            if is_practice:
+                images.add(im_id)
+            sd = table.counter_get(im_id, 'stats:sampling_surplus')
+            if sd <= 0:
+                images.add(im_id)
+            else:
+                table.counter_dec(im_id, 'stats:sampling_surplus')
         return list(images)
 
     # TASK DESIGN STUFF
@@ -1810,11 +1812,11 @@ class Set(object):
         scanner = table.scan(columns=['metadata:is_active'],
                              filter=attribute_image_filter(only_active=True))
         for im_key, _ in scanner:
-            cur_im_sample_deficit = \
+            cur_im_sample_surplus = \
                 table.counter_get(im_key, 'stats:num_times_seen')
             table.counter_set(im_key,
-                              'stats:sampling_deficit',
-                              -cur_im_sample_deficit)
+                              'stats:sampling_surplus',
+                              cur_im_sample_surplus)
 
     def activate_images(self, image_ids):
         """
@@ -1895,22 +1897,20 @@ class Set(object):
         table.counter_inc(worker_id, 'stats:numAttempted')
         table.counter_inc(worker_id, 'stats:numAttemptedThisWeek')
 
-    def worker_demographics(self, worker_id, gender, age, location):
+    def worker_demographics(self, worker_id, gender, birthyear):
         """
         Sets a worker's demographic information.
 
         :param worker_id: The ID of the worker.
         :param gender: Worker gender.
-        :param age: Worker age range.
-        :param location: Worker location.
+        :param birthyear: Worker year of birth.
         :return: None
         """
         _log.info('Saving demographics for worker %s'% worker_id)
         table = self.conn.table(WORKER_TABLE)
-        table.put(worker_id, _conv_dict_vals({'demographics:age': age,
-                                              'demographics:gender': gender,
-                                              'demographics:location':
-                                                  location}))
+        table.put(worker_id,
+                  _conv_dict_vals({'demographics:birthyear': birthyear,
+                                   'demographics:gender': gender}))
 
     def task_finished(self, task_id, worker_id, choices, choice_idxs,
                       reaction_times, hit_id=None, assignment_id=None,
@@ -1986,8 +1986,8 @@ class Set(object):
         table.counter_inc(worker_id, 'stats:num_pending_eval')
         table.counter_inc(worker_id, 'stats:interval_completed_count')
 
-    def task_finished_from_json(self, resp_json, hit_type_id=None,
-                                worker_ip=None):
+    def task_finished_from_json(self, resp_json, user_agent=None,
+                                hit_type_id=None):
         """
         Indicates a task is finished and stores the response data from a json
         request object. The HIT Type ID and the worker IP address are the only
@@ -2002,7 +2002,7 @@ class Set(object):
 
         :param resp_json: The response JSON, from a MTurk task using jsPsych
         :param hit_type_id: The HIT Type ID.
-        :param worker_ip: The worker's IP address.
+        :param user_agent: A Flask user-agent object.
         :return: The fraction of missed trials and contradictions as well as
                  the chisquare pval.
         """
@@ -2068,7 +2068,6 @@ class Set(object):
                             'completion_data:reaction_times': dumps(rts),
                             'completion_data:response_json': json.dumps(
                                 resp_json),
-                            'completion_data:worker_ip': str(worker_ip),
                             'metadata:hit_type_id': str(hit_type_id),
                             'validation_statistics:prob_random': '%.4f' %
                                                                  p_value,
@@ -2077,6 +2076,13 @@ class Set(object):
                             'validation_statistics:frac_no_response':
                                 '%.4f' % frac_unanswered,
                             'validation_statistics:mean_rt': '%.4f' % mean_rt})
+        if user_agent is not None:
+            table.put(task_id, _conv_dict_vals(
+                                {'user_agent:browser': user_agent.browser,
+                                 'user_agent:language': user_agent.language,
+                                 'user_agent:platform': user_agent.platform,
+                                 'user_agent:version': user_agent.version,
+                                 'user_agent:string': user_agent.string}))
         return frac_contradictions, frac_unanswered, mean_rt, p_value
 
     def validate_task(self, task_id=None, frac_contradictions=None,
@@ -2213,11 +2219,12 @@ class Set(object):
         if not val:
             return val, reason
 
-    def register_demographics(self, resp_json):
+    def register_demographics(self, resp_json, worker_ip):
         """
         Registers the demographics of a worker.
 
         :param resp_json: The response JSON of a task from MTurk.
+        :param worker_ip: The worker IP address.
         :return: None
         """
         worker_id = resp_json[0]['workerId']
@@ -2229,10 +2236,14 @@ class Set(object):
         dem_json = _find_demographics_element_in_json(resp_json)
         if dem_json is None:
             return
-        age = dem_json['age']
+        birthyear = dem_json['birthyear']
         gender = dem_json['gender']
-        table.put(worker_id, {'demographics:age': str(age),
+        table.put(worker_id, {'demographics:birthyear': str(birthyear),
                               'demographics:gender': str(gender)})
+        location_info = geolite2.lookup(worker_ip)
+        table.put(worker_id,
+                  **{'location:'+k: str(v) for k, v in location_info.to_dict(
+                  ).iteritems()})
 
     def practice_pass(self, resp_json):
         """

@@ -36,7 +36,7 @@ from conf import *
 from flask import Flask
 from flask import request
 from workerpool import ThreadPool
-from workerpool import Scheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 
 _log = logger.setup_logger(__name__)
 
@@ -168,7 +168,7 @@ def create_hit(mt, dbget, dbset, hit_type_id=None):
     _log.info('Hit %s is ready.' % hid)
 
 
-def check_practices(mt, dbget, dbset, hit_type_id=None):
+def check_practices(hit_type_id=None):
     """
     Checks to make sure that the practices are up, etc. If not, rebuilds them.
 
@@ -176,12 +176,17 @@ def check_practices(mt, dbget, dbset, hit_type_id=None):
         Right now, if the practices are all used up (but not expired!) then
         they are not re-created. They are only re-created upon expiration.
 
-    :param mt: A MTurk object.
-    :param dbget: A database Get object.
-    :param dbset: A database Set object.
     :param hit_type_id: The HIT type ID, as a string.
     :return: None.
     """
+    conn = happybase.Connection(host=DATABASE_LOCATION)
+    mtconn = boto.mturk.connection.MTurkConnection(
+            aws_access_key_id=MTURK_ACCESS_ID,
+            aws_secret_access_key=MTURK_SECRET_KEY,
+            host=mturk_host)
+    mt = MTurk(mtconn)
+    dbget = Get(conn)
+    dbset = Set(conn)
     _log.info('Checking practices...')
     to_generate = 0
     practice_hits = mt.get_all_hits_of_type(hit_type_id=hit_type_id)
@@ -189,6 +194,13 @@ def check_practices(mt, dbget, dbset, hit_type_id=None):
     for hit in practice_hits:
         if mt.get_practice_status(hit=hit) == PRACTICE_EXPIRED:
             _log('Practice %s expired' % hit.HITId)
+            # disable it
+            mt.disable_hit(hit.HITId)
+            to_generate += 1
+        elif mt.get_practice_status(hit=hit) == PRACTICE_COMPLETE:
+            _log('Practice %s is complete' % hit.HITId)
+            # disable it
+            mt.disable_hit(hit.HITId)
             to_generate += 1
     _log.info('Need to generate %i more practices' % to_generate)
     for _ in range(to_generate):
@@ -217,16 +229,20 @@ def check_ban(mt, dbget, dbset, worker_id=None):
         mt.ban_worker(worker_id)
 
 
-def unban_workers(mt, dbget, dbset):
+def unban_workers():
     """
     Designed to run periodically, checks to see the workers -- if any -- that
     need to be unbanned.
 
-    :param mt: A MTurk object.
-    :param dbget: A database Get object.
-    :param dbset: A database Set object.
     :return: None
     """
+    conn = happybase.Connection(host=DATABASE_LOCATION)
+    mtconn = boto.mturk.connection.MTurkConnection(
+            aws_access_key_id=MTURK_ACCESS_ID,
+            aws_secret_access_key=MTURK_SECRET_KEY,
+            host=mturk_host)
+    mt = MTurk(mtconn)
+    dbset = Set(conn)
     # TODO: Finally figure out the damn filters
     _log.info('Checking if any bans can be lifted...')
     for worker_id in dbget.get_all_workers():
@@ -235,17 +251,38 @@ def unban_workers(mt, dbget, dbset):
             mt.unban_worker(worker_id)
 
 
-def reset_worker_quotas(mt, dbget, dbset):
+def reset_worker_quotas():
     """
     Designed to run periodically, resets all the worker completion quotas.
 
-    :param mt: A MTurk object.
-    :param dbget: A database Get object.
-    :param dbset: A database Set object.
     :return: None
     """
+    conn = happybase.Connection(host=DATABASE_LOCATION)
+    mtconn = boto.mturk.connection.MTurkConnection(
+            aws_access_key_id=MTURK_ACCESS_ID,
+            aws_secret_access_key=MTURK_SECRET_KEY,
+            host=mturk_host)
+    mt = MTurk(mtconn)
+    dbget = Set(conn)
     for worker_id in dbget.get_all_workers():
         mt.reset_worker_daily_quota(worker_id)
+
+
+def reset_weekly_practices():
+    """
+    Designed to run periodically, resets all the worker practice quotas.
+
+    :return: None
+    """
+    conn = happybase.Connection(host=DATABASE_LOCATION)
+    mtconn = boto.mturk.connection.MTurkConnection(
+            aws_access_key_id=MTURK_ACCESS_ID,
+            aws_secret_access_key=MTURK_SECRET_KEY,
+            host=mturk_host)
+    mt = MTurk(mtconn)
+    dbget = Set(conn)
+    for worker_id in dbget.get_all_workers():
+        mt.reset_worker_weekly_practice_quota(worker_id)
 
 
 def handle_accepted_task(mt, dbget, dbset, assignment_id, task_id):
@@ -334,7 +371,8 @@ def submit():
     is_practice = request.json[0]['is_practice']
     to_return = make_success(static_urls)
     if is_practice:
-        dbset.register_demographics(request.json)
+        mt.decrement_worker_practice_weekly_quota(worker_id)
+        dbset.register_demographics(request.json, worker_ip)
         passed_practice = request.json[0]['passed_practice']
         if passed_practice:
             dbset.practice_pass(request.json)
@@ -343,8 +381,7 @@ def submit():
         mt.decrement_worker_daily_quota(worker_id)
         frac_contradictions, frac_unanswered, mean_rt, prob_random = \
             dbset.task_finished_from_json(request.json,
-                                          hit_type_id=hit_type_id,
-                                          worker_ip=worker_ip)
+                                          hit_type_id=hit_type_id)
         is_valid, reason = \
             dbset.validate_task(task_id=None,
                                 frac_contradictions=frac_contradictions,
@@ -376,10 +413,10 @@ if __name__ == '__main__':
         TASK_HIT_TYPE_ID, PRACTICE_HIT_TYPE_ID = mt.register_hit_type_mturk()
         dbset.register_hit_type(TASK_HIT_TYPE_ID)
         dbset.register_hit_type(PRACTICE_HIT_TYPE_ID, is_practice=True)
-    _log.info('Building missing tasks')
+    _log.info('Looking for missing tasks')
     num_extant_hits = mt.get_all_pending_hits_of_type(
         TASK_HIT_TYPE_ID, ids_only=True)
-    to_generate = NUM_TASKS - len(num_extant_hits)
+    to_generate = max(NUM_TASKS - len(num_extant_hits), 0)
     if to_generate:
         _log.info('Building %i new tasks and posting them' % to_generate)
         for _ in range(to_generate):
@@ -387,13 +424,26 @@ if __name__ == '__main__':
     # note that this must be done *after* the tasks are generated, since it
     # is the tasks that actually activate new images.
     _log.info('Checking practice validity')
-    pool.add_task(check_practices, PRACTICE_HIT_TYPE_ID)
+    check_practices(hit_type_id=PRACTICE_HIT_TYPE_ID)
     _log.info('Starting scheduler')
-    sched = Scheduler(60*60*24)
-    sched.add_task(unban_workers)
-    sched.add_task(reset_worker_quotas, hit_type_id=PRACTICE_HIT_TYPE_ID)
-    sched.add_task(check_practices)
-    sched.start()
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(check_practices,
+                      trigger='interval',
+                      minutes=60*60*3,                  # every 3 hours
+                      args=[PRACTICE_HIT_TYPE_ID],
+                      id='practice check')
+    scheduler.add_job(unban_workers,
+                      trigger='interval',
+                      minutes=60*60*24,                 # every 24 hours
+                      id='unban workers')
+    scheduler.add_job(reset_worker_quotas,
+                      trigger='interval',
+                      minutes=60*60*24,                 # every 24 hours
+                      id='task quota reset')
+    scheduler.add_job(reset_weekly_practices,
+                      trigger='interval',
+                      minutes=60*60*24*7,               # every 7 days
+                      id='practice quota reset')
     _log.info('Starting webserver')
     app.run(host='127.0.0.1', port=12344,
             debug=False, ssl_context=context)

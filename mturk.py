@@ -129,6 +129,11 @@ class MTurk(object):
             self._gen_quota_qualification()
         else:
             self.quota_id = qid
+        qid = self._get_qualification_id_from_name(PRACTICE_QUOTA_NAME)
+        if qid is None:
+            self._gen_practice_quota_qualification()
+        else:
+            self.practice_quota_id = qid
 
     def _get_qualification_id_from_name(self, qualification_name):
         """
@@ -163,6 +168,20 @@ class MTurk(object):
         except boto.mturk.connection.MTurkRequestError as e:
             _log.error('Error creating main qualification: ' + e.message)
 
+    def _gen_practice_quota_qualification(self):
+        _log.info('Generating practice quota qualification')
+        try:
+            resp = self.mtconn.create_qualification_type(
+                name=PRACTICE_QUOTA_NAME,
+                description=PRACTICE_QUOTA_DESCRIPTION,
+                status='Active',
+                auto_granted=True,
+                auto_granted_value=NUM_PRACTICES)
+            self.practice_quota_id = resp[0].QualificationTypeId
+        except boto.mturk.connection.MTurkRequestError as e:
+            _log.error('Failed creating practice quota qualification' +
+                       e.message)
+
     def _gen_quota_qualification(self):
         """
         Creates the daily quota qualification, sets the ID internally.
@@ -170,10 +189,10 @@ class MTurk(object):
         :return: None
         """
         _log.info('Generating quota qualification')
-        resp = self.mtconn.create_qualification_type(
-            name=DAILY_QUOTA_NAME, description=DAILY_QUOTA_DESCRIPTION,
-            status='Active', is_requestable=False)
         try:
+            resp = self.mtconn.create_qualification_type(
+                name=DAILY_QUOTA_NAME, description=DAILY_QUOTA_DESCRIPTION,
+                status='Active', is_requestable=False)
             self.quota_id = resp[0].QualificationTypeId
         except boto.mturk.connection.MTurkRequestError as e:
             _log.error('Error creating quota qualification: ' + e.message)
@@ -207,7 +226,11 @@ class MTurk(object):
         requirements = \
             [boto.mturk.qualification.Requirement(self.qualification_id,
                                                   'DoesNotExist'),
-             _LocaleRequirement('In', LOCALES)]
+             _LocaleRequirement('In', LOCALES),
+             boto.mturk.qualification.Requirement(self.practice_quota_id,
+                                                  'GreaterThan',
+                                                  0,
+                                                  required_to_preview=True)]
         self.practice_qualification_requirement = \
             boto.mturk.qualification.Qualifications(requirements=requirements)
 
@@ -268,15 +291,15 @@ class MTurk(object):
             return HIT_DISPOSED
         assignments = self.mtconn.get_assignments(hit.HITId)
         if len(assignments) == hit.MaxAssignments:
-            if assignments[0].AssignmentStatus == 'Approved':
+            if assignments[0].AssignmentStatus == 'Assignable':
                 return HIT_APPROVED
             elif assignments[0].AssignmentStatus == 'Rejected':
                 return HIT_REJECTED
             else:
                 return HIT_COMPLETE
-        if hit.HITStatus == 'Available':
+        if hit.HITStatus == 'Assignable':
             return HIT_PENDING
-        elif hit.HITStatus == 'Unavailable':
+        elif hit.HITStatus == 'Unassignable':
             if hit.expired:
                 return HIT_EXPIRED
             else:
@@ -304,7 +327,7 @@ class MTurk(object):
             return PRACTICE_EXPIRED
         if hit.HITStatus == 'Disposed':
             return PRACTICE_DEAD
-        if hit.HITStatus == 'Unavailable':
+        if hit.HITStatus == 'Unassignable':
             assignments = self.mtconn.get_assignments(hit.HITId)
             if len(assignments) == hit.MaxAssignments:
                 return PRACTICE_COMPLETE
@@ -437,6 +460,22 @@ class MTurk(object):
         except boto.mturk.connection.MTurkRequestError as e:
             _log.error('Error resetting daily quota for worker: %s' + e.message)
 
+    def reset_worker_weekly_practice_quota(self, worker_id):
+        """
+        Resets a worker's weekly practice quota, allowing them to complete
+        another round of practices, as set by NUM_PRACTICES (see conf.py)
+
+        :param worker_id: The MTurk worker ID.
+        :return: None
+        """
+        try:
+            self.mtconn.assign_qualification(self.practice_quota_id, worker_id,
+                                             value=NUM_PRACTICES,
+                                             send_notification=False)
+        except boto.mturk.connection.MTurkRequestError as e:
+            _log.error('Error resetting weekly practice quota for worker: %s' +
+                       e.message)
+
     def decrement_worker_daily_quota(self, worker_id):
         """
         Decrements the worker's daily quota for submittable tasks by one.
@@ -456,6 +495,29 @@ class MTurk(object):
             _log.warn('Could not obtain quota for worker %s' % worker_id)
             quota_val = 0
         self.mtconn.assign_qualification(self.quota_id, worker_id,
+                                         value=quota_val,
+                                         send_notification=False)
+
+    def decrement_worker_practice_weekly_quota(self, worker_id):
+        """
+        Decrements the worker's weekly practice quota by one.
+
+        :param worker_id: The MTurk worker ID.
+        :return: None
+        """
+        try:
+            quota_val = \
+                self.mtconn.get_qualification_score(self.practice_quota_id,
+                                                    worker_id)
+            if quota_val > 0:
+                quota_val -= 1
+            else:
+                _log.warn('Worker %s quota already at or below zero.' %
+                          worker_id)
+        except boto.mturk.connection.MTurkRequestError:
+            _log.warn('Could not obtain quota for worker %s' % worker_id)
+            quota_val = 0
+        self.mtconn.assign_qualification(self.practice_quota_id, worker_id,
                                          value=quota_val,
                                          send_notification=False)
 
@@ -679,17 +741,38 @@ class MTurk(object):
                 fail_disposed.append(hit_id)
             else:
                 disposed += 1
-        _log.info('Disposed of %i HITs, disabled %i HITs, %i still exist.' %
+        _log.info('Disabled %i HITs, disposed of %i HITs, %i still exist.' %
                   (disabled, disposed, len(fail_disposed)))
 
-    def dispose_handled_hits(self):
+    def disable_handled_hits(self):
         """
-        Disposes of all HITs with approved or rejected assignments.
+        Disables all HITs where all the assignments have been completed and
+        have been approved / rejected
 
         :return: None
         """
-        # TODO: Implement this!
-        raise NotImplementedError()
+        _log.info('Searching for completed hits')
+        hits = self.get_all_hits_of_type()
+        tot = 0
+        dis = 0
+        for hit in hits:
+            tot += 1
+            if hit.HITStatus == 'Disposed':
+                continue
+            assignments = self.mtconn.get_assignments(hit.HITId)
+            if len(assignments) == hit.MaxAssignments:
+                disable_able = True
+                for ass in assignments:
+                    if ass.AssignmentStatus == 'Approved':
+                        continue
+                    if ass.AssignmentStatus == 'Rejected':
+                        continue
+                    disable_able = False
+                    break
+                if disable_able:
+                    dis += 1
+                    self.disable_hit(hit.HITId)
+        _log.info('%i HITs found, %i disabled' % (tot, dis))
 
     def extend_all_hits_of_type(self, hit_type_id=None,
                                 extension_amount=DEF_EXTENSION_TIME):

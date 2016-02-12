@@ -33,7 +33,7 @@ QUALIFICATION_DESCRIPTION = 'You have passed the practices for the image ' \
                             'qualification will be revoked. Once the ban ' \
                             'expires, you will be able to re-take the practice.'
 
-# This is the qualification counter qualification. This limits the number of
+# This is the quota counter qualification. This limits the number of
 # tasks they can complete per day. It is  internally set, every day, to the
 # value of MAX_SUBMITS_PER_DAY.
 DAILY_QUOTA_NAME = 'Daily task limit'
@@ -45,6 +45,13 @@ DAILY_QUOTA_DESCRIPTION = 'This is the number of tasks you can submit per ' \
                           ' is granted automatically when you have received' \
                           ' the qualification "%s"' % QUALIFICATION_NAME
 
+# This is the practice quota counter qualification. This limits the number of
+# practices people can take per week.
+PRACTICE_QUOTA_NAME = 'Weekly practice limit'
+PRACTICE_QUOTA_DESCRIPTION = 'This is the number of practices you can ' \
+                             'attempt per week. Because practices are never' \
+                             ' rejected, we have to limit how many times ' \
+                             'people can attempt to pass them.'
 
 """
 BLOCK IDENTIFICATION
@@ -191,10 +198,12 @@ COLUMN NAMES, BY FAMILY
 # See the readme on the database schema.
 WORKER_FAMILIES = {'status': dict(max_versions=1),
                    'stats': dict(max_versions=1),
-                   'demographics': dict(max_versions=1)}
+                   'demographics': dict(max_versions=1),
+                   'location': dict(max_versions=1)}
 TASK_FAMILIES = {'metadata': dict(max_versions=1),
                  'status': dict(max_versions=1),
                  'completed_data': dict(max_versions=1),
+                 'user_agent': dict(max_versions=1),
                  'validation_statistics': dict(max_versions=1),
                  'blocks': dict(max_versions=1),
                  'html': dict(max_versions=1)}
