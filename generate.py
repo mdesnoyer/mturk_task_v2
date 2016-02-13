@@ -93,6 +93,35 @@ def make_success(static_urls=None):
     return success.render(**_get_static_url_dict(SUCCESS_TEMPLATE, static_urls))
 
 
+def make_practice_passed(static_urls=None):
+    """
+    Creates the practice passed success page (see make_success)
+
+    :param static_urls: A dictionary of static URLs. See webserver.py.
+    :return: HTML for a page indicating the worker has successfully completed a
+             practice.
+    """
+    if static_urls is None:
+        static_urls = {}
+    success = templateEnv.get_template(PRACTICE_PASSED_TEMPLATE)
+    return success.render(**_get_static_url_dict(PRACTICE_PASSED_TEMPLATE,
+                                                 static_urls))
+
+
+def make_practice_failed(static_urls=None):
+    """
+    Creates the practice failed page (see make_success)
+
+    :param static_urls: A dictionary of static URLs. See webserver.py.
+    :return: HTML for a page indicating the worker has failed a practice.
+    """
+    if static_urls is None:
+        static_urls = {}
+    success = templateEnv.get_template(PRACTICE_FAILED_TEMPLATE)
+    return success.render(**_get_static_url_dict(PRACTICE_FAILED_TEMPLATE,
+                                                 static_urls))
+
+
 def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
               pos_type=POS_TYPE, attribute=ATTRIBUTE, practice=False,
               collect_demo=False, is_preview=False, static_urls=None,

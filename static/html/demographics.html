@@ -1,8 +1,8 @@
 <!doctype html>
 <html>
 <head>
-  <link rel="stylesheet" href="{{ jspsych_css }}">
-  <link rel="stylesheet" href="{{ jquery_ui_css }}">
+  <!--<link rel="stylesheet" href="{{ jspsych_css }}">-->
+  <!--<link rel="stylesheet" href="{{ jquery_ui_css }}">-->
 </head>
 <body>
     <div id="demographics">
@@ -17,25 +17,9 @@
         </p>
 
         <p>
-            What is your age? <br>
-            <input type="radio" name="age" id="u11" value="<=11">Under 11<br>
-            <input type="radio" name="age" id="u18" value="12-17">12 to 17<br>
-            <input type="radio" name="age" value="18-24">18 to 24<br>
-            <input type="radio" name="age" value="25-34">25 to 34<br>
-            <input type="radio" name="age" value="35-24">35 to 44<br>
-            <input type="radio" name="age" value="45-24">45 to 34<br>
-            <input type="radio" name="age" value="55-24">55 to 64<br>
-            <input type="radio" name="age" value=">=65">65 or over
-        </p>
-
-        <p>
-            What is your approximate location? <br>
-            <input type="radio" name="location" id="location" value="africa">Africa<br>
-            <input type="radio" name="location" value="asia">Asia<br>
-            <input type="radio" name="location" value="australia">Australia<br>
-            <input type="radio" name="location" value="europe">Europe<br>
-            <input type="radio" name="location" value="north america">North America<br>
-            <input type="radio" name="location" value="south america">South America<br>
+            Please enter your year of birth as YYYY <br>
+            <input type="number" name="birthyear" id="birthyear"
+                   min="1901" max="2015"><br>
         </p>
 
         <button type="button" id="start">Continue</button>

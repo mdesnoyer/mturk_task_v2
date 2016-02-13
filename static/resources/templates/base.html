@@ -38,8 +38,8 @@
       alert("You must indicate your gender.");
       return false;
     }
-    if (!$("input:number[name=birthyear]").is(":empty")){
-      alert("You must indicate the year you were born.");
+    if (!$("input[name=birthyear]").val()){
+      alert("You must indicate the year you were born, e.g., 1965");
       return false;
     }
     jsPsych.data.write({

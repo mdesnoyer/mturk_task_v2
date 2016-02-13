@@ -29,6 +29,8 @@ from db import Get
 from db import Set
 from generate import fetch_task
 from generate import make_success
+from generate import make_practice_passed
+from generate import make_practice_failed
 from mturk import MTurk
 import boto.mturk.connection
 import happybase
@@ -37,6 +39,7 @@ from flask import Flask
 from flask import request
 from workerpool import ThreadPool
 from apscheduler.schedulers.background import BackgroundScheduler
+import atexit
 
 _log = logger.setup_logger(__name__)
 
@@ -76,7 +79,8 @@ resources = [
     'resources/instr_screenshots/reject_1.jpg',
     'resources/instr_screenshots/reject_1.jpg',
     'resources/templates/symbols/error.png',
-    'resources/templates/symbols/check.png'
+    'resources/templates/symbols/check.png',
+    'resources/templates/symbols/blocked.png'
 ]
 scripts = [  # note, this also includes the jsPsych-specific CSS.
     'js/jspsych-4.3/js/jquery.min.js',
@@ -151,8 +155,8 @@ def create_hit(mt, dbget, dbset, hit_type_id=None):
     """
     _log.info('Checking image statuses')
     n_active = dbget.get_n_active_images_count(IMAGE_ATTRIBUTES)
-    min_seen = dbget.image_get_min_seen(IMAGE_ATTRIBUTES)
-    if min_seen > SAMPLES_REQ_PER_IMAGE(n_active):
+    mean_seen = dbget.image_get_mean_seen(IMAGE_ATTRIBUTES)
+    if mean_seen > MEAN_SAMPLES_REQ_PER_IMAGE(n_active):
         _log.info('Images are sufficiently sampled, activating more')
         dbset.activate_n_images(ACTIVATION_CHUNK_SIZE)
     _log.info('Generating a new HIT')
@@ -193,12 +197,12 @@ def check_practices(hit_type_id=None):
     to_generate += NUM_PRACTICES - len(practice_hits)
     for hit in practice_hits:
         if mt.get_practice_status(hit=hit) == PRACTICE_EXPIRED:
-            _log('Practice %s expired' % hit.HITId)
+            _log.info('Practice %s expired' % hit.HITId)
             # disable it
             mt.disable_hit(hit.HITId)
             to_generate += 1
         elif mt.get_practice_status(hit=hit) == PRACTICE_COMPLETE:
-            _log('Practice %s is complete' % hit.HITId)
+            _log.info('Practice %s is complete' % hit.HITId)
             # disable it
             mt.disable_hit(hit.HITId)
             to_generate += 1
@@ -263,7 +267,7 @@ def reset_worker_quotas():
             aws_secret_access_key=MTURK_SECRET_KEY,
             host=mturk_host)
     mt = MTurk(mtconn)
-    dbget = Set(conn)
+    dbget = Get(conn)
     for worker_id in dbget.get_all_workers():
         mt.reset_worker_daily_quota(worker_id)
 
@@ -280,7 +284,7 @@ def reset_weekly_practices():
             aws_secret_access_key=MTURK_SECRET_KEY,
             host=mturk_host)
     mt = MTurk(mtconn)
-    dbget = Set(conn)
+    dbget = Get(conn)
     for worker_id in dbget.get_all_workers():
         mt.reset_worker_weekly_practice_quota(worker_id)
 
@@ -297,11 +301,11 @@ def handle_accepted_task(mt, dbget, dbset, assignment_id, task_id):
     :param task_id: The internal task ID
     :return: None
     """
-    mt.approve_assignment(assignment_id)
     dbset.accept_task(task_id)
 
 
-def handle_reject_task(mt, dbget, dbset, assignment_id, task_id, reason):
+def handle_reject_task(mt, dbget, dbset, worker_id, assignment_id, task_id,
+                       reason):
     """
     Handles a rejected task asynchronously, i.e., by being passed to the
     threadpool.
@@ -309,13 +313,31 @@ def handle_reject_task(mt, dbget, dbset, assignment_id, task_id, reason):
     :param mt: A MTurk object.
     :param dbget: A database Get object.
     :param dbset: A database Set object.
+    :param worker_id: The worker ID
     :param assignment_id: The MTurk assignment ID
     :param task_id: The internal task ID
     :param reason: The reason for the rejection
     :return: None
     """
-    mt.soft_reject_assignment(assignment_id, reason)
+    mt.soft_reject_assignment(worker_id, assignment_id, reason)
     dbset.reject_task(task_id, reason)
+
+def handle_finished_hit(mt, dbget, dbset, hit_id):
+    """
+    Disposes of a completed task asynchronously, i.e., by being passed to the
+    threadpool.
+
+    NOTES:
+        Either an assignment_id or hit_id must be provided.
+
+    :param mt: A MTurk object.
+    :param dbget: A database Get object.
+    :param dbset: A database Set object.
+    :param hit_id: The reason for the rejection
+    :return: None
+    """
+    mt.dispose_hit(hit_id)
+
 
 """
 FLASK FUNCTIONS
@@ -369,15 +391,18 @@ def submit():
         _log.warn('No HIT type ID associated with hit %s' % hit_id)
         hit_type_id = ''
     is_practice = request.json[0]['is_practice']
-    to_return = make_success(static_urls)
     if is_practice:
         mt.decrement_worker_practice_weekly_quota(worker_id)
         dbset.register_demographics(request.json, worker_ip)
         passed_practice = request.json[0]['passed_practice']
         if passed_practice:
+            to_return = make_practice_passed(static_urls)
             dbset.practice_pass(request.json)
             mt.grant_worker_practice_passed(worker_id)
+        else:
+            to_return = make_practice_failed(static_urls)
     else:
+        to_return = make_success(static_urls)
         mt.decrement_worker_daily_quota(worker_id)
         frac_contradictions, frac_unanswered, mean_rt, prob_random = \
             dbset.task_finished_from_json(request.json,
@@ -388,11 +413,16 @@ def submit():
                                 frac_unanswered=frac_unanswered,
                                 mean_rt=mean_rt, prob_random=prob_random)
         if not is_valid:
-            pool.add_task(handle_reject_task, assignment_id, task_id, reason)
+            pool.add_task(handle_reject_task,
+                          worker_id,
+                          assignment_id,
+                          task_id,
+                          reason)
             pool.add_task(check_ban, worker_id)
         else:
             pool.add_task(handle_accepted_task, assignment_id, task_id)
         pool.add_task(create_hit, hit_type_id)
+        pool.add_task(handle_finished_hit, hit_id)
     return to_return
 
 
@@ -445,5 +475,8 @@ if __name__ == '__main__':
                       minutes=60*60*24*7,               # every 7 days
                       id='practice quota reset')
     _log.info('Starting webserver')
+    scheduler.start()
     app.run(host='127.0.0.1', port=12344,
-            debug=False, ssl_context=context)
+            debug=True, ssl_context=context)
+    atexit.register(scheduler.shutdown)
+    atexit.register(pool.wait_completion())

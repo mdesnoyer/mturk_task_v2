@@ -33,6 +33,7 @@ import boto.mturk.question
 
 _log = logger.setup_logger(__name__)
 
+
 class _LocaleRequirement(boto.mturk.qualification.Requirement):
     """
     Similar to MTurk._create_qualification_type, this replicates boto.murk's
@@ -476,6 +477,20 @@ class MTurk(object):
             _log.error('Error resetting weekly practice quota for worker: %s' +
                        e.message)
 
+    def get_qualification_score(self, qualification_id, worker_id):
+        """
+        Wraps the equivalent function from mturk and returns the value
+        properly, as an integer.
+
+        :param qualification_id: The ID of the qualification currently being
+            queried.
+        :param worker_id: The MTurk worker ID.
+        :return: The qualification value, as an int.
+        """
+        quota_val = \
+            self.mtconn.get_qualification_score(qualification_id, worker_id)[0]
+        return int(quota_val.IntegerValue)
+
     def decrement_worker_daily_quota(self, worker_id):
         """
         Decrements the worker's daily quota for submittable tasks by one.
@@ -485,7 +500,7 @@ class MTurk(object):
         """
         try:
             quota_val = \
-                self.mtconn.get_qualification_score(self.quota_id, worker_id)
+                self.get_qualification_score(self.quota_id, worker_id)
             if quota_val > 0:
                 quota_val -= 1
             else:
@@ -494,9 +509,8 @@ class MTurk(object):
         except boto.mturk.connection.MTurkRequestError:
             _log.warn('Could not obtain quota for worker %s' % worker_id)
             quota_val = 0
-        self.mtconn.assign_qualification(self.quota_id, worker_id,
-                                         value=quota_val,
-                                         send_notification=False)
+        self.mtconn.update_qualification_score(
+            self.quota_id, worker_id, value=quota_val)
 
     def decrement_worker_practice_weekly_quota(self, worker_id):
         """
@@ -507,8 +521,8 @@ class MTurk(object):
         """
         try:
             quota_val = \
-                self.mtconn.get_qualification_score(self.practice_quota_id,
-                                                    worker_id)
+                self.get_qualification_score(self.practice_quota_id,
+                                             worker_id)
             if quota_val > 0:
                 quota_val -= 1
             else:
@@ -517,9 +531,8 @@ class MTurk(object):
         except boto.mturk.connection.MTurkRequestError:
             _log.warn('Could not obtain quota for worker %s' % worker_id)
             quota_val = 0
-        self.mtconn.assign_qualification(self.practice_quota_id, worker_id,
-                                         value=quota_val,
-                                         send_notification=False)
+        self.mtconn.update_qualification_score(
+            self.practice_quota_id, worker_id, value=quota_val)
 
     def ban_worker(self, worker_id, reason=DEFAULT_BAN_REASON):
         """
@@ -548,6 +561,11 @@ class MTurk(object):
         """
         Approves an assignment.
 
+        NOTES:
+            All assignments are auto-approved, to prevent us from trying to
+            approve tasks that have not yet been submitted yet (which will
+            occur since they control the submission of the task)
+
         :param assignment_id: The ID of the assignment in question as
                               provided by MTurk.
         :return: None.
@@ -565,15 +583,17 @@ class MTurk(object):
         """
         self.mtconn.reject_assignment(assignment_id, feedback=reason)
 
-    def soft_reject_assignment(self, assignment_id, reason=None):
+    def soft_reject_assignment(self, worker_id, assignment_id, reason=None):
         """
-        Soft rejects a hit: i.e., approves a hit but provides feedback.
+        Soft rejects a hit: i.e., the HIT is automatically approved but they
+        are given feedback.
 
+        :param worker_id: The worker ID
         :param assignment_id: The assignment ID.
         :param reason: The warning to provide to the worker. This may be a list.
         :return: None
         """
-        feedback = 'While we are accepting assignment %s we found the ' \
+        feedback = 'While we are accepting the assignment, we found the ' \
                    'following problem(s):\n\n'
         if type(reason) is str:
             reason = [reason]
@@ -582,7 +602,8 @@ class MTurk(object):
         feedback += '\n'
         feedback += 'If we continue to find problems in your HITs, you will ' \
                     'be temporarily banned.'
-        self.mtconn.approve_assignment(assignment_id, feedback=feedback)
+        subject = 'Feedback on assignment %s' % assignment_id
+        self.mtconn.notify_workers(worker_id, subject, feedback)
 
     def register_hit_type_mturk(self,
                                 title=DEFAULT_TASK_NAME,
@@ -673,6 +694,7 @@ class MTurk(object):
         opobj['lifetime'] = HIT_LIFETIME_IN_SECONDS
         opobj['max_assignments'] = 1
         opobj['annotation'] = task_id
+        opobj['approval_delay'] = AUTO_APPROVE_DELAY
         resp = self.mtconn.create_hit(**opobj)
         return resp[0].HITId
 
@@ -700,6 +722,7 @@ class MTurk(object):
         opobj['lifetime'] = PRACTICE_TASK_LIFETIME
         opobj['max_assignments'] = NUM_ASSIGNMENTS_PER_PRACTICE
         opobj['annotation'] = task_id
+        opobj['approval_delay'] = AUTO_APPROVE_DELAY
         resp = self.mtconn.create_hit(**opobj)
         return resp[0].HITId
 

@@ -436,7 +436,7 @@ class Get(object):
         """
         table = self.conn.table(WORKER_TABLE)
         row_data = table.row(worker_id)
-        if not len(row_data.get('demographics:age', '')):
+        if not len(row_data.get('demographics:gender', '')):
             return True
         else:
             return False
@@ -690,17 +690,7 @@ class Get(object):
                  is a practice, otherwise false.
         """
         table = self.conn.table(TASK_TABLE)
-        return table.row(task_id).get('metadata:is_practice', FALSE)
-
-    def task_is_acceptable(self, task_id):
-        """
-        Indicates whether or not a task is acceptable.
-
-        :param task_id: The task ID, as a string.
-        :return: True if the task is acceptable, False otherwise.
-        """
-        # TODO: Implement this.
-        raise NotImplementedError()
+        return table.row(task_id).get('metadata:is_practice', FALSE) == TRUE
 
     # HIT TYPES
     
@@ -967,7 +957,6 @@ class Get(object):
     def image_get_min_seen(self, image_attributes=IMAGE_ATTRIBUTES):
         """
         Returns the number of times the least-seen image has been seen.
-        (I.e., the number of tasks it has been featured in.
     
         NOTES: This only applies to active images.
 
@@ -994,6 +983,28 @@ class Get(object):
             return 0  # this is an edge case, where none of the images have
             # been seen.
         return obs_min
+
+    def image_get_mean_seen(self, image_attributes=IMAGE_ATTRIBUTES):
+        """
+        Returns the average number of times an active image has been seen.
+
+        :param image_attributes: The image attributes that the images
+                                 considered must satisfy.
+        :return: Integer, the min number of times seen.
+        """
+        table = self.conn.table(IMAGE_TABLE)
+        scanner = table.scan(columns=['stats:num_times_seen'],
+                             filter=attribute_image_filter(image_attributes,
+                                                           only_active=True))
+        tot_ims = 0
+        tot_seen = 0
+        for row_key, _ in scanner:
+            tot_ims += 1
+            tot_seen += table.counter_get(row_key, 'stats:num_times_seen')
+        if not tot_ims:
+            return 0.
+        return float(tot_seen) / tot_ims
+
 
     def get_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES,
                      is_practice=False):
@@ -2060,22 +2071,30 @@ class Set(object):
         frac_unanswered = float(num_unanswered) / len(data)
         mean_rt = np.mean(filter(lambda x: x > -1, rts))
         table = self.conn.table(TASK_TABLE)
-        table.put(task_id, {'metadata:worker_id': worker_id,
-                            'metadata:hit_id': hit_id,
-                            'metadata:assignment_id': assignment_id,
-                            'completion_data:choices': dumps(choices),
-                            'completion_data:action': dumps(actions),
-                            'completion_data:reaction_times': dumps(rts),
-                            'completion_data:response_json': json.dumps(
-                                resp_json),
-                            'metadata:hit_type_id': str(hit_type_id),
-                            'validation_statistics:prob_random': '%.4f' %
-                                                                 p_value,
-                            'validation_statistics:frac_contradictions':
-                                '%.4f' % frac_contradictions,
-                            'validation_statistics:frac_no_response':
-                                '%.4f' % frac_unanswered,
-                            'validation_statistics:mean_rt': '%.4f' % mean_rt})
+        import ipdb
+        ipdb.set_trace()
+        input_dict = {'metadata:worker_id': worker_id,
+                      'metadata:hit_id': hit_id,
+                      'metadata:assignment_id': assignment_id,
+                      'completion_data:choices': dumps(choices),
+                      'completion_data:action': dumps(actions),
+                      'completion_data:reaction_times': dumps(rts),
+                      'completion_data:response_json': json.dumps(
+                          resp_json),
+                      'metadata:hit_type_id': str(hit_type_id),
+                      'validation_statistics:prob_random': '%.4f' % p_value,
+                      'validation_statistics:frac_contradictions':
+                          '%.4f' % frac_contradictions,
+                      'validation_statistics:frac_no_response':
+                          '%.4f' % frac_unanswered,
+                      'validation_statistics:mean_rt': '%.4f' % mean_rt}
+        try:
+            table.put(task_id, **_conv_dict_vals(input_dict))
+        except:
+            import dill
+            with open('/repos/mturk_task_v2/dumped_registration_inputs',
+                      'w') as f:
+                dill.dump([resp_json, user_agent, hit_type_id], f)
         if user_agent is not None:
             table.put(task_id, _conv_dict_vals(
                                 {'user_agent:browser': user_agent.browser,
@@ -2241,6 +2260,9 @@ class Set(object):
         table.put(worker_id, {'demographics:birthyear': str(birthyear),
                               'demographics:gender': str(gender)})
         location_info = geolite2.lookup(worker_ip)
+        if location_info is None:
+            _log.warn('Could not fetch location info for worker %s' % worker_id)
+            return
         table.put(worker_id,
                   **{'location:'+k: str(v) for k, v in location_info.to_dict(
                   ).iteritems()})

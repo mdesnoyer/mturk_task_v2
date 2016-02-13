@@ -87,6 +87,8 @@ PRACTICE_IM_DIR = 'instr_screenshots/'
 ERROR_TEMPLATE = 'error.html'
 DEMOGRAPHICS_TEMPLATE = 'demographics.html'
 SUCCESS_TEMPLATE = 'success.html'
+PRACTICE_PASSED_TEMPLATE = 'practice_passed.html'
+PRACTICE_FAILED_TEMPLATE = 'practice_failed.html'
 PREVIEW_TEMPLATE = 'preview_template.html'
 
 
@@ -202,7 +204,7 @@ WORKER_FAMILIES = {'status': dict(max_versions=1),
                    'location': dict(max_versions=1)}
 TASK_FAMILIES = {'metadata': dict(max_versions=1),
                  'status': dict(max_versions=1),
-                 'completed_data': dict(max_versions=1),
+                 'completion_data': dict(max_versions=1),
                  'user_agent': dict(max_versions=1),
                  'validation_statistics': dict(max_versions=1),
                  'blocks': dict(max_versions=1),
@@ -234,7 +236,8 @@ random, the graph is Erdos-Renyi and the spectral gap has a lower bound by
 some probability and hence the complexity is O(n * poly(log(n))). poly(x)
 denotes x^O(1), which we assume to be x^1.
 """
-SAMPLES_REQ_PER_IMAGE = lambda n_active: n_active * np.log(n_active)
+_gamma = 3.  # the gamma multiplier, O(gamma n log(n))
+MEAN_SAMPLES_REQ_PER_IMAGE = lambda n_active: _gamma * np.log(n_active)
 
 
 """

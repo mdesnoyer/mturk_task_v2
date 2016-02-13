@@ -70,7 +70,8 @@ class _Worker(Thread):
         """
         while True:
             try:
-                func, args, kwargs = self.tasks.get()
+                queue_obj = self.tasks.get()
+                func, args, kwargs = queue_obj
                 func(self.mt, self.dbget, self.dbset, *args, **kwargs)
             except Exception as e:
                 traceback.print_exc()

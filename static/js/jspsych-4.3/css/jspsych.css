@@ -349,3 +349,12 @@ button:hover {
 .click-choice-responded-keep { 
   border: 2px solid green; 
 }
+
+/* Forbid image selection */
+img{
+    -khtml-user-select: none;
+    -o-user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    user-select: none;
+}

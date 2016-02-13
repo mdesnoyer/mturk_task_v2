@@ -73,9 +73,6 @@ CTestResults.xml
 #### git stuff ###
 *.orig
 
-### pycharm stuff ###
-.idea/
-
 ### all the friggin images ###
 *.jpeg
 
