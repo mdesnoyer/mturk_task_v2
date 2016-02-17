@@ -6,18 +6,20 @@ The template version of the success page FOR PRACTICES.
 <head>
     <meta charset="UTF-8">
     <title>Thank you</title>
-    <script src="{{ jspsych_js }}"></script>
-    <link rel="stylesheet" href="{{ jspsych_css }}">
-    <link rel="stylesheet" href="{{ jquery_ui_css }}">
+    <script src="{{ jg['jspsych_js'] }}"></script>
+    <link rel="stylesheet" href="{{ jg['jspsych_css'] }}">
+    <link rel="stylesheet" href="{{ jg['jquery_ui_css'] }}">
 </head>
 <body>
     <center>
         <br><br>
-        <img src="{{ check_png }}" alt="success" style="width:300px;height:300px;">
+        <img src="{{ jg['check_png'] }}" alt="success"
+             style="width:300px;height:300px;">
         <p>Congratulations, you have passed the practice! You will now no
             longer be able to take more practices, but you will be able to
             start with the real task, which is higher paying. Go back to
-            your hits and look for our task!</p>
+            your hits and look for our main task, which is called
+            {{ jg['task_name'] }}</p>
         <button onclick="sendData();">Submit HIT</button>
     </center>
 </body>

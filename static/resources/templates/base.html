@@ -1,16 +1,16 @@
 <!doctype html>
 <html>
 <head>
-  <script src="{{ jquery_min_js }}"></script>
-  <script src="{{ jquery_ui_min_js }}"></script>
-  <script src="{{ jspsych_js }}"></script>
-  <script src="{{ jspsych_click_choice_js }}"></script>
-  <script src="{{ jspsych_instructions_js }}"></script>
-  <script src="{{ jspsych_html_js }}"></script>
-  <script src="{{ practice_debrief_js }}"></script>
-  <script src="{{ progressbar_min_js }}"></script>
-  <link rel="stylesheet" href="{{ jspsych_css }}">
-  <link rel="stylesheet" href="{{ jquery_ui_css }}">
+  <script src="{{ jg['jquery_min_js'] }}"></script>
+  <script src="{{ jg['jquery_ui_min_js'] }}"></script>
+  <script src="{{ jg['jspsych_js'] }}"></script>
+  <script src="{{ jg['jspsych_click_choice_js'] }}"></script>
+  <script src="{{ jg['jspsych_instructions_js'] }}"></script>
+  <script src="{{ jg['jspsych_html_js'] }}"></script>
+  <script src="{{ jg['practice_debrief_js'] }}"></script>
+  <script src="{{ jg['progressbar_min_js'] }}"></script>
+  <link rel="stylesheet" href="{{ jg['jspsych_css'] }}">
+  <link rel="stylesheet" href="{{ jg['jquery_ui_css'] }}">
 </head>
 <body>
 <div id="jspsych-target"></div>
@@ -29,7 +29,8 @@
     pages: [function() {return get_rt_string(300);},
             function() {return get_missed_string(0.1);},
             function() {return get_bias_string(0.9);},
-            function() {return get_contradictions_string(0.1, '{{ attribute }}');}],
+            function() {return get_contradictions_string(0.1,
+            '{{ jg['attribute'] }}');}],
     show_clickable_nav: true
   }
 

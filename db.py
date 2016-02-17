@@ -49,37 +49,6 @@ def _get_pair_key(image1, image2):
     return ','.join(pair_to_tuple(image1, image2))
 
 
-def _get_preexisting_pairs_slow(conn, images):
-    """
-    Returns all pairs that have already occurred among a list of images.
-
-    NOTE:
-        There is an open question about to the approach here, with respect to
-        which one is more efficient:
-            (1) Iterate over each pair in images, and see if they exist.
-            (2) Select all pairs for each image with a prefix and look for pairs
-            where the other image is also in images.
-        For now, we will use (1), for its conceptual simplicity.
-
-        This is SLOW. Can we speed it up?
-
-    :param conn: The HappyBase connection object.
-    :param images: A iterable of image IDs
-    :return: A set of tuples of forbidden image ID pairs.
-    """
-    tot_to_scan = 0.5 * len(images) * (len(images) * 1)
-    to_scan_brks = tot_to_scan / 10
-    _log.debug('Scanning over %i possible pairs' % tot_to_scan)
-    found_pairs = set()
-    for n, (im1, im2) in enumerate(comb(images, 2)):
-        if not n % to_scan_brks and n > 0:
-            _log.debug('%.0f%% done.' % (100. * n / tot_to_scan))
-        pair_id = _get_pair_key(im1, im2)
-        if _pair_exists(conn, pair_id):
-            found_pairs.add(pair_to_tuple(im1, im2))
-    return found_pairs
-
-
 def _get_preexisting_pairs(conn, images):
     """
     Returns all pairs that have already occurred among a list of images. The
@@ -164,11 +133,7 @@ def _tuple_permitted(im_tuple, ex_pairs, conn=None):
         if pair in ex_pairs:
             return False
     if conn is None:
-        # TODO: Make this warn people only once!
-        # _log.info('No connection information provided, search is only
-        # performed among in-memory pairs.')
         return True  # The database cannot be checked, and so we will be only
-        #  looking at the in-memory pairs.
     for im1, im2 in comb(im_tuple, 2):
         pair_key = _get_pair_key(im1, im2)
         if _pair_exists(conn, pair_key):
@@ -233,21 +198,6 @@ def _get_timedelta_string(timestamp1, timestamp2):
     for num, noun in time_list:
         cur_strs.append(get_name(num, noun))
     return ', '.join(filter(lambda x: len(x), cur_strs))
-
-
-def _task_has_blockdata(conn, task_id):
-    """
-    Checks whether or not a task has defined block data.
-
-    NOTES:
-        This does not seem possible without fetching all the data! :-(
-
-    :param conn: The HappyBase connection object.
-    :param task_id: The Task ID, as a string.
-    :return: True if the task has pickled block data associated with it.
-    """
-    # TODO: Find out if this really is impossible.
-    raise NotImplementedError()
 
 
 def _create_table(conn, table, families, clobber):
@@ -589,52 +539,6 @@ class Get(object):
             return REJECTED
         return UNKNOWN_STATUS
 
-    def get_available_task(self, practice=False, practice_n=0):
-        """
-        Returns an available task.
-
-        :param practice: Whether or not to fetch a practice task. [optional]
-        :param practice_n: Which practice to serve, starting from 0. [optional]
-        :return: The task ID for an available task. If there is no task
-                 available, it returns None.
-        """
-        table = self.conn.table(TASK_TABLE)
-        if practice:
-            scanner = table.scan(columns=['metadata:is_practice'],
-                                 filter=IS_PRACTICE_FILTER)
-            cnt = 0
-            for task_id, data in scanner:
-                if cnt == practice_n:
-                    # ideally, it'd check if there is block information for
-                    # this task, but that requires loading the entire object
-                    # into memory (unless there's some kind of filter for it)
-                    return task_id
-                cnt += 1
-            return None
-        else:
-            try:
-                task_id, data = table.scan(columns=['status:awaiting_serve'],
-                                           filter=AWAITING_SERVE_FILTER).next()
-                return task_id
-            except StopIteration:
-                # TODO: regenerate more tasks in this case.
-                _log.warning('No tasks available.')
-                return None
-
-    def get_n_awaiting_hit(self):
-        """
-        Returns the number of tasks that are awaiting a HIT assignment.
-
-        :return: None
-        """
-        row_filter = general_filter([('status', 'awaiting_serve')],
-                                    [TRUE], key_only=False)
-        scanner = self.conn.table(TASK_TABLE).scan(filter=row_filter)
-        awaiting_hit_cnt = 0
-        for _ in scanner:
-            awaiting_hit_cnt += 1
-        return awaiting_hit_cnt
-
     def get_n_with_hit_awaiting_serve(self):
         """
         Returns the number of true tasks that are awaiting serving.
@@ -668,7 +572,6 @@ class Get(object):
         url_map = dict()
         table = self.conn.table(IMAGE_TABLE)
         # convert the image IDs into URLs
-        # TODO: Warn about the possibility of filename collisions?
         for block in blocks:
             for im_list in block['images']:
                 for image in im_list:
@@ -1504,34 +1407,6 @@ class Set(object):
         return succ
 
     """
-    FUNCTIONS FOR LEGACY DATA
-    """
-
-    def register_legacy_task(self, task_id, exp_seq):
-        """
-        Registers a legacy task.
-
-        :param task_id: A string, the task ID.
-        :param exp_seq: A list of lists, in order of presentation, one for
-                        each segment. See Notes in register_task()
-        :return: None.
-        """
-        # TODO: implement
-        raise NotImplementedError()
-
-    def register_legacy_win(self, winner_id, loser_id, task_id):
-        """
-        Registers a legacy win.
-
-        :param winner_id: The image_id of the winning image.
-        :param loser_id: The image_id of the losing image.
-        :param task_id: A string, the task ID.
-        :return: None.
-        """
-        # TODO: implement
-        raise NotImplementedError()
-
-    """
     ADDING / CHANGING DATA
     """
 
@@ -1672,7 +1547,6 @@ class Set(object):
                        'be able to load it.')
         else:
             task_dict['blocks:c1'] = dumps(blocks)
-        # TODO: Compute forbidden workers?
         # Input the data for the task table
         table = self.conn.table(TASK_TABLE)
         table.put(task_id, _conv_dict_vals(task_dict))
@@ -1686,17 +1560,6 @@ class Set(object):
             b.put(pid, _get_pair_dict(pair[0], pair[1], task_id, attribute))
         b.send()
 
-    def activate_hit_type(self, hit_type_id):
-        """
-        Activates a HIT type, i.e., indicates that it currently has tasks /
-        HITs. being added to it.
-
-        :param hit_type_id: The HIT type ID, as provided by mturk.
-        :return: None
-        """
-        # TODO: implement
-        raise NotImplementedError()
-
     def deactivate_hit_type(self, hit_type_id):
         """
         Deactivates a HIT type, so that it is no longer accepting new tasks /
@@ -1705,12 +1568,16 @@ class Set(object):
         :param hit_type_id: The HIT type ID, as provided by mturk.
         :return: None
         """
-        # TODO: implement
-        raise NotImplementedError()
+        _log.info('Deactivating HIT Type %s' % hit_type_id)
+        table = self.conn.table(HIT_TYPE_TABLE)
+        if not self._table_has_row(table, hit_type_id):
+            _log.warn('No such HIT type: %s' % hit_type_id)
+            return
+        table.put(hit_type_id, {'status:active': FALSE})
 
     def indicate_task_has_hit_type(self, task_id):
         """
-        Sets status.awaiting_hit_type parameter of the task, indicating that
+        Sets status:awaiting_hit_type parameter of the task, indicating that
         it has been added to a HIT type
 
         :param task_id: The task ID, as a string.
@@ -1836,7 +1703,7 @@ class Set(object):
         :param image_ids: A list of strings, the image IDs.
         :return: None.
         """
-        _log.info('Activating %i images.'%(len(image_ids)))
+        _log.info('Activating %i images.' % len(image_ids))
         table = self.conn.table(IMAGE_TABLE)
         b = table.batch()
         for iid in image_ids:
@@ -1875,7 +1742,6 @@ class Set(object):
         :return: None.
         """
         _log.info('Serving practice %s to worker %s' % (task_id, worker_id))
-        # TODO: Check that worker exists
         table = self.conn.table(WORKER_TABLE)
         table.counter_inc(worker_id, 'stats:num_practices_attempted')
         table.counter_inc(worker_id, 'stats:num_practices_attempted_interval')
@@ -1923,80 +1789,6 @@ class Set(object):
                   _conv_dict_vals({'demographics:birthyear': birthyear,
                                    'demographics:gender': gender}))
 
-    def task_finished(self, task_id, worker_id, choices, choice_idxs,
-                      reaction_times, hit_id=None, assignment_id=None,
-                      hit_type_id=None):
-        """
-        Notes that a user has completed a task, and stores the task
-        completion date.
-
-        NOTES:
-            DEPRICATED
-
-            Does not store the demographic data.
-
-        :param task_id: The ID of the task completed.
-        :param worker_id: The ID of the worker (from MTurk)
-        :param choices: In-order choice sequence as image IDs (empty if no
-                        choice made).
-        :param choice_idxs: In-order choice index sequence as integers (empty
-                            if no choice made).
-        :param reaction_times: In-order reaction times, in msec (empty if no
-                               choice made).
-        :param hit_id: The HIT ID, as provided by MTurk.
-        :param assignment_id: The assignment ID, as provided by MTurk.
-        :param hit_type_id: The HIT type ID, as provided by MTurk.
-        :return: None
-        """
-        _log.info('Saving complete data for task %s worker %s'%(task_id,
-                                                                worker_id))
-        table = self.conn.table(TASK_TABLE)
-        # check that we have task information for this task
-        if not self._table_has_row(table, task_id):
-            # issue a warning, but do not discard the data
-            _log.warning('No task data for finished task %s' % task_id)
-        # update the data
-        table.put(task_id,
-                  _conv_dict_vals({'metadata:hit_id': hit_id,
-                                   'metadata:assignment_id': assignment_id,
-                                   'metadata:hit_type_id': hit_type_id,
-                                   'completed_data:choices': dumps(choices),
-                                   'completed_data:reaction_times': dumps(
-                                       reaction_times),
-                                   'completed_data:choice_idxs': dumps(
-                                       choice_idxs),
-                                   'status:pending_completion': FALSE,
-                                   'status:pending_evaluation': TRUE}))
-        database_worker_id = table.row(task_id, columns=[
-            'metadata:worker_id']).get('metadata:worker_id', None)
-        if database_worker_id != worker_id:
-            _log.warning('The task was completed by a different worker than '
-                         'in our database.')
-        # TODO: the if checks below are largely deprecated.
-        # check that we have worker information for this task
-        if worker_id is None:
-            # store as much data as you can, but do not attempt to update
-            # anything about the worker
-            _log.warning('Finished task %s is not associated with a worker.'
-                         % task_id)
-            return
-        if worker_id == '':
-            _log.warning('Worker %s attempted to submit task after '
-                         'expiration' % worker_id)
-            # TODO: Decide on the behavior here?
-            return
-        table = self.conn.table(WORKER_TABLE)
-        # check to see if they need to have their data reset
-        num_tasks_submitted = \
-            table.counter_get(worker_id,
-                              'stats:interval_completed_count')
-        if num_tasks_submitted > TASK_SUBMISSION_RESET_VALUE:
-            self.reset_worker_counts(worker_id)
-        # increment the worker counts
-        table.counter_dec(worker_id, 'stats:num_incomplete')
-        table.counter_inc(worker_id, 'stats:num_pending_eval')
-        table.counter_inc(worker_id, 'stats:interval_completed_count')
-
     def task_finished_from_json(self, resp_json, user_agent=None,
                                 hit_type_id=None):
         """
@@ -2034,9 +1826,8 @@ class Set(object):
             choice_idxs.append(block.get('choice_idx', -1))
             actions.append(block.get('action_type', -1))
             global_tup_idx = block.get('global_tup_idx', None)
-            # TODO: The below isn't very robust. Robustify it.
-            if block.get('choice', -1) != -1 and block.get('choice_idx',
-                                                           -1) != -1:
+            if (block.get('choice', -1) != -1 and
+                        block.get('choice_idx', -1) != -1):
                 # if the choice was made, see if it was contradictory
                 taskwide_im_idx = block['image_idx_map'][block['choice_idx']]
                 if global_tup_idx is not None:
@@ -2344,7 +2135,8 @@ class Set(object):
         # which cant be incremented in a batch)
         ids_to_inc = []
         for ch, tup, tuptype in zip(choices, img_tuples, img_tuple_types):
-            # TODO: Account for the situation where no choice is made!
+            if ch == '-1':
+                continue
             for img in tup:
                 if img != ch:
                     if tuptype.lower() == 'keep':
@@ -2507,16 +2299,12 @@ class Set(object):
         :param image_ids: A list of strings, the image IDs.
         :return: None
         """
-        # TODO: Implement
-        raise NotImplementedError()
-
-    def deactivate_hit_type(self, hit_type_id):
-        """
-        Deactivates a hit type ID, so that no new tasks or HITs should be
-        created that are attached to it.
-
-        :param hit_type_id: The HIT type ID, as a string.
-        :return: None
-        """
-        # TODO: Implement
-        raise NotImplementedError()
+        _log.info('Deactivating %i images.' % len(image_ids))
+        table = self.conn.table(IMAGE_TABLE)
+        b = table.batch()
+        for iid in image_ids:
+            if not self._table_has_row(table, iid):
+                _log.warning('No data for image %s'%(iid))
+                continue
+            b.put(iid, {'metadata:is_active': FALSE})
+        b.send()

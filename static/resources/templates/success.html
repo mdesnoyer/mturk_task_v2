@@ -6,14 +6,14 @@ The template version of the success page.
 <head>
     <meta charset="UTF-8">
     <title>Thank you</title>
-    <script src="{{ jspsych_js }}"></script>
-    <link rel="stylesheet" href="{{ jspsych_css }}">
-    <link rel="stylesheet" href="{{ jquery_ui_css }}">
+    <script src="{{ jg['jspsych_js'] }}"></script>
+    <link rel="stylesheet" href="{{ jg['jspsych_css'] }}">
+    <link rel="stylesheet" href="{{ jg['jquery_ui_css'] }}">
 </head>
 <body>
     <center>
         <br><br>
-        <img src="{{ check_png }}" alt="success" style="width:300px;height:300px;">
+        <img src="{{ jg['check_png'] }}" alt="success" style="width:300px;height:300px;">
         <p>You have completed the task, and your data has been sent to the server! Click the button below to submit.</p>
         <button onclick="sendData();">Submit HIT</button>
     </center>

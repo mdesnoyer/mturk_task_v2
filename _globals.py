@@ -89,8 +89,13 @@ DEMOGRAPHICS_TEMPLATE = 'demographics.html'
 SUCCESS_TEMPLATE = 'success.html'
 PRACTICE_PASSED_TEMPLATE = 'practice_passed.html'
 PRACTICE_FAILED_TEMPLATE = 'practice_failed.html'
-PREVIEW_TEMPLATE = 'preview_template.html'
-
+# preview templates
+PREVIEW_TEMPLATE = 'preview/preview_template.html'
+PREVIEW_TEMPLATE_NEED_PRACTICE = 'preview/preview_template_unqualified.html'
+PREVIEW_TOO_MANY_TASKS = 'preview/preview_too_many_tasks.html'
+PRACTICE_PREVIEW_TEMPLATE = 'preview/practice_preview_template.html'
+PRACTICE_PREVIEW_QUOTA_EXCEEDED = 'preview/practice_preview_too_many_practice.html'
+PRACTICE_PREVIEW_ALREADY_PASSED = 'preview/practice_preview_already_passed.html'
 
 """
 DIRECTORIES

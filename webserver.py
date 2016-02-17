@@ -72,66 +72,6 @@ CERT_DIR = 'certificates'
 
 app = Flask(__name__)
 
-# list of resources
-resources = [
-    'resources/instr_screenshots/accept_1.jpg',
-    'resources/instr_screenshots/accept_2.jpg',
-    'resources/instr_screenshots/reject_1.jpg',
-    'resources/instr_screenshots/reject_1.jpg',
-    'resources/templates/symbols/error.png',
-    'resources/templates/symbols/check.png',
-    'resources/templates/symbols/blocked.png'
-]
-scripts = [  # note, this also includes the jsPsych-specific CSS.
-    'js/jspsych-4.3/js/jquery.min.js',
-    'js/jspsych-4.3/js/jquery-ui.min.js',
-    'js/jspsych-4.3/jspsych.js',
-    'js/jspsych-4.3/plugins/jspsych-click-choice.js',
-    'js/jspsych-4.3/plugins/jspsych-instructions.js',
-    'js/jspsych-4.3/plugins/jspsych-html.js',
-    'js/practice_debrief.js',
-    'js/progressbar.min.js',
-    'js/jspsych-4.3/css/jspsych.css',
-    'js/jspsych-4.3/css/jquery-ui.css'
-]
-
-
-def _get_static_urls():
-    """
-    Accepts a request for a task, and then returns the static URLs pointing to
-    all the resources.
-
-    NOTES
-        The template variables corresponding to the resources are generally
-        named with their filename (no directory or folder information) +
-        their extension.
-
-        Getting this to work with Flask is somewhat opaque. Even though Flask
-        is the most lightweight web framework that I can find, it seems
-        ridiculously overpowered for what I'm doing. Thus, _get_static_url's
-        will just return the hard-coded stuff for now.
-
-    :return: A dictionary of static urls, of the form
-            {'resource_name': 'resource_url'}
-    """
-    static_urls = dict()
-
-    for resource in resources:
-        static_urls[
-            os.path.basename(resource).replace('.', '_').replace('-', '_')] = \
-            os.path.join('static', resource)
-    for script in scripts:
-        static_urls[
-            os.path.basename(script).replace('.', '_').replace('-', '_')] = \
-            os.path.join('static', script)
-    static_urls['demographics'] = 'static/html/demographics.html'
-    static_urls['success'] = 'static/html/success.html'
-    static_urls['submit'] = EXTERNAL_QUESTION_SUBMISSION_ENDPOINT
-    static_urls['attribute'] = ATTRIBUTE
-    return static_urls
-
-static_urls = _get_static_urls()
-
 
 """
 POOL FUNCTIONS
@@ -247,11 +187,10 @@ def unban_workers():
             host=mturk_host)
     mt = MTurk(mtconn)
     dbset = Set(conn)
-    # TODO: Finally figure out the damn filters
     _log.info('Checking if any bans can be lifted...')
+    # TODO: Get this for workers that are obtained from mturk, not the database
     for worker_id in dbget.get_all_workers():
         if not dbset.worker_ban_expires_in(worker_id):
-            # TODO: Only unban if the worker is banned in the first place!
             mt.unban_worker(worker_id)
 
 
@@ -360,14 +299,13 @@ def task():
     is_preview = request.values.get('assignmentId') == PREVIEW_ASSIGN_ID
     hit_id = request.values.get('hitId', '')
     hit_info = mt.get_hit(hit_id)
-    # TODO: Get HIT information.
     if not is_preview:
         worker_id = request.values.get('workerId', '')
     else:
         worker_id = None
     task_id = hit_info.RequesterAnnotation
     response = fetch_task(dbget, dbset, task_id, worker_id,
-                          is_preview=is_preview, static_urls=static_urls)
+                          is_preview=is_preview)
     return response
 
 
@@ -396,13 +334,13 @@ def submit():
         dbset.register_demographics(request.json, worker_ip)
         passed_practice = request.json[0]['passed_practice']
         if passed_practice:
-            to_return = make_practice_passed(static_urls)
+            to_return = make_practice_passed()
             dbset.practice_pass(request.json)
             mt.grant_worker_practice_passed(worker_id)
         else:
-            to_return = make_practice_failed(static_urls)
+            to_return = make_practice_failed()
     else:
-        to_return = make_success(static_urls)
+        to_return = make_success()
         mt.decrement_worker_daily_quota(worker_id)
         frac_contradictions, frac_unanswered, mean_rt, prob_random = \
             dbset.task_finished_from_json(request.json,
@@ -439,7 +377,10 @@ if __name__ == '__main__':
         task_attribute=ATTRIBUTE,
         image_attributes=IMAGE_ATTRIBUTES)
     if not PRACTICE_HIT_TYPE_ID or not TASK_HIT_TYPE_ID:
-        # TODO: if only one of them is defined, deactivate it.
+        if PRACTICE_HIT_TYPE_ID:
+            dbset.deactivate_hit_type(PRACTICE_HIT_TYPE_ID)
+        if TASK_HIT_TYPE_ID:
+            dbset.deactivate_hit_type(TASK_HIT_TYPE_ID)
         TASK_HIT_TYPE_ID, PRACTICE_HIT_TYPE_ID = mt.register_hit_type_mturk()
         dbset.register_hit_type(TASK_HIT_TYPE_ID)
         dbset.register_hit_type(PRACTICE_HIT_TYPE_ID, is_practice=True)

@@ -9,9 +9,9 @@ import urllib
 import cStringIO
 from PIL import Image
 import numpy as np
-import os
 import jinja2
 from jinja2 import meta
+from jinja_globals import jg
 
 _log = logger.setup_logger(__name__)
 
@@ -38,93 +38,55 @@ templateEnv = jinja2.Environment(loader=templateLoader)
 templateEnv.filters['escapejs'] = jinja2_escapejs_filter
 
 
-def _get_static_url_dict(template, static_urls=None):
-    """
-    Returns a dictionary with the appropriate key/value pairs to generate a
-    template. Originally, it attempted to fill  in all undeclared static
-    variables in a template, however, it does not seem possible to
-    sequentially render a template -- it has to be done all at once. This
-    seems like a bizarre design choice, but perhaps jinja2 has no provision
-    for storing the value of variables without rendering the whole template
-    to unicode? idk...
-
-    :param template: A jinja2 template filename.
-    :param static_urls: A dictionary of static URLs. See webserver.py.
-    :return: A dictionary for filling in the static urls.
-    """
-    to_fill_in = {}
-    vars = _get_template_variables(template)
-    for var in vars:
-        # TODO: what happens when you define a template variable as None?
-        if var in static_urls:
-            to_fill_in[var] = static_urls[var]
-    return to_fill_in
-
-
-def make_demographics(static_urls=None):
+def make_demographics():
     """
     Generates the demographic HTML. Since this is constant across workers,
     all that's necessary for it to work is the dictionary of static URLs so
     it knows where to get the jsPsych javascript from.
 
-    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The demographics acquisition page HTML.
     """
-    if static_urls is None:
-        static_urls = {}
     demographics = templateEnv.get_template(DEMOGRAPHICS_TEMPLATE)
-    return demographics.render(**_get_static_url_dict(DEMOGRAPHICS_TEMPLATE,
-                                                      static_urls))
+    return demographics.render(jg=jg)
 
 
-def make_success(static_urls=None):
+def make_success():
     """
     Functions just like make_demographics, but returns a 'success page'
     indicating that the task was successfully submitted. It needs
     static_urls for the same reason.
 
-    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: HTML for a page indicating the worker has successfully completed a
              task.
     """
-    if static_urls is None:
-        static_urls = {}
     success = templateEnv.get_template(SUCCESS_TEMPLATE)
-    return success.render(**_get_static_url_dict(SUCCESS_TEMPLATE, static_urls))
+    return success.render(jg=jg)
 
 
-def make_practice_passed(static_urls=None):
+def make_practice_passed():
     """
     Creates the practice passed success page (see make_success)
 
-    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: HTML for a page indicating the worker has successfully completed a
              practice.
     """
-    if static_urls is None:
-        static_urls = {}
     success = templateEnv.get_template(PRACTICE_PASSED_TEMPLATE)
-    return success.render(**_get_static_url_dict(PRACTICE_PASSED_TEMPLATE,
-                                                 static_urls))
+    return success.render(jg=jg)
 
 
-def make_practice_failed(static_urls=None):
+def make_practice_failed():
     """
     Creates the practice failed page (see make_success)
 
-    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: HTML for a page indicating the worker has failed a practice.
     """
-    if static_urls is None:
-        static_urls = {}
     success = templateEnv.get_template(PRACTICE_FAILED_TEMPLATE)
-    return success.render(**_get_static_url_dict(PRACTICE_FAILED_TEMPLATE,
-                                                 static_urls))
+    return success.render(jg=jg)
 
 
 def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
               pos_type=POS_TYPE, attribute=ATTRIBUTE, practice=False,
-              collect_demo=False, is_preview=False, static_urls=None,
+              collect_demo=False,
               intro_instructions=DEF_INTRO_INSTRUCTIONS):
     """
     Produces an experimental HTML document. By assembling blocks of html code
@@ -189,21 +151,10 @@ def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
                       'interesting'
     :param practice: Boolean. If True, will display the debrief pages.
     :param collect_demo: Boolean. If True, will collect demographic information.
-    :param is_preview: Boolean. If True, will assume that this is a preview
-                       of the experiment and only render the instructions.
-                       This should only be true if the worker is previewing
-                       the HIT, i.e., the value of assignmentId is
-                       ASSIGNMENT_ID_NOT_AVAILABLE
-    :param static_urls: A dictionary of static URLs. See webserver.py.
     :param intro_instructions: A </sep>-separated html file containing the
                                instruction templates.
     :return The appropriate HTML for this experiment.
     """
-    if static_urls is None:
-        static_urls = {}
-    if is_preview:
-        return _make_preview_page(static_urls)
-    # TODO: Make sure this thing uses task_id and preload_images!
     images = []
     counts = {KEEP_BLOCK: 0, REJECT_BLOCK: 0}
     rblocks = []
@@ -254,90 +205,49 @@ def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
     base = templateEnv.get_template(BASE_TEMPLATE)
     # fill the preload template
     filled_preload = preload.render(images=images)
-    arg_dict = _get_static_url_dict(BASE_TEMPLATE, static_urls)
+    arg_dict = dict()
     arg_dict['blocks'] = rblocks
     arg_dict['preload'] = filled_preload
     arg_dict['blocknames'] = blocknames
-    arg_dict['attribute'] = attribute
     arg_dict['practice'] = p_val
     arg_dict['collect_demo'] = d_val
     arg_dict['taskId'] = str(task_id)
-    return base.render(**arg_dict)
+    return base.render(jg=jg, **arg_dict)
 
 
-def make_ban_html(dbget, worker_id):
-    """
-    Creates the 'you are banned' html.
-
-    NOTES:
-        This is now unused, since banning is done implicitly.
-
-    :param dbget: An instance of db.Get
-    :param worker_id: The worker ID, as a string.
-    :return: The ban page HTML.
-    """
-    reason, rem_dur = dbget.get_worker_ban_time_reason(worker_id)
-    template = templateEnv.get_template(BAN_TEMPLATE)
-    html = template.render(ban_time=rem_dur, ban_reason=reason)
-    return html
-
-
-def make_practice_limit_html(static_urls=None):
+def make_practice_limit_html():
     """
     Creates the 'num-practices-exceeded' html.
 
     NOTES:
         This is now unused, since banning is done implicitly.
 
-    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The practices exceeded page HTML.
     """
     template = templateEnv.get_template(PRACTICE_EXCEEDED_TEMPLATE)
-    html = template.render()
+    html = template.render(jg=jg)
     return html
 
 
-def make_no_avail_tasks_html(static_urls=None):
-    """
-    Creates the 'no tasks are available' html.
-
-    NOTE:
-        For now, we will be using make_error_fetching_task_html as the page
-        for the no-tasks-available situation.
-
-        This is now unused, since banning is done implicitly.
-
-    :param static_urls: A dictionary of static URLs. See webserver.py.
-    :return: The no tasks page HTML.
-    """
-    raise NotImplementedError()
-
-
-def make_error_fetching_task_html(static_urls=None):
+def make_error_fetching_task_html():
     """
     Creates a 'error fetching task' page html.
 
-    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The error page HTML.
     """
-    if static_urls is None:
-        static_urls = {}
     template = templateEnv.get_template(ERROR_TEMPLATE)
-    html = template.render(**_get_static_url_dict(ERROR_TEMPLATE, static_urls))
+    html = template.render(jg=jg)
     return html
 
 
-def make_error_submitting_task_html(static_urls=None):
+def make_error_submitting_task_html():
     """
     Creates the HTML that indicates there was an error submitting the task.
 
-    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The error page HTML.
     """
-    if static_urls is None:
-        static_urls = {}
     template = templateEnv.get_template(ERROR_TEMPLATE)
-    html = template.render(**_get_static_url_dict(ERROR_TEMPLATE, static_urls))
+    html = template.render(jg=jg)
     return html
 
 
@@ -484,7 +394,7 @@ def _make_instr_block(block, attribute):
     return filled_template, rblock['name']
 
 
-def _create_instruction_page(instruction, attribute, static_urls=None):
+def _create_instruction_page(instruction, attribute):
     """
     Creates a single instruction page, and attempts to intelligently define
     the items that require filling. Note that if a template file (or one that
@@ -494,21 +404,13 @@ def _create_instruction_page(instruction, attribute, static_urls=None):
     :param instruction: The template filename, or a string that will be the
                         instructions.
     :param attribute: The study attribute.
-    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The instruction page as a filled template.
     """
-    if static_urls is None:
-        static_urls = {}
     try:
         template_class = templateEnv.get_template(instruction)
     except:
         return instruction
-    var_dict = _get_static_url_dict(instruction, static_urls=static_urls)
-    vars = _get_template_variables(instruction)
-    # create a dict of variables to set in the template
-    if 'attribute' in vars:
-        var_dict['attribute'] = attribute
-    filled_template = template_class.render(**var_dict)
+    filled_template = template_class.render(jg=jg)
     # perform replacements
     # must eliminate the carriage returns, quotes
     filled_template = filled_template.replace('\n', '')
@@ -517,7 +419,7 @@ def _create_instruction_page(instruction, attribute, static_urls=None):
     return filled_template
 
 
-def _make_start_block(intro_instructions, attribute, static_urls=None):
+def _make_start_block(intro_instructions, attribute):
     """
     Accepts the attribute that we will be scoring, a sequence of instruction
     templates, and converts them into an instruction block.
@@ -525,18 +427,10 @@ def _make_start_block(intro_instructions, attribute, static_urls=None):
     :param intro_instructions: A </sep>-separated html file containing the
                                instruction templates.
     :param attribute: The attribute that will be scored.
-    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: An instruction block as a filled template.
     """
-    if static_urls is None:
-        static_urls = {}
     template_class = templateEnv.get_template(intro_instructions)
-    var_dict = _get_static_url_dict(intro_instructions, static_urls=static_urls)
-    vars = _get_template_variables(intro_instructions)
-    # create a dict of variables to set in the template
-    if 'attribute' in vars:
-        var_dict['attribute'] = attribute
-    filled_template = template_class.render(**var_dict)
+    filled_template = template_class.render(jg=jg)
     pages = filled_template.split('</sep>')
     pages = filter(lambda x: len(x), pages)
     block = {'instructions': pages, 'name': 'start_block'}
@@ -559,23 +453,33 @@ def _get_template_variables(template):
     return vars
 
 
-def _make_preview_page(static_urls=None):
+def make_preview_page(mt, worker_id, is_practice=False):
     """
     Returns the HTML for a 'preview' page, which users are presented when
     they begin to preview a task.
 
-    :param static_urls: A dictionary of static URLs. See webserver.py.
+    :param mt: The mechanical turk API object.
+    :param worker_id: The worker ID, as provided by MTurk
+    :param is_practice: A boolean indicating whether or not this is a practice.
     :return: HTML for the preview page.
     """
-    if static_urls is None:
-        static_urls = {}
-    template = templateEnv.get_template(PREVIEW_TEMPLATE)
-    return template.render(**_get_static_url_dict(PREVIEW_TEMPLATE,
-                                                  static_urls))
+    if is_practice:
+        if mt.get_worker_passed_practice(worker_id):
+            template = templateEnv.get_template(
+                    PRACTICE_PREVIEW_ALREADY_PASSED)
+        elif not mt.get_worker_avail_practice(worker_id):
+            template = templateEnv.get_template(PRACTICE_PREVIEW_QUOTA_EXCEEDED)
+        else:
+            template = templateEnv.get_template(PRACTICE_PREVIEW_TEMPLATE)
+    else:
+        if not mt.get_worker_passed_practice(worker_id):
+            template = templateEnv.get_template(PREVIEW_TEMPLATE_NEED_PRACTICE)
+        elif not mt.get_worker_avail_tasks(worker_id):
+            template = templateEnv.get_template(PREVIEW_TOO_MANY_TASKS)
+    return template.render(jg=jg)
 
 
-def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False,
-               static_urls=None):
+def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False):
     """
     Constructs a task after a request hits the webserver. In contrast to
     build_task, this is for requests that have a task ID encoded in
@@ -593,16 +497,12 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False,
     :param worker_id: The worker ID, as a string. If this is a preview,
                       you cannot obtain the worker ID, thus supply None.
     :param is_preview: The task to be served up is a 'preview' task.
-    :param static_urls: A dictionary of static URLs. See webserver.py.
     :return: The HTML for the requested task.
     """
-    if static_urls is None:
-        static_urls = {}
     # check that the worker exists, else register them. We want to have their
     #  information in the database so we don't spawn errors down the road.
-    if not is_preview:
-        if not dbget.worker_exists(worker_id):
-            dbset.register_worker(worker_id)
+    if not dbget.worker_exists(worker_id):
+        dbset.register_worker(worker_id)
     # check if we need demographics or not
     is_practice = dbget.task_is_practice(task_id)
     collect_demo = False
@@ -610,25 +510,21 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False,
         intro_instructions = DEF_PRACTICE_INTO_INSTRUCTIONS
     else:
         intro_instructions = DEF_INTRO_INSTRUCTIONS
-    if not is_preview:
-        if is_practice:
-            if dbget.worker_need_demographics(worker_id):
-                collect_demo = True
-            dbset.practice_served(task_id, worker_id)
-        else:
-            dbset.task_served(task_id, worker_id)
-        blocks = dbget.get_task_blocks(task_id)
-        if blocks is None:
-            # display an error-fetching-task page.
-            _log.warn('Could not fetch blocks for task %s' % task_id)
-            return make_error_fetching_task_html(static_urls=static_urls)
+    if is_practice:
+        if dbget.worker_need_demographics(worker_id):
+            collect_demo = True
+        dbset.practice_served(task_id, worker_id)
     else:
-        blocks = []  # do not show them anything if this is just a preview.
+        dbset.task_served(task_id, worker_id)
+    blocks = dbget.get_task_blocks(task_id)
+    if blocks is None:
+        # display an error-fetching-task page.
+        _log.warn('Could not fetch blocks for task %s' % task_id)
+        return make_error_fetching_task_html()
     html = make_html(blocks,
                      practice=is_practice,
                      collect_demo=collect_demo,
                      is_preview=is_preview,
-                     static_urls=static_urls,
                      intro_instructions=intro_instructions,
                      task_id=task_id)
     if not is_practice and not is_preview:

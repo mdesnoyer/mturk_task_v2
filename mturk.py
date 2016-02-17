@@ -30,6 +30,7 @@ import boto.mturk.notification
 import boto.mturk.qualification
 import boto.mturk.price
 import boto.mturk.question
+import datetime
 
 _log = logger.setup_logger(__name__)
 
@@ -75,12 +76,6 @@ class MTurk(object):
         :return: An instance of MTurk.
         """
         self.mtconn = mtconn
-        # TODO: delete the below!
-        self.mtconn = boto.mturk.connection.MTurkConnection(
-            aws_access_key_id=MTURK_ACCESS_ID,
-            aws_secret_access_key=MTURK_SECRET_KEY,
-            host='mechanicalturk.sandbox.amazonaws.com')
-        # TODO: delete the above!
         # TODO: figure out which functions can be discarded and stuff.
         self._get_qualification_ids()
         self._gen_requirement()
@@ -112,7 +107,7 @@ class MTurk(object):
                     else:
                         hits.append(hit)
         return hits
-
+    
     def _get_qualification_ids(self):
         """
         Gets the qualification IDs, and sets them internally.
@@ -208,11 +203,11 @@ class MTurk(object):
         requirements = \
             [boto.mturk.qualification.Requirement(self.qualification_id,
                                                   'Exists',
-                                                  required_to_preview=True),
+                                                  required_to_preview=False),
             boto.mturk.qualification.Requirement(self.quota_id,
                                                  'GreaterThan',
                                                  0,
-                                                 required_to_preview=True),
+                                                 required_to_preview=False),
             _LocaleRequirement('In', LOCALES)]
         self.qualification_requirement =  \
             boto.mturk.qualification.Qualifications(requirements=requirements)
@@ -231,7 +226,7 @@ class MTurk(object):
              boto.mturk.qualification.Requirement(self.practice_quota_id,
                                                   'GreaterThan',
                                                   0,
-                                                  required_to_preview=True)]
+                                                  required_to_preview=False)]
         self.practice_qualification_requirement = \
             boto.mturk.qualification.Qualifications(requirements=requirements)
 
@@ -407,6 +402,40 @@ class MTurk(object):
             ids_only=ids_only,
             selector=lambda x: x == HIT_APPROVED or x == HIT_REJECTED)
 
+    def get_worker_avail_tasks(self, worker_id):
+        """
+        Returns the number of tasks that the worker can complete.
+
+        :param worker_id: The MTurk worker ID.
+        :return: The number of tasks that remain that the worker can
+                 complete, as an integer.
+        """
+        # TODO: Implement this!
+        raise NotImplementedError()
+
+    def get_worker_avail_practice(self, worker_id):
+        """
+        Returns the number of attempts the worker has to complete a task.
+
+        :param worker_id: The MTurk worker ID.
+        :return: The number of practices that remain that the worker can
+                 complete, as an integer.
+        """
+        # TODO: Implement this!
+        raise NotImplementedError()
+
+    def get_worker_passed_practice(self, worker_id):
+        """
+        Indicates whether or not the worker has passed the practice.
+
+        :param worker_id: The MTurk worker ID.
+        :return: A boolean indicating whether or not the worker has passed
+                 the practice.
+        """
+        # TODO: What does this return if the qualification does not exist?
+        # TODO: Implement this!
+        raise NotImplementedError()
+
     def grant_worker_practice_passed(self, worker_id):
         """
         Grants worker the qualification necessary to begin attempting to
@@ -544,7 +573,25 @@ class MTurk(object):
         """
         # revoke the workers qualifications
         self.revoke_worker_practice_passed(worker_id, reason=reason)
-        self.mtconn.block_worker(worker_id, reason=reason)
+        # TODO: Change reason to the date, since it's only surfaced internally
+        self.mtconn.block_worker(worker_id,
+                                 reason=datetime.datetime.now().isoformat())
+
+    def _get_ban_time(self, worker_block):
+        """
+        Gets the time elapsed since a ban.
+
+        :param A WorkerBlock data structure from MTurk.
+        :return: The time since a worker was blocked, in seconds.
+        """
+        ban_time = worker_block.Reason
+        ban_date = datetime.datetime.strptime(ban_time[:19],
+                                              "%Y-%m-%dT%H:%M:%S")
+        delta = datetime.datetime.now() - ban_date
+        return delta.seconds
+
+    def get_unbannable_workers(self):
+        banned = self.mtconn.get_blocked_workers()
 
     def unban_worker(self, worker_id):
         """
@@ -687,7 +734,6 @@ class MTurk(object):
             boto.mturk.question.ExternalQuestion(
                 external_url=EXTERNAL_QUESTION_ENDPOINT,
                 frame_height=BOX_SIZE[1]+200)
-        # TODO: Make sure the frame_height is correct.
         opobj = dict()
         opobj['hit_type'] = hit_type_id
         opobj['question'] = question_object
@@ -715,7 +761,6 @@ class MTurk(object):
             boto.mturk.question.ExternalQuestion(
                 external_url=EXTERNAL_QUESTION_ENDPOINT,
                 frame_height=BOX_SIZE[1]+200)
-        # TODO: Make sure the frame_height is correct.
         opobj = dict()
         opobj['hit_type'] = hit_type_id
         opobj['question'] = question_object
