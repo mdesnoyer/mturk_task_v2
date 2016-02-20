@@ -1,0 +1,22 @@
+happybase
+numpy
+scipy
+jinja2
+Pillow
+colorlog
+dill
+flask
+pyopenssl
+apscheduler
+python-geoip
+python-geoip-geolite2
+# below aren't necessarily required
+ipython
+mock
+ipdb
+# note: also requires boto, but the custom version of boto i've created
+# note 2: mturk requires https, which requires flask, which requires ssl.SSLConfig, which requires python 2.7.9. so
+# we're using that.
+# you can install it using:
+#
+# pip install --no-index --find-links=/repos/boto/dist boto
