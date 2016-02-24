@@ -104,7 +104,7 @@ if (practice) {
             $.ajax({
               type: 'post',
               cache: false,
-              url: '{{ submit }}',
+              url: '{{ jg['submit'] }}',
               data: JSON.stringify(jsPsych.data.getData()),
               contentType: 'application/json;charset=UTF-8',
               success: function(response){

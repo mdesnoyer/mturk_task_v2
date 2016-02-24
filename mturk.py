@@ -175,7 +175,7 @@ class MTurk(object):
                 auto_granted_value=NUM_PRACTICES)
             self.practice_quota_id = resp[0].QualificationTypeId
         except boto.mturk.connection.MTurkRequestError as e:
-            _log.error('Failed creating practice quota qualification' +
+            _log.error('Failed creating practice quota qualification: ' +
                        e.message)
 
     def _gen_quota_qualification(self):
@@ -410,8 +410,12 @@ class MTurk(object):
         :return: The number of tasks that remain that the worker can
                  complete, as an integer.
         """
-        # TODO: Implement this!
-        raise NotImplementedError()
+        try:
+            qv = self.mtconn.get_qualification_score(self.quota_id,
+                                                     worker_id)
+            return bool(int(qv[0].IntegerValue))
+        except boto.mturk.connection.MTurkRequestError:
+            return None
 
     def get_worker_avail_practice(self, worker_id):
         """
@@ -421,8 +425,12 @@ class MTurk(object):
         :return: The number of practices that remain that the worker can
                  complete, as an integer.
         """
-        # TODO: Implement this!
-        raise NotImplementedError()
+        try:
+            qv = self.mtconn.get_qualification_score(self.practice_quota_id,
+                                                     worker_id)
+            return bool(int(qv[0].IntegerValue))
+        except boto.mturk.connection.MTurkRequestError:
+            return None
 
     def get_worker_passed_practice(self, worker_id):
         """
@@ -432,9 +440,12 @@ class MTurk(object):
         :return: A boolean indicating whether or not the worker has passed
                  the practice.
         """
-        # TODO: What does this return if the qualification does not exist?
-        # TODO: Implement this!
-        raise NotImplementedError()
+        try:
+            qv = self.mtconn.get_qualification_score(self.qualification_id,
+                                                     worker_id)
+            return bool(int(qv[0].IntegerValue))
+        except boto.mturk.connection.MTurkRequestError:
+            return False
 
     def grant_worker_practice_passed(self, worker_id):
         """
@@ -493,11 +504,21 @@ class MTurk(object):
     def reset_worker_weekly_practice_quota(self, worker_id):
         """
         Resets a worker's weekly practice quota, allowing them to complete
-        another round of practices, as set by NUM_PRACTICES (see conf.py)
+        another round of practices, as set by NUM_PRACTICES (see conf.py).
+
+        Note: If this qualification is not granted, then it will attempt to do
+              grant it.
 
         :param worker_id: The MTurk worker ID.
         :return: None
         """
+        try:
+            self.mtconn.update_qualification_score(
+                self.practice_quota_id, worker_id, value=NUM_PRACTICES)
+            return
+        except boto.mturk.connection.MTurkRequestError:
+            _log.warn('No practice quota for worker %s, trying to grant it' %
+                      worker_id)
         try:
             self.mtconn.assign_qualification(self.practice_quota_id, worker_id,
                                              value=NUM_PRACTICES,

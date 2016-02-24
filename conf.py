@@ -25,9 +25,9 @@ AWS STUFF
 MTURK_ACCESS_ID = os.environ['MTURK_ACCESS_ID']
 MTURK_SECRET_KEY = os.environ['MTURK_SECRET_KEY']
 # AWS
-# AWS_ACCESS_ID = os.environ['AWS_ACCESS_ID']
-# AWS_SECRET_KEY = os.environ['AWS_SECRET_KEY']
-
+AWS_ACCESS_ID = os.environ['AWS_ACCESS_ID']
+AWS_SECRET_KEY = os.environ['AWS_SECRET_KEY']
+IMAGE_BUCKET = 'neon-image-library'  # the location on S3 of the images
 
 """
 GLOBAL TASK APPEARANCE CONFIGURATION
@@ -82,6 +82,16 @@ DEF_REJECT_BLOCK_INSTRUCTIONS = \
                                                    # instructions
 POS_TYPE = 'random'  # the position type, see make_html.py
 ATTRIBUTE = 'interesting'  # the default attribute to use
+# the attribute description is an elaboration of what we mean by ATTRIBUTE
+ATTRIBUTE_DESCRIPTION = 'What we mean by INTERESTING is images that make you ' \
+                        'want to' \
+                        ' know more about. For instance, if that image were ' \
+                        'the thumbnail for a video, would you want to watch ' \
+                        'that video? Or if that image were from a gallery, ' \
+                        'would you want to see the rest of the gallery? In ' \
+                        'essence, \'INTERESTING\' means images that you think' \
+                        ' are beautiful, compelling, intriguing, or which ' \
+                        'grab your attention.'
 IMAGE_ATTRIBUTES = []  # the types of images to be included in the task.
 DEF_INSTRUCTIONS = ''  # the default instructions to display before each SEGMENT
 DEF_TRIAL_TYPE = KEEP_BLOCK  # the default trial type
@@ -92,7 +102,10 @@ RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized
                                  # within task.
 DEFAULT_TASK_PAYMENT = 0.40  # the default payment for
 DEFAULT_TASK_NAME = 'Choosing images'  # The title for the actual tasks.
-DESCRIPTION = 'Choosing %s images' % ATTRIBUTE  # The default ask description.
+DESCRIPTION = ('Choosing %s images. These HITs are always instantly accepted.' %
+               ATTRIBUTE)
+# The
+# default ask description.
 KEYWORDS = []  # the keywords for the HIT / HIT Type
 
 """
@@ -113,8 +126,10 @@ DEFAULT_PRACTICE_PAYMENT = 0.20  # the default payment for practices
 DEFAULT_PRACTICE_TASK_NAME = \
     'Practice choosing images'  # The title for practice tasks.
 PRACTICE_DESCRIPTION = \
-    ('Practice for choosing %s images (you only '
-     'need pass the practice once)' % ATTRIBUTE)
+    ('Practice for choosing %s images (you only need pass the practice once). '
+     'The required qualifications are automatically granted, be sure to '
+     'request them before you begin. These HITs are always instantly '
+     'accepted.' % ATTRIBUTE)
 
 
 """

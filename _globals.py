@@ -18,7 +18,7 @@ MTURK QUALIFICATIONS
 # DAILY_QUOTA_QUALIFICATION each represent distinct qualifications.
 
 # this is the 'main' qualification -- which allows them to take the task.
-QUALIFICATION_NAME = 'Practice for image selection task passed.'
+QUALIFICATION_NAME = 'Practice for image selection task passed'
 QUALIFICATION_DESCRIPTION = 'You have passed the practices for the image ' \
                             'selection task, and are now free to ' \
                             'complete the full tasks. Thank you! NOTE: This ' \
@@ -86,9 +86,11 @@ PRACTICE_EXCEEDED_TEMPLATE = 'too_many_practices.html'
 PRACTICE_IM_DIR = 'instr_screenshots/'
 ERROR_TEMPLATE = 'error.html'
 DEMOGRAPHICS_TEMPLATE = 'demographics.html'
-SUCCESS_TEMPLATE = 'success.html'
-PRACTICE_PASSED_TEMPLATE = 'practice_passed.html'
-PRACTICE_FAILED_TEMPLATE = 'practice_failed.html'
+SUCCESS_TEMPLATE = 'success_pages/success.html'
+SUCCESS_PRACTICE_PASSED_TEMPLATE = 'success_pages/practice_passed.html'
+SUCCESS_PRACTICE_FAILED_TEMPLATE = 'success_pages/practice_failed.html'
+SUCCESS_PRACTICE_ALREADY_PASSED_TEMPLATE = \
+    'success_pages/practice_already_passed.html'
 # preview templates
 PREVIEW_TEMPLATE = 'preview/preview_template.html'
 PREVIEW_TEMPLATE_NEED_PRACTICE = 'preview/preview_template_unqualified.html'

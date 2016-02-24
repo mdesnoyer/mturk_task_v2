@@ -42,7 +42,6 @@ pylint.out
 #### Log stuff ###
 *.log
 *.out
-*.txt
 *.prof
 *.queries
 

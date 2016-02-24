@@ -350,11 +350,12 @@ button:hover {
   border: 2px solid green; 
 }
 
-/* Forbid image selection */
+/* Forbid image selection and dragging */
 img{
-    -khtml-user-select: none;
-    -o-user-select: none;
-    -moz-user-select: none;
-    -webkit-user-select: none;
+    user-drag: none;
     user-select: none;
+    -moz-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
 }

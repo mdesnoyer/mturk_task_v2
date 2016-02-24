@@ -10,6 +10,7 @@ pyopenssl
 apscheduler
 python-geoip
 python-geoip-geolite2
+boto3
 # below aren't necessarily required
 ipython
 mock

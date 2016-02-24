@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ jg['jquery_ui_css'] }}">
 </head>
 <body>
+<div id="jspsych-target">
 <center><p><b>PRACTICE FINDING {% filter upper %}{{ jg['attribute'] }}{% endfilter %}
     IMAGES</b></p></center>
 
@@ -25,9 +26,12 @@
     set of images.
 </p>
 <p>
-    all of our HITs are <b>instantly accepted</b>, but you will have a
+    All of our HITs are <b>instantly accepted</b>, but you will have a
     limited number of tries to complete the practice. If you exceed this
     limit, you can try again in 7 days.
 </p>
+    <p>What we mean by {% filter upper %}{{ jg['attribute'] }}{% endfilter %} will be explained in the instructions.</p>
+    <p><b>This task will take NO LONGER THAN {{ task_time }} to complete, and probably much less.</b></p>
+</div>
 </body>
 </html>

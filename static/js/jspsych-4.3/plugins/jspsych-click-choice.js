@@ -93,7 +93,7 @@
                 $("#jspsych-click-choice-arena").append($('<img>', {
                     "src": trial.stimuli[i].file,
                     "id": trial.stimuli[i].id,
-                    "alt":i,
+                    "alt": i,
                     "class": "jspsych-click-choice-clickable",
                     "css": {
                         "position": "absolute",
@@ -158,7 +158,7 @@
 				jsPsych.finishTrial();
             }
 
-            $('.jspsych-click-choice-clickable').click(
+            $('.jspsych-click-choice-clickable').mousedown(
             	function(event){
             		//var choice = $("#" + this.id);
             		if (trial_ended){

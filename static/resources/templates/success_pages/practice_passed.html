@@ -1,0 +1,38 @@
+<!--
+The template version of the success page.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Thank you</title>
+    <script src="{{ jg['jspsych_js'] }}"></script>
+    <link rel="stylesheet" href="{{ jg['jspsych_css'] }}">
+    <link rel="stylesheet" href="{{ jg['jquery_ui_css'] }}">
+</head>
+<body>
+    <center>
+        <br><br>
+        <img src="{{ jg['check_png'] }}" alt="success" style="width:300px;height:300px;">
+        <p>Congratulations! You have passed the practice. You may now
+            proceed to completing the main HITs, which are listed under
+            {{ jg['task_name'] }}.
+        </p>
+        <p><font color="red">WARNING: Do not attempt to take another
+            practice HIT! You will be unable to submit it.</font> Mechanical
+        Turk occasionally takes too long to register the change in your
+            qualifications, and may allow you to take another, however, this
+        is in error and you will obtain an error page when you try to submit
+        it!</p>
+        <p>Click below to submit the HIT.</p>
+        <button onclick="sendData();">Submit HIT</button>
+    </center>
+</body>
+<script>
+    function sendData() {
+        jsPsych.turk.submitToTurk({
+            code: 'completed'
+        });
+    }
+</script>
+</html>

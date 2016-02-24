@@ -252,12 +252,11 @@ function get_bias_string(thresh){
     rstring += '</br>';
     // compute the probability
     var prob = 1 - comp_chi_pval(bias, total, cmax);
-    rstring += "Based on your responses, we compute a <strong>" + (prob*100).toFixed(2) + "%</strong> chance that you did not follow the instructions.</br>"
     if(prob > thresh){
-        rstring += '<font color="red">This probability is too high! Please repeat the practice.</font>';
+        rstring += '<font color="red">Your probability is too high! Please repeat the practice.</font>';
         passed_practice = false;
     } else {
-        rstring += '<font color="green">This probability is within limits for behaving randomly.</font>';
+        rstring += '<font color="green">Your probability is within limits for behaving randomly.</font>';
     }
     return rstring;
   };

@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ jg['jquery_ui_css'] }}">
 </head>
 <body>
+<div id="jspsych-target">
 <center><p><b>FINDING {% filter upper %}{{ jg['attribute'] }}{% endfilter %} IMAGES</b></p></center>
 
 <p>You are about to participate in an a psychological experiment to gather data
@@ -19,5 +20,9 @@
     {% filter upper %}{{ jg['attribute'] }}{% endfilter %}. This is done very
     simply: you just click on the image, and you will go on to the next set
     of images.</p>
+
+    <p>What we mean by {% filter upper %}{{ jg['attribute'] }}{% endfilter %} will be explained in the instructions.</p>
+    <p><b>This task will take NO LONGER THAN {{ task_time }} to complete, and probably much less.</b></p>
+</div>
 </body>
 </html>

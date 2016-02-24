@@ -70,7 +70,7 @@ def make_practice_passed():
     :return: HTML for a page indicating the worker has successfully completed a
              practice.
     """
-    success = templateEnv.get_template(PRACTICE_PASSED_TEMPLATE)
+    success = templateEnv.get_template(SUCCESS_PRACTICE_PASSED_TEMPLATE)
     return success.render(jg=jg)
 
 
@@ -80,7 +80,19 @@ def make_practice_failed():
 
     :return: HTML for a page indicating the worker has failed a practice.
     """
-    success = templateEnv.get_template(PRACTICE_FAILED_TEMPLATE)
+    success = templateEnv.get_template(SUCCESS_PRACTICE_FAILED_TEMPLATE)
+    return success.render(jg=jg)
+
+
+def make_practice_already_passed():
+    """
+    Creates the HTML for the case when they are trying to submit a practice
+    task but have already passed it.
+
+    :return: HTML page indicating that they cannot re-submit and should
+    instead go on to the main task.
+    """
+    success = templateEnv.get_template(SUCCESS_PRACTICE_ALREADY_PASSED_TEMPLATE)
     return success.render(jg=jg)
 
 
@@ -453,10 +465,39 @@ def _get_template_variables(template):
     return vars
 
 
-def make_preview_page(mt, worker_id, is_practice=False):
+def make_preview_page(is_practice=False, task_time=None):
     """
     Returns the HTML for a 'preview' page, which users are presented when
     they begin to preview a task.
+
+    :param is_practice: A boolean indicating whether or not this is a practice.
+    :param task_time: The estimated amount of time the task will take, in ms.
+    :return: HTML for the preview page.
+    """
+    if is_practice:
+        template = templateEnv.get_template(PRACTICE_PREVIEW_TEMPLATE)
+    else:
+        template = templateEnv.get_template(PREVIEW_TEMPLATE)
+    if task_time is None:
+        task_time = 'Unknown'
+    else:
+        mins, secs = divmod(task_time, 60)
+        if not mins:
+            task_time = '%i seconds' % secs
+        else:
+            task_time = '%i minutes and %i seconds' % (mins, secs)
+    return template.render(task_time=task_time, jg=jg)
+
+
+def _make_preview_page_dep(mt, worker_id, is_practice=False):
+    """
+    ** DEPRICATED **
+    ** We can't get the worker ID from previews, so none of this is possible. **
+
+    Returns the HTML for a 'preview' page, which users are presented when
+    they begin to preview a task. If this is *the first time* a worker is
+    previewing one of our practice tasks, then it will assign them a practice
+    quota without them having to do anything.
 
     :param mt: The mechanical turk API object.
     :param worker_id: The worker ID, as provided by MTurk
@@ -467,19 +508,29 @@ def make_preview_page(mt, worker_id, is_practice=False):
         if mt.get_worker_passed_practice(worker_id):
             template = templateEnv.get_template(
                     PRACTICE_PREVIEW_ALREADY_PASSED)
-        elif not mt.get_worker_avail_practice(worker_id):
-            template = templateEnv.get_template(PRACTICE_PREVIEW_QUOTA_EXCEEDED)
         else:
-            template = templateEnv.get_template(PRACTICE_PREVIEW_TEMPLATE)
+            practice_quota = mt.get_worker_avail_practice(worker_id)
+            if practice_quota is None:
+                mt.reset_worker_weekly_practice_quota(worker_id)
+                template = templateEnv.get_template(PRACTICE_PREVIEW_TEMPLATE)
+            elif practice_quota <= 0:
+                template = templateEnv.get_template(
+                    PRACTICE_PREVIEW_QUOTA_EXCEEDED)
+            else:
+                template = templateEnv.get_template(PRACTICE_PREVIEW_TEMPLATE)
     else:
         if not mt.get_worker_passed_practice(worker_id):
             template = templateEnv.get_template(PREVIEW_TEMPLATE_NEED_PRACTICE)
-        elif not mt.get_worker_avail_tasks(worker_id):
-            template = templateEnv.get_template(PREVIEW_TOO_MANY_TASKS)
+        else:
+            task_quota = mt.get_worker_avail_tasks(worker_id)
+            if task_quota is None or task_quota <= 0:
+                template = templateEnv.get_template(PREVIEW_TOO_MANY_TASKS)
+            else:
+                template = templateEnv.get_template(PREVIEW_TEMPLATE)
     return template.render(jg=jg)
 
 
-def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False):
+def fetch_task(dbget, dbset, task_id, worker_id=None):
     """
     Constructs a task after a request hits the webserver. In contrast to
     build_task, this is for requests that have a task ID encoded in
@@ -496,7 +547,6 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False):
     :param task_id: The task ID, as a string.
     :param worker_id: The worker ID, as a string. If this is a preview,
                       you cannot obtain the worker ID, thus supply None.
-    :param is_preview: The task to be served up is a 'preview' task.
     :return: The HTML for the requested task.
     """
     # check that the worker exists, else register them. We want to have their
@@ -524,10 +574,11 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_preview=False):
     html = make_html(blocks,
                      practice=is_practice,
                      collect_demo=collect_demo,
-                     is_preview=is_preview,
                      intro_instructions=intro_instructions,
                      task_id=task_id)
-    if not is_practice and not is_preview:
-        dbset.set_task_html(task_id, html)
+    if not is_practice:
+        # this is now disabled
+        # dbset.set_task_html(task_id, html)
+        pass
     return html
 

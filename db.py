@@ -508,7 +508,7 @@ class Get(object):
                                           'stats:num_accepted_interval'))
         num_rej = float(table.counter_get(worker_id,
                                           'stats:num_rejected_interval'))
-        return num_rej / num_acc
+        return num_rej / (num_acc + num_rej)
 
     # TASK
     
@@ -1013,8 +1013,6 @@ class Get(object):
                     occ[i] += 1
                 design.append(cur_tuple)
         if not np.min(occ) >= j:
-            import ipdb
-            ipdb.set_trace()
             _log.warning('Could not generate design.')
             return None
         return design
@@ -1184,16 +1182,30 @@ class Get(object):
                 return hit_type_id
         return None
 
-    def worker_autoban_check(self, worker_id, duration=None):
+    def get_task_time(self, task_id):
+        """
+        Returns an estimate of the upper-limit for how long the task will take.
+
+        :param task_id: The task ID.
+        :return: The upper-bound on the number of seconds the task will take
+        to complete, assuming that the directions take 0 seconds to read.
+        """
+        task_info = self.conn.table(TASK_TABLE).row(task_id)
+        num_tuples = int(task_info.get('metadata:num_tuples', '0'))
+        trial_time = DEF_TRIAL_TIME + TIMING_POST_TRIAL
+        # get the task time in milliseconds
+        task_time_ms = num_tuples * trial_time
+        return task_time_ms / 1000
+
+    def worker_autoban_check(self, worker_id):
         """
         Checks that the worker should be autobanned.
 
-        :param conn: The HappyBase connection object.
         :param worker_id: The worker ID, as a string.
         :return: True if the worker should be autobanned, False otherwise.
         """
         if self.worker_weekly_rejected(worker_id) > MIN_REJECT_AUTOBAN_ELIGIBLE:
-            if self.worker_weekly_reject_accept_ratio(self, worker_id) > \
+            if self.worker_weekly_reject_accept_ratio(worker_id) > \
                     AUTOBAN_REJECT_ACCEPT_RATIO:
                 return True
         return False
@@ -1538,6 +1550,7 @@ class Set(object):
         # note: not in order of presentation!
         task_dict['metadata:images'] = dumps(images)
         task_dict['metadata:tuples'] = dumps(im_tuples)
+        task_dict['metadata:num_tuples'] = str(len(im_tuples))
         task_dict['metadata:tuple_types'] = dumps(im_tuple_types)
         task_dict['metadata:attributes'] = dumps(set(image_attributes))
         task_dict['status:awaiting_serve'] = TRUE
@@ -1860,10 +1873,11 @@ class Set(object):
         chi_stat, p_value = stats.chisquare(obs, expected)
         frac_contradictions = float(num_contradictions) / len(data)
         frac_unanswered = float(num_unanswered) / len(data)
-        mean_rt = np.mean(filter(lambda x: x > -1, rts))
+        if frac_unanswered < 1.0:
+            mean_rt = np.mean(filter(lambda x: x > -1, rts))
+        else:
+            mean_rt = 0
         table = self.conn.table(TASK_TABLE)
-        import ipdb
-        ipdb.set_trace()
         input_dict = {'metadata:worker_id': worker_id,
                       'metadata:hit_id': hit_id,
                       'metadata:assignment_id': assignment_id,
@@ -1878,14 +1892,25 @@ class Set(object):
                           '%.4f' % frac_contradictions,
                       'validation_statistics:frac_no_response':
                           '%.4f' % frac_unanswered,
-                      'validation_statistics:mean_rt': '%.4f' % mean_rt}
+                      'validation_statistics:mean_rt': '%.4f' % mean_rt,
+                      'status:pending_evaluation': TRUE}
         try:
-            table.put(task_id, **_conv_dict_vals(input_dict))
-        except:
-            import dill
-            with open('/repos/mturk_task_v2/dumped_registration_inputs',
-                      'w') as f:
-                dill.dump([resp_json, user_agent, hit_type_id], f)
+            table.put(task_id, _conv_dict_vals(input_dict))
+        except Exception as e:
+            _log.critical('COULD NOT STORE TASK DATA FOR %s: %s' % (task_id,
+                                                                    e))
+            import ipdb
+            ipdb.set_trace()
+        # acquire the task timing. I'm aware this is not an efficient method,
+        # but i'm not sure how to ensure that the hbase timing is consistent.
+        r = table.row(task_id,
+                      columns=['status:pending_evaluation',
+                               'status:awaiting_serve'],
+                      include_timestamp=True)
+        start_time = r.get('status:awaiting_serve', (None, 0))[1]
+        end_time = r.get('status:pending_evaluation', (None, 0))[1]
+        seconds = end_time - start_time
+        table.put(task_id, {'status:total_time': str(seconds)})
         if user_agent is not None:
             table.put(task_id, _conv_dict_vals(
                                 {'user_agent:browser': user_agent.browser,
@@ -1893,6 +1918,8 @@ class Set(object):
                                  'user_agent:platform': user_agent.platform,
                                  'user_agent:version': user_agent.version,
                                  'user_agent:string': user_agent.string}))
+        _log.info('Stored task data for task %s, worker %s. Total time: %i '
+                  'seconds' % (task_id, worker_id, seconds))
         return frac_contradictions, frac_unanswered, mean_rt, p_value
 
     def validate_task(self, task_id=None, frac_contradictions=None,
@@ -2055,7 +2082,7 @@ class Set(object):
             _log.warn('Could not fetch location info for worker %s' % worker_id)
             return
         table.put(worker_id,
-                  **{'location:'+k: str(v) for k, v in location_info.to_dict(
+                  {'location:'+k: str(v) for k, v in location_info.to_dict(
                   ).iteritems()})
 
     def practice_pass(self, resp_json):
@@ -2106,7 +2133,7 @@ class Set(object):
             _log.warning('Task status indicates it is not ready to be '
                          'accepted, but proceeding anyway')
         task_data = table.row(task_id)
-        table.set(task_id, {'status:pending_evaluation': FALSE,
+        table.put(task_id, {'status:pending_evaluation': FALSE,
                             'status:accepted': TRUE})
         # update worker table
         worker_id = task_data.get('metadata:worker_id', None)
@@ -2179,10 +2206,7 @@ class Set(object):
         if task_status == DOES_NOT_EXIST:
             _log.error('No such task exists!')
             return
-        if task_status != EVALUATION_PENDING:
-            _log.warning('Task status indicates it is not ready to be '
-                         'accepted, but proceeding anyway')
-        table.set(task_id, _conv_dict_vals({'status:pending_evaluation': FALSE,
+        table.put(task_id, _conv_dict_vals({'status:pending_evaluation': FALSE,
                                             'status:rejected': TRUE,
                                             'status:rejection_reason': reason}))
         # update worker table
@@ -2254,7 +2278,7 @@ class Set(object):
         cur_date = time.mktime(time.localtime())
         ban_dur = float(data.get('status:ban_length', ('0', 0))[0])
         if (cur_date - ban_date) > ban_dur:
-            table.set(worker_id, {'status:is_banned': FALSE,
+            table.put(worker_id, {'status:is_banned': FALSE,
                                   'status:ban_length': '0'})
             return 0
         else:

@@ -31,6 +31,8 @@ from generate import fetch_task
 from generate import make_success
 from generate import make_practice_passed
 from generate import make_practice_failed
+from generate import make_practice_already_passed
+from generate import make_preview_page
 from mturk import MTurk
 import boto.mturk.connection
 import happybase
@@ -261,9 +263,10 @@ def handle_reject_task(mt, dbget, dbset, worker_id, assignment_id, task_id,
     mt.soft_reject_assignment(worker_id, assignment_id, reason)
     dbset.reject_task(task_id, reason)
 
+
 def handle_finished_hit(mt, dbget, dbset, hit_id):
     """
-    Disposes of a completed task asynchronously, i.e., by being passed to the
+    Disables a completed task asynchronously, i.e., by being passed to the
     threadpool.
 
     NOTES:
@@ -275,7 +278,9 @@ def handle_finished_hit(mt, dbget, dbset, hit_id):
     :param hit_id: The reason for the rejection
     :return: None
     """
-    mt.dispose_hit(hit_id)
+    _log.info('Currently not disabling completed hits due to the workers being'
+              ' too slow to hit submit')
+    # mt.disable_hit(hit_id)
 
 
 """
@@ -299,13 +304,13 @@ def task():
     is_preview = request.values.get('assignmentId') == PREVIEW_ASSIGN_ID
     hit_id = request.values.get('hitId', '')
     hit_info = mt.get_hit(hit_id)
-    if not is_preview:
-        worker_id = request.values.get('workerId', '')
-    else:
-        worker_id = None
     task_id = hit_info.RequesterAnnotation
-    response = fetch_task(dbget, dbset, task_id, worker_id,
-                          is_preview=is_preview)
+    if is_preview:
+        is_practice = dbget.task_is_practice(task_id)
+        task_time = dbget.get_task_time(task_id)
+        return make_preview_page(is_practice, task_time)
+    worker_id = request.values.get('workerId', '')
+    response = fetch_task(dbget, dbset, task_id, worker_id)
     return response
 
 
@@ -333,7 +338,9 @@ def submit():
         mt.decrement_worker_practice_weekly_quota(worker_id)
         dbset.register_demographics(request.json, worker_ip)
         passed_practice = request.json[0]['passed_practice']
-        if passed_practice:
+        if mt.get_worker_passed_practice(worker_id):
+            to_return = make_practice_already_passed()
+        elif passed_practice:
             to_return = make_practice_passed()
             dbset.practice_pass(request.json)
             mt.grant_worker_practice_passed(worker_id)
@@ -369,6 +376,7 @@ context = ('%s/%s.crt' % (CERT_DIR, CERT_NAME), '%s/%s.key' % (CERT_DIR,
 
 
 if __name__ == '__main__':
+    logger.config_root_logger('/repos/mturk_task_v2/logs/webserver.log')
     _log.info('Fetching hit types')
     PRACTICE_HIT_TYPE_ID = dbget.get_active_practice_hit_type_for(
         task_attribute=ATTRIBUTE,

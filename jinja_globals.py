@@ -15,7 +15,8 @@ resources = [
     'resources/instr_screenshots/reject_1.jpg',
     'resources/templates/symbols/error.png',
     'resources/templates/symbols/check.png',
-    'resources/templates/symbols/blocked.png'
+    'resources/templates/symbols/blocked.png',
+    'resources/templates/symbols/stop.png'
 ]
 
 scripts = [  # note, this also includes the jsPsych-specific CSS.
@@ -69,5 +70,7 @@ def _get_static_urls():
 jg = _get_static_urls()
 
 jg['attribute'] = ATTRIBUTE
+jg['attribute_description'] = ATTRIBUTE_DESCRIPTION
 jg['practice_task_name'] = DEFAULT_PRACTICE_TASK_NAME
 jg['task_name'] = DEFAULT_TASK_NAME
+
