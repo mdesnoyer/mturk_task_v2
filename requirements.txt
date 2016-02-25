@@ -21,3 +21,4 @@ ipdb
 # you can install it using:
 #
 # pip install --no-index --find-links=/repos/boto/dist boto
+-e /home/vagrant/boto

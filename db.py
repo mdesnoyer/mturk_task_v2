@@ -1919,7 +1919,7 @@ class Set(object):
                                  'user_agent:version': user_agent.version,
                                  'user_agent:string': user_agent.string}))
         _log.info('Stored task data for task %s, worker %s. Total time: %i '
-                  'seconds' % (task_id, worker_id, seconds))
+                  'seconds' % (task_id, worker_id, seconds / 1000))
         return frac_contradictions, frac_unanswered, mean_rt, p_value
 
     def validate_task(self, task_id=None, frac_contradictions=None,
@@ -2055,6 +2055,7 @@ class Set(object):
         val, reason = validate_frac_contradictions(task_id, frac_contradictions)
         if not val:
             return val, reason
+        return val, reason
 
     def register_demographics(self, resp_json, worker_ip):
         """

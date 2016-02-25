@@ -101,6 +101,12 @@ def create_hit(mt, dbget, dbset, hit_type_id=None):
     if mean_seen > MEAN_SAMPLES_REQ_PER_IMAGE(n_active):
         _log.info('Images are sufficiently sampled, activating more')
         dbset.activate_n_images(ACTIVATION_CHUNK_SIZE)
+    hit_cost = DEFAULT_TASK_PAYMENT
+    bal = mt.get_account_balance()
+    if hit_cost > bal:
+        _log.warn('Insufficient funds to generate new tasks: %.2f cost vs. '
+                  '%.2f balance', hit_cost, bal)
+        return
     _log.info('Generating a new HIT')
     task_id, exp_seq, attribute, register_task_kwargs = \
         dbget.gen_task(DEF_NUM_IMAGES_PER_TASK, 3,
@@ -137,6 +143,13 @@ def check_practices(hit_type_id=None):
     to_generate = 0
     practice_hits = mt.get_all_hits_of_type(hit_type_id=hit_type_id)
     to_generate += NUM_PRACTICES - len(practice_hits)
+    tot_cost = DEFAULT_PRACTICE_PAYMENT * NUM_ASSIGNMENTS_PER_PRACTICE * \
+               to_generate
+    bal = mt.get_account_balance()
+    if tot_cost > bal:
+        _log.warn('Insufficient funds to generate practicse: %.2f cost vs. '
+                  '%.2f balance', tot_cost, bal)
+        return
     for hit in practice_hits:
         if mt.get_practice_status(hit=hit) == PRACTICE_EXPIRED:
             _log.info('Practice %s expired' % hit.HITId)
@@ -348,15 +361,28 @@ def submit():
             to_return = make_practice_failed()
     else:
         to_return = make_success()
-        mt.decrement_worker_daily_quota(worker_id)
-        frac_contradictions, frac_unanswered, mean_rt, prob_random = \
-            dbset.task_finished_from_json(request.json,
-                                          hit_type_id=hit_type_id)
-        is_valid, reason = \
-            dbset.validate_task(task_id=None,
-                                frac_contradictions=frac_contradictions,
-                                frac_unanswered=frac_unanswered,
-                                mean_rt=mean_rt, prob_random=prob_random)
+        try:
+            mt.decrement_worker_daily_quota(worker_id)
+        except:
+            _log.warn('Problem decrementing daily quota for %s' % worker_id)
+        try:
+            frac_contradictions, frac_unanswered, mean_rt, prob_random = \
+                dbset.task_finished_from_json(request.json,
+                                              hit_type_id=hit_type_id)
+        except:
+            _log.error('Problem storing task data - dumping task json')
+            _log.info('TASK JSON: %s' % str(request.json))
+            return to_return
+        try:
+            is_valid, reason = \
+                dbset.validate_task(task_id=None,
+                                    frac_contradictions=frac_contradictions,
+                                    frac_unanswered=frac_unanswered,
+                                    mean_rt=mean_rt, prob_random=prob_random)
+        except:
+            _log.error('Could not validate task, default to accept')
+            is_valid = True
+            reason = None
         if not is_valid:
             pool.add_task(handle_reject_task,
                           worker_id,

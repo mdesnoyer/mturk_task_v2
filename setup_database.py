@@ -7,6 +7,7 @@ that's supporting the webapp--thus the database location is localhost.
 
 Note, the database must be running:
     $HBASE_HOME/bin/start-hbase.sh
+    hbase thrift start
 
 """
 
