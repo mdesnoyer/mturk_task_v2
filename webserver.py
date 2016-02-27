@@ -45,6 +45,11 @@ import atexit
 
 _log = logger.setup_logger(__name__)
 
+if not CONTINUOUS_MODE:
+    _log.warn('Not running in continuous mode: New tasks will not be posted')
+else:
+    _log.info('Running in continuous mode, will post tasks as long as there '
+              'are funds available.')
 # instantiate a database connection & database objects
 _log.info('Intantiating database connection')
 conn = happybase.Connection(host=DATABASE_LOCATION)
@@ -392,7 +397,8 @@ def submit():
             pool.add_task(check_ban, worker_id)
         else:
             pool.add_task(handle_accepted_task, assignment_id, task_id)
-        pool.add_task(create_hit, hit_type_id)
+        if CONTINUOUS_MODE:
+            pool.add_task(create_hit, hit_type_id)
         pool.add_task(handle_finished_hit, hit_id)
     return to_return
 
@@ -432,11 +438,12 @@ if __name__ == '__main__':
     check_practices(hit_type_id=PRACTICE_HIT_TYPE_ID)
     _log.info('Starting scheduler')
     scheduler = BackgroundScheduler()
-    scheduler.add_job(check_practices,
-                      trigger='interval',
-                      minutes=60*60*3,                  # every 3 hours
-                      args=[PRACTICE_HIT_TYPE_ID],
-                      id='practice check')
+    if CONTINUOUS_MODE:
+        scheduler.add_job(check_practices,
+                          trigger='interval',
+                          minutes=60*60*3,                  # every 3 hours
+                          args=[PRACTICE_HIT_TYPE_ID],
+                          id='practice check')
     scheduler.add_job(unban_workers,
                       trigger='interval',
                       minutes=60*60*24,                 # every 24 hours

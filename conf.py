@@ -83,7 +83,7 @@ DEF_REJECT_BLOCK_INSTRUCTIONS = \
 POS_TYPE = 'random'  # the position type, see make_html.py
 ATTRIBUTE = 'interesting'  # the default attribute to use
 # the attribute description is an elaboration of what we mean by ATTRIBUTE
-ATTRIBUTE_DESCRIPTION = 'What we mean by INTERESTING is images that make you ' \
+ATTRIBUTE_DESCRIPTION = 'What we mean by INTERESTING is images that you ' \
                         'want to' \
                         ' know more about. For instance, if that image were ' \
                         'the thumbnail for a video, would you want to watch ' \

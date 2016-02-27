@@ -1418,6 +1418,22 @@ class Set(object):
         succ = succ and self.create_task_type_table(clobber=True)
         return succ
 
+    def wipe_database_except_images(self):
+        """
+        Wipes all data from the database, except for persistent image data.
+        Note that all information that pertains to image usage is wiped as
+        well; the only information that persists is the data about the images
+        themselves, such as url, aspect ratio, etc.
+
+        :return: None
+        """
+        # Wipe all the tables except the image table.
+
+        # Not currently implemented: Just use the snapshot instead.
+        raise NotImplementedError()
+
+
+
     """
     ADDING / CHANGING DATA
     """
@@ -1893,7 +1909,8 @@ class Set(object):
                       'validation_statistics:frac_no_response':
                           '%.4f' % frac_unanswered,
                       'validation_statistics:mean_rt': '%.4f' % mean_rt,
-                      'status:pending_evaluation': TRUE}
+                      'status:pending_evaluation': TRUE,
+                      'status:pending_completion': FALSE}
         try:
             table.put(task_id, _conv_dict_vals(input_dict))
         except Exception as e:
@@ -2148,14 +2165,16 @@ class Set(object):
         # update images table
         table = self.conn.table(IMAGE_TABLE)
         # unfortunately, happybase does not support batch incrementation (arg!)
-        choices = loads(task_data.get('completed_data:choices', None))
+        choices = loads(task_data.get('completion_data:choices', None))
         for img in choices:
+            if img == -1:
+                continue
             table.counter_inc(img, 'stats:num_wins')
         # update the win matrix table
         table = self.conn.table(WIN_TABLE)
         b = table.batch()
-        img_tuples = task_data.get('metadata:tuples', None)
-        img_tuple_types = task_data.get('metadata:tuple_types', None)
+        img_tuples = loads(task_data.get('metadata:tuples', None))
+        img_tuple_types = loads(task_data.get('metadata:tuple_types', None))
         worker_id = task_data.get('metadata:worker_id', None)
         attribute = task_data.get('metadata:attribute', None)
         # iterate over all the values, and store the data in the win table --
@@ -2163,7 +2182,7 @@ class Set(object):
         # which cant be incremented in a batch)
         ids_to_inc = []
         for ch, tup, tuptype in zip(choices, img_tuples, img_tuple_types):
-            if ch == '-1':
+            if ch == -1:
                 continue
             for img in tup:
                 if img != ch:
