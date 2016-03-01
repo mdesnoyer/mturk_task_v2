@@ -223,7 +223,7 @@ class State(object):
 state = State()
 '''Global state variable object'''
 
-def define(name, typ, default=None):
+def define(name, typ=int, default=None):
     return state.define(name, typ, default=default, stack_depth=3)
             
         
