@@ -508,7 +508,10 @@ if __name__ == '__main__':
                       id='practice quota reset')
     _log.info('Starting webserver')
     scheduler.start()
-    app.run(host='127.0.0.1', port=12344,
-            debug=True, ssl_context=context)
+    if LOCAL:
+        app.run(host='127.0.0.1', port=12344,
+                debug=True, ssl_context=context)
+    else:
+        app.run(host='0.0.0.0', port=80)
     atexit.register(scheduler.shutdown)
     atexit.register(pool.wait_completion())
