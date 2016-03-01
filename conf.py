@@ -16,7 +16,7 @@ For debugging
 """
 TESTING = False
 MTURK_SANDBOX = True
-LOCAL = True  # True if you're running on a local machine, False if AWS
+LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
 # tunnel opened! (see intro notes in webserver.py)
@@ -25,11 +25,11 @@ _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 AWS STUFF
 """
 # MTURK -- image.inference@gmail.com
-MTURK_ACCESS_ID = os.environ['MTURK_ACCESS_ID']
-MTURK_SECRET_KEY = os.environ['MTURK_SECRET_KEY']
+MTURK_ACCESS_ID = 'AKIAJPB4VQCDGOUQK2JA'
+MTURK_SECRET_KEY = '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'
 # AWS
-AWS_ACCESS_ID = os.environ['AWS_ACCESS_ID']
-AWS_SECRET_KEY = os.environ['AWS_SECRET_KEY']
+AWS_ACCESS_ID = None #os.environ['AWS_ACCESS_ID']
+AWS_SECRET_KEY = None #os.environ['AWS_SECRET_KEY']
 IMAGE_BUCKET = 'neon-image-library'  # the location on S3 of the images
 
 """
