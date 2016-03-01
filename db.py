@@ -764,6 +764,24 @@ class Get(object):
         return keys
 
     # IMAGE STUFF
+    def active_im_count_at_least(self, n, image_attributes=IMAGE_ATTRIBUTES):
+        """
+        Returns True if the the number of active images is at least n.
+
+        :param n: An integer
+        :param image_attributes: The image attributes that the images
+                                 considered must satisfy.
+        :return: True if the number of active images >= n, False otherwise.
+        """
+        table = self.conn.table(IMAGE_TABLE)
+        scanner = table.scan()
+        scanner = table.scan(columns=['metadata:is_active'],
+                             filter=attribute_image_filter(image_attributes,
+                                                           only_active=True))
+        for cnt, _ in enumerate(scanner):
+            if (cnt + 1) >= n:
+                return True
+        return False
 
     def get_active_image_scanner(self, image_attributes=IMAGE_ATTRIBUTES):
         """
@@ -1436,11 +1454,28 @@ class Set(object):
 
         :return: None
         """
+        _log.warn('Wiping all tables but images')
         # Wipe all the tables except the image table.
-
-        # Not currently implemented: Just use the snapshot instead.
-        raise NotImplementedError()
-
+        self.create_worker_table(clobber=True)
+        self.create_pair_table(clobber=True)
+        self.create_task_table(clobber=True)
+        self.create_win_table(clobber=True)
+        self.create_task_type_table(clobber=True)
+        # now, for any active image, we need to:
+        #   - delete all but the metadata
+        #   - set is_active to false
+        # you should only need to iterate over active images.
+        _log.warn('Resetting image data')
+        table = self.conn.table(IMAGE_TABLE)
+        scanner = table.scan(columns=['metadata:is_active'],
+                             filter=attribute_image_filter([],
+                                                           only_active=True))
+        for n, (im_key, _) in enumerate(scanner):
+            table.counter_set(im_key, 'stats:num_times_seen', 0)
+            table.counter_set(im_key, 'stats:sampling_surplus', 0)
+            table.counter_set(im_key, 'stats:num_wins', 0)
+            table.put(im_key, {'metadata:is_active', FALSE})
+        _log.info('Reset %i images' % n)
 
 
     """

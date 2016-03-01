@@ -460,11 +460,16 @@ context = ('%s/%s.crt' % (CERT_DIR, CERT_NAME), '%s/%s.key' % (CERT_DIR,
 
 if __name__ == '__main__':
     logger.config_root_logger(LOG_LOCATION)
-    _log.info('Fetching hit types')
     # start the monitoring agent
+    _log.info('Checking that we have sufficient active images')
+    if not dbget.active_im_count_at_least(ACTIVATION_CHUNK_SIZE):
+        _log.info('Insufficient active images: Activating some')
+        dbset.activate_n_images(ACTIVATION_CHUNK_SIZE,
+                                image_attributes=IMAGE_ATTRIBUTES)
     if not LOCAL:
         magent = monitor.MonitoringAgent()
         magent.start()
+    _log.info('Fetching hit types')
     PRACTICE_HIT_TYPE_ID = dbget.get_active_practice_hit_type_for(
         task_attribute=ATTRIBUTE,
         image_attributes=IMAGE_ATTRIBUTES)
