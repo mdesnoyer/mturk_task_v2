@@ -24,12 +24,19 @@ from collections import Counter
 import scipy.stats as stats
 import json
 from geoip import geolite2
+import statemon
 
 """
 LOGGING
 """
 
 _log = logger.setup_logger(__name__)
+
+# handle statemon
+mon = statemon.state
+statemon.define("val_mean_image_seen", float)
+statemon.define("n_images_activated")
+statemon.define("n_workers_registered")
 
 """
 PRIVATE METHODS
@@ -905,9 +912,11 @@ class Get(object):
             tot_ims += 1
             tot_seen += table.counter_get(row_key, 'stats:num_times_seen')
         if not tot_ims:
-            return 0.
-        return float(tot_seen) / tot_ims
-
+            rval = 0.
+        else:
+            rval = float(tot_seen) / tot_ims
+        mon.val_mean_image_seen = rval
+        return rval
 
     def get_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES,
                      is_practice=False):
@@ -1645,8 +1654,8 @@ class Set(object):
                               'status:is_legacy': FALSE,
                               'status:is_banned': FALSE,
                               'status:random_seed': str(int((datetime.now(
-
                               )-datetime(2016, 1, 1)).total_seconds()))})
+        mon.increment("n_workers_registered")
 
     def register_images(self, image_ids, image_urls, attributes=[]):
         """
@@ -1742,6 +1751,7 @@ class Set(object):
             b.put(iid, {'metadata:is_active': TRUE})
         b.send()
         self._reset_sampling_counts()
+        mon.increment("n_images_actvated", diff=len(image_ids))
 
     def activate_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES):
         """

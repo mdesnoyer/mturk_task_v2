@@ -16,7 +16,10 @@ For debugging
 """
 TESTING = False
 MTURK_SANDBOX = True
-
+_LOCAL = True  # True if you're running on a local machine, False if AWS
+_USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
+# database (i.e., not the local one)...for which you will need to have an SSH
+# tunnel opened! (see intro notes in webserver.py)
 
 """
 AWS STUFF
@@ -203,3 +206,14 @@ NUM_TASKS = 5  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 100  # how many people can take a given practice?
 PRACTICE_TASK_LIFETIME = 60 * 24 * 7  # the time a practice task exists for.
                                       # default is 1 week.
+
+if _LOCAL:
+    # change a bunch of the '_global' parameters
+    WEBSERVER_PORT = 12344
+    WEBSERVER_URL = "127.0.0.1"  # mturk.neon-lab.com
+    EXTERNAL_QUESTION_ENDPOINT = \
+        'https://%s:%i/task' % (WEBSERVER_URL, WEBSERVER_PORT)
+    EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = \
+        'https://%s:%i/submit' % (WEBSERVER_URL,  WEBSERVER_PORT)
+    if not _USE_OPSWORKS_DB:
+        DATABASE_LOCATION = "localhost"

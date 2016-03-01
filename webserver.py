@@ -19,9 +19,15 @@ NOTES:
 
     To start HBase:
         hbase-start.sh
+    which is is in
+        $HBASE_HOME/bin
 
-    To start thrift:
-        hbase-daemon.sh start thrift
+Also, to use the HBase running on the server but with a webserver running
+locally you may wish to use an SSH Tunnel:
+
+ssh -i ~/.ssh/mturk_stack_access.pem -L 9090:localhost:9090 ubuntu@<ip_addr>
+
+where <ip_addr> is the location of the instance, i.e., 10.0.49.46
 
 """
 
@@ -42,8 +48,24 @@ from flask import request
 from workerpool import ThreadPool
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
+import statemon
+import monitor
 
 _log = logger.setup_logger(__name__)
+
+# create state monitoring variables & handle statemon
+mon = statemon.state
+statemon.define("n_tasks_generated")
+statemon.define("n_practices_generated")
+statemon.define("n_workers_banned")
+statemon.define("n_workers_unbanned")
+statemon.define("n_tasks_accepted")
+statemon.define("n_tasks_rejected")
+statemon.define("n_tasks_served")
+statemon.define("n_tasks_in_progress")
+statemon.define("n_practices_rejected")
+statemon.define("n_practices_passed")
+
 
 if not CONTINUOUS_MODE:
     _log.warn('Not running in continuous mode: New tasks will not be posted')
@@ -123,6 +145,7 @@ def create_hit(mt, dbget, dbset, hit_type_id=None):
         task_id, hit_type_id))
     hid = mt.add_hit_to_hit_type(hit_type_id, task_id)
     _log.info('Hit %s is ready.' % hid)
+    mon.increment("n_tasks_generated")
 
 
 def check_practices(hit_type_id=None):
@@ -176,6 +199,7 @@ def check_practices(hit_type_id=None):
         dbset.register_task(task_id, exp_seq, attribute,
                             **register_task_kwargs)
         mt.add_practice_hit_to_hit_type(hit_type_id, task_id)
+        mon.increment('n_practices_generated')
 
 
 def check_ban(mt, dbget, dbset, worker_id=None):
@@ -191,6 +215,7 @@ def check_ban(mt, dbget, dbset, worker_id=None):
     if dbget.worker_autoban_check(worker_id):
         dbset.ban_worker(worker_id)
         mt.ban_worker(worker_id)
+        mon.increment('n_workers_banned')
 
 
 def unban_workers():
@@ -212,6 +237,7 @@ def unban_workers():
     for worker_id in dbget.get_all_workers():
         if not dbset.worker_ban_expires_in(worker_id):
             mt.unban_worker(worker_id)
+            mon.increment("n_workers_unbanned")
 
 
 def reset_worker_quotas():
@@ -306,6 +332,16 @@ FLASK FUNCTIONS
 """
 
 
+@app.route('/healthcheck', methods=['GET'])
+def healthcheck():
+    """
+    Returns a health check, since the task will be behind an ELB.
+
+    :return: Health Check page
+    """
+    return "OK"
+
+
 @app.route('/task', methods=['POST', 'GET'])
 def task():
     """
@@ -329,6 +365,8 @@ def task():
         return make_preview_page(is_practice, task_time)
     worker_id = request.values.get('workerId', '')
     response = fetch_task(dbget, dbset, task_id, worker_id)
+    mon.increment("n_tasks_served")
+    mon.increment("n_tasks_in_progress")
     return response
 
 
@@ -362,8 +400,12 @@ def submit():
             to_return = make_practice_passed()
             dbset.practice_pass(request.json)
             mt.grant_worker_practice_passed(worker_id)
+            mon.increment("n_practices_passed")
+            mon.decrement("n_tasks_in_progress")
         else:
             to_return = make_practice_failed()
+            mon.increment("n_practices_rejected")
+            mon.decrement("n_tasks_in_progress")
     else:
         to_return = make_success()
         try:
@@ -395,8 +437,12 @@ def submit():
                           task_id,
                           reason)
             pool.add_task(check_ban, worker_id)
+            mon.increment("n_tasks_rejected")
+            mon.decrement("n_tasks_in_progress")
         else:
             pool.add_task(handle_accepted_task, assignment_id, task_id)
+            mon.increment("n_tasks_accepted")
+            mon.decrement("n_tasks_in_progress")
         if CONTINUOUS_MODE:
             pool.add_task(create_hit, hit_type_id)
         pool.add_task(handle_finished_hit, hit_id)
@@ -410,6 +456,10 @@ context = ('%s/%s.crt' % (CERT_DIR, CERT_NAME), '%s/%s.key' % (CERT_DIR,
 if __name__ == '__main__':
     logger.config_root_logger('/repos/mturk_task_v2/logs/webserver.log')
     _log.info('Fetching hit types')
+    # start the monitoring agent
+    if not LOCAL:
+        magent = monitor.MonitoringAgent()
+        magent.start()
     PRACTICE_HIT_TYPE_ID = dbget.get_active_practice_hit_type_for(
         task_attribute=ATTRIBUTE,
         image_attributes=IMAGE_ATTRIBUTES)

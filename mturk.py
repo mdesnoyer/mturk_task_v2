@@ -31,8 +31,15 @@ import boto.mturk.qualification
 import boto.mturk.price
 import boto.mturk.question
 import datetime
+import statemon
 
 _log = logger.setup_logger(__name__)
+
+# handle statemon
+mon = statemon.state
+statemon.define("val_account_balance", float)
+statemon.define("n_hits_disposed", float)
+statemon.define("n_hits_disabled", float)
 
 
 class _LocaleRequirement(boto.mturk.qualification.Requirement):
@@ -238,6 +245,7 @@ class MTurk(object):
         """
         resp = self.mtconn.get_account_balance()
         self.current_balance = resp[0].amount
+        mon.val_account_balance = self.current_balance
         return self.current_balance
 
     def get_pending_hits(self):
@@ -598,7 +606,8 @@ class MTurk(object):
         self.mtconn.block_worker(worker_id,
                                  reason=datetime.datetime.now().isoformat())
 
-    def _get_ban_time(self, worker_block):
+    @staticmethod
+    def _get_ban_time(worker_block):
         """
         Gets the time elapsed since a ban.
 
@@ -890,6 +899,7 @@ class MTurk(object):
         try:
             self.mtconn.disable_hit(hit_id)
             _log.debug('Disabled hit %s' % hit_id)
+            mon.increment("n_hits_disabled")
             return True
         except boto.mturk.connection.MTurkRequestError as e:
             _log.debug('Could not disable hit %s: %s' % (hit_id, e.message))
@@ -905,6 +915,7 @@ class MTurk(object):
         try:
             self.mtconn.dispose_hit(hit_id)
             _log.debug('Disposed of hit %s' % hit_id)
+            mon.increment("n_hits_disposed")
             return True
         except boto.mturk.connection.MTurkRequestError as e:
             _log.debug('Could not dispose of hit %s: %s' % (hit_id, e.message))

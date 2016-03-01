@@ -1,0 +1,25 @@
+THE STATEMON VARIABLES TO CREATE
+
+---- db.py
+    val_mean_image_seen     # the mean number of times active images have been seen
+    n_images_activated      # the number of images that have been activated so far
+    n_workers_registered
+---- mturk.py
+    val_account_balance     # the current account balance
+    n_hits_disabled
+    n_hits_disposed
+---- webserver.py
+    n_tasks_generated
+    n_practices_generated
+    n_workers_banned
+    n_workers_unbanned
+    n_tasks_accepted
+    n_tasks_rejected
+    n_tasks_served          # includes practices and real tasks
+    n_tasks_in_progress     # includes practices and real tasks
+    n_practices_rejected
+    n_practices_passed
+
+
+
+

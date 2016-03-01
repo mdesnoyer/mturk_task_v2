@@ -59,6 +59,11 @@ BLOCK IDENTIFICATION
 KEEP_BLOCK = 'keep'
 REJECT_BLOCK = 'reject'
 
+"""
+WEBSERVER INFORMATION
+"""
+WEBSERVER_PORT = 12344
+WEBSERVER_URL = "mturk.neon-lab.com"
 
 """
 OTHER MTURK INFORMATION
@@ -66,8 +71,15 @@ OTHER MTURK INFORMATION
 # what the assignment ID is when they're just previewing
 PREVIEW_ASSIGN_ID = 'ASSIGNMENT_ID_NOT_AVAILABLE'
 # where to route external question urls
-EXTERNAL_QUESTION_ENDPOINT = 'https://127.0.0.1:12344/task'
-EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = 'https://127.0.0.1:12344/submit'
+if WEBSERVER_PORT is None:
+    EXTERNAL_QUESTION_ENDPOINT = 'https://%s/task' % WEBSERVER_URL
+    EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = 'https://%s/submit' % WEBSERVER_URL
+else:
+    EXTERNAL_QUESTION_ENDPOINT = \
+        'https://%s:%i/task' % (WEBSERVER_URL, WEBSERVER_PORT)
+    EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = \
+        'https://%s:%i/submit' % (WEBSERVER_URL,  WEBSERVER_PORT)
+
 # the host for the mturk sandbox
 MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'
 # the host for the vanilla sandbox
@@ -121,7 +133,7 @@ PRACTICE_PREFIX = 'p_'
 """
 DATABASE OPTIONS
 """
-DATABASE_LOCATION = 'localhost'
+DATABASE_LOCATION = "10.0.49.46"
 # if True, will store all practice pairs as if they were in real trials.
 STORE_PRACTICE_PAIRS = False
 # The number of images to activate in a chunk.
@@ -266,3 +278,13 @@ INACTIVE_FILTER = ("SingleColumnValueFilter ('metadata','is_active',=,"
 PENDING_COMPLETION_FILTER = ("SingleColumnValueFilter ('status', "
                              "'pending_completion', =, "
                              "'regexstring:^%s$')" % TRUE)
+
+
+"""
+MONITORING CONFIGURATION
+"""
+# the monitoring server to use (we're piggybacking on Neon's)
+MONITORING_CARBON_SERVER = "52.70.225.116"
+MONITORING_CARBON_PORT = 8090
+MONITORING_SERVICE_NAME = "mturk"  # not clear what this is.
+MONITORING_SLEEP_INTERVAL = 60
