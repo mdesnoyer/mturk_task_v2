@@ -25,10 +25,12 @@ NOTES:
 Also, to use the HBase running on the server but with a webserver running
 locally you may wish to use an SSH Tunnel:
 
-ssh -i ~/.ssh/mturk_stack_access.pem -L 9090:localhost:9090 ubuntu@<ip_addr>
+ssh -i ~/.ssh/mturk_stack_access.pem -L 9000:localhost:9090 ubuntu@<ip_addr>
 
 where <ip_addr> is the location of the instance, i.e., 10.0.49.46
 
+then:
+    happybase.Connection(host="localhost", port=9000)
 """
 
 from db import Get
@@ -73,13 +75,13 @@ else:
     _log.info('Running in continuous mode, will post tasks as long as there '
               'are funds available.')
 # instantiate a database connection & database objects
-_log.info('Intantiating database connection')
+_log.info('Instantiating database connection')
 conn = happybase.Connection(host=DATABASE_LOCATION)
 dbget = Get(conn)
 dbset = Set(conn)
 
 # instantiate the mechanical turk connection & mturk objects
-_log.info('Intantiating mturk connection')
+_log.info('Instantiating mturk connection')
 if MTURK_SANDBOX:
     mturk_host = MTURK_SANDBOX_HOST
 else:
