@@ -18,9 +18,12 @@ NOTES:
 
 
     To start HBase:
-        hbase-start.sh
+        start-hbase.sh
     which is is in
         $HBASE_HOME/bin
+
+    You also need to start thrift:
+        nohup hbase thrift start &
 
 Also, to use the HBase running on the server but with a webserver running
 locally you may wish to use an SSH Tunnel:
