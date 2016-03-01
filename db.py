@@ -1475,7 +1475,7 @@ class Set(object):
             table.counter_set(im_key, 'stats:sampling_surplus', 0)
             table.counter_set(im_key, 'stats:num_wins', 0)
             table.put(im_key, {'metadata:is_active': FALSE})
-        _log.info('Reset %i images' % n)
+        _log.info('Reset %i images' % (n + 1))
 
 
     """
@@ -1786,7 +1786,7 @@ class Set(object):
             b.put(iid, {'metadata:is_active': TRUE})
         b.send()
         self._reset_sampling_counts()
-        mon.increment("n_images_actvated", diff=len(image_ids))
+        mon.increment("n_images_activated", diff=len(image_ids))
 
     def activate_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES):
         """
