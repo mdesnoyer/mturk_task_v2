@@ -115,6 +115,7 @@ PRACTICE_PREVIEW_ALREADY_PASSED = 'preview/practice_preview_already_passed.html'
 DIRECTORIES
 """
 ROOT = os.path.dirname(os.path.abspath(__file__))
+LOG_LOCATION = os.path.join(ROOT, 'logs', 'webserver.log')
 # The template location
 TEMPLATE_DIR = os.path.join(ROOT, 'static/resources/templates/')
 # The destination of experiments

@@ -454,7 +454,7 @@ context = ('%s/%s.crt' % (CERT_DIR, CERT_NAME), '%s/%s.key' % (CERT_DIR,
 
 
 if __name__ == '__main__':
-    logger.config_root_logger('/repos/mturk_task_v2/logs/webserver.log')
+    logger.config_root_logger(LOG_LOCATION)
     _log.info('Fetching hit types')
     # start the monitoring agent
     if not LOCAL:
