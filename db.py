@@ -1474,7 +1474,7 @@ class Set(object):
             table.counter_set(im_key, 'stats:num_times_seen', 0)
             table.counter_set(im_key, 'stats:sampling_surplus', 0)
             table.counter_set(im_key, 'stats:num_wins', 0)
-            table.put(im_key, {'metadata:is_active', FALSE})
+            table.put(im_key, {'metadata:is_active': FALSE})
         _log.info('Reset %i images' % n)
 
 
