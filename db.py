@@ -1577,8 +1577,10 @@ class Set(object):
                                  this task have.
         :return: None.
         """
-
-        _log.info('Registering task %s' % task_id)
+        if is_practice:
+            _log.info('Registering task %s' % task_id)
+        else:
+            _log.info('Registering task %s' % task_id)
         # determine the total number of images in this task.
         task_dict = dict()
         pair_list = set()  # set of pairs

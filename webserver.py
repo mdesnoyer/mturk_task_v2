@@ -44,6 +44,7 @@ from generate import make_practice_passed
 from generate import make_practice_failed
 from generate import make_practice_already_passed
 from generate import make_preview_page
+from generate import make_error_fetching_task_html
 from mturk import MTurk
 import boto.mturk.connection
 import happybase
@@ -360,8 +361,10 @@ def task():
 
     :return: The Task / Practice / Error page / etc HTML.
     """
-    is_preview = request.values.get('assignmentId') == PREVIEW_ASSIGN_ID
-    hit_id = request.values.get('hitId', '')
+    is_preview = request.values.get('assignmentId', '') == PREVIEW_ASSIGN_ID
+    hit_id = request.values.get('hitId', None)
+    if hit_id is None:
+        return make_error_fetching_task_html()
     hit_info = mt.get_hit(hit_id)
     task_id = hit_info.RequesterAnnotation
     if is_preview:
@@ -516,6 +519,7 @@ if __name__ == '__main__':
                       trigger='interval',
                       minutes=60*60*24*7,               # every 7 days
                       id='practice quota reset')
+    _log.info('Tasks being served on %s' % EXTERNAL_QUESTION_ENDPOINT)
     _log.info('Starting webserver')
     scheduler.start()
     if LOCAL:
