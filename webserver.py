@@ -520,12 +520,12 @@ if __name__ == '__main__':
                       minutes=60*60*24*7,               # every 7 days
                       id='practice quota reset')
     _log.info('Tasks being served on %s' % EXTERNAL_QUESTION_ENDPOINT)
-    _log.info('Starting webserver')
     scheduler.start()
+    atexit.register(scheduler.shutdown)
+    atexit.register(pool.wait_completion())
+    _log.info('Starting webserver')
     if LOCAL:
         app.run(host='127.0.0.1', port=12344,
                 debug=True, ssl_context=context)
     else:
-        app.run(host='0.0.0.0', port=80)
-    atexit.register(scheduler.shutdown)
-    atexit.register(pool.wait_completion())
+        app.run(host='0.0.0.0', port=8080, threaded=True)
