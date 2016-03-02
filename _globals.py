@@ -62,7 +62,7 @@ REJECT_BLOCK = 'reject'
 """
 WEBSERVER INFORMATION
 """
-WEBSERVER_PORT = None
+WEBSERVER_PORT = 80
 WEBSERVER_URL = "mturk.neon-lab.com"
 
 """

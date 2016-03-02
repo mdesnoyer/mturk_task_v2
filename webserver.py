@@ -527,7 +527,7 @@ if __name__ == '__main__':
     atexit.register(pool.wait_completion())
     _log.info('Starting webserver')
     if LOCAL:
-        app.run(host='127.0.0.1', port=12344,
+        app.run(host='127.0.0.1', port=WEBSERVER_PORT,
                 debug=True, ssl_context=context)
     else:
-        app.run(host='0.0.0.0', port=8080, threaded=True)
+        app.run(host='0.0.0.0', port=WEBSERVER_PORT, threaded=True)
