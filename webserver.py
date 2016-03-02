@@ -345,6 +345,8 @@ def healthcheck():
 
     :return: Health Check page
     """
+    src = request.remote_addr
+    _log.debug('Healthcheck request from %s received' % str(src))
     return "OK"
 
 
