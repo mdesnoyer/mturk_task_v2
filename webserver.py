@@ -479,7 +479,8 @@ def submit():
 if __name__ == '__main__':
     logger.config_root_logger(LOG_LOCATION)
     # start the monitoring agent
-    _log.info('Running setup')
+    _log.info('Starting scheduler')
+    scheduler.start()
     _log.info('Checking that we have sufficient active images')
     if not dbget.active_im_count_at_least(ACTIVATION_CHUNK_SIZE):
         _log.info('Insufficient active images: Activating some')
@@ -525,11 +526,7 @@ if __name__ == '__main__':
                       id='task quota reset')
     scheduler.add_job(reset_weekly_practices, 'interval', days=7,
                       id='practice quota reset')
-    import ipdb
-    ipdb.set_trace()
     _log.info('Tasks being served on %s' % EXTERNAL_QUESTION_ENDPOINT)
-    _log.info('Starting scheduler')
-    scheduler.start()
     _log.info('Starting webserver')
     if LOCAL:
         CERT_NAME = 'server'
