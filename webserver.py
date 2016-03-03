@@ -476,7 +476,7 @@ def submit():
             mon.increment("n_tasks_accepted")
             mon.decrement("n_tasks_in_progress")
         if CONTINUOUS_MODE:
-            scheduler.add_job(create_hit, args=[hit_type_id])
+            scheduler.add_job(create_hit, args=[mt, dbget, dbset, hit_type_id])
         scheduler.add_job(handle_finished_hit, args=[mt, dbget, dbset, hit_id])
     return to_return
 
@@ -515,7 +515,8 @@ if __name__ == '__main__':
     if to_generate:
         _log.info('Building %i new tasks and posting them' % to_generate)
         for _ in range(to_generate):
-            scheduler.add_job(create_hit, args=[TASK_HIT_TYPE_ID])
+            scheduler.add_job(create_hit,
+                              args=[mt, dbget, dbset, TASK_HIT_TYPE_ID])
     # note that this must be done *after* the tasks are generated, since it
     # is the tasks that actually activate new images.
     _log.info('Checking practice validity')
