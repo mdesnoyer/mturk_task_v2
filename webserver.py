@@ -514,7 +514,8 @@ if __name__ == '__main__':
                               args=[mt, dbget, dbset, TASK_HIT_TYPE_ID])
     # note that this must be done *after* the tasks are generated, since it
     # is the tasks that actually activate new images.
-    check_practices(hit_type_id=PRACTICE_HIT_TYPE_ID)
+    scheduler.add_job(check_practices,
+                      args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID])
     if CONTINUOUS_MODE:
         scheduler.add_job(check_practices, 'interval', hours=3,
                           args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID],
