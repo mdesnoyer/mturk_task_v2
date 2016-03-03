@@ -51,11 +51,11 @@ import happybase
 from conf import *
 from flask import Flask
 from flask import request
-from workerpool import ThreadPool
 from apscheduler.schedulers.background import BackgroundScheduler
-import atexit
+from apscheduler.executors.pool import ThreadPoolExecutor
 import statemon
 import monitor
+
 
 _log = logger.setup_logger(__name__)
 
@@ -99,11 +99,8 @@ mtconn = boto.mturk.connection.MTurkConnection(
 mt = MTurk(mtconn)
 
 # instantiate the thread pool
-pool = ThreadPool(NUM_THREADS)
-
-# identify the certificates
-CERT_NAME = 'server'
-CERT_DIR = 'certificates'
+executors = {'default': ThreadPoolExecutor(NUM_THREADS)}
+scheduler = BackgroundScheduler(executors=executors)
 
 app = Flask(__name__)
 
@@ -113,7 +110,27 @@ POOL FUNCTIONS
 """
 
 
-def create_hit(mt, dbget, dbset, hit_type_id=None):
+def check_tasks(mt, dbget, dbset, hit_type_id):
+    """
+    Ensures that there is an appropriate number of tasks posted and active.
+
+    :param mt: A MTurk object.
+    :param dbget: A database Get object.
+    :param dbset: A database Set object.
+    :param hit_type_id: The HIT type ID, as a string.
+    :return: None.
+    """
+    _log.info('Looking for missing tasks')
+    num_extant_hits = mt.get_all_pending_hits_of_type(
+        TASK_HIT_TYPE_ID, ids_only=True)
+    to_generate = max(NUM_TASKS - len(num_extant_hits), 0)
+    if to_generate:
+        _log.info('Building %i new tasks and posting them' % to_generate)
+        for _ in range(to_generate):
+            create_hit(mt, dbget, dbset, hit_type_id)
+
+
+def create_hit(mt, dbget, dbset, hit_type_id):
     """
     The background task for creating new hits, which enables us to maintain a
     constant number of tasks at all times. Note that this should be only used
@@ -441,31 +458,29 @@ def submit():
             is_valid = True
             reason = None
         if not is_valid:
-            pool.add_task(handle_reject_task,
-                          worker_id,
-                          assignment_id,
-                          task_id,
-                          reason)
-            pool.add_task(check_ban, worker_id)
+            scheduler.add_job(handle_reject_task,
+                              args=[mt, dbget, dbset, worker_id,
+                                    assignment_id, task_id, reason])
+            scheduler.add_job(check_ban,
+                              args=[mt, dbget, dbset, worker_id])
             mon.increment("n_tasks_rejected")
             mon.decrement("n_tasks_in_progress")
         else:
-            pool.add_task(handle_accepted_task, assignment_id, task_id)
+            scheduler.add_job(handle_accepted_task,
+                              args=[mt, dbget, dbset, assignment_id, task_id])
             mon.increment("n_tasks_accepted")
             mon.decrement("n_tasks_in_progress")
         if CONTINUOUS_MODE:
-            pool.add_task(create_hit, hit_type_id)
-        pool.add_task(handle_finished_hit, hit_id)
+            scheduler.add_job(create_hit, args=[hit_type_id])
+        scheduler.add_job(handle_finished_hit, )
+        scheduler.add_job(handle_finished_hit, args=[mt, dbget, dbset, hit_id])
     return to_return
-
-
-context = ('%s/%s.crt' % (CERT_DIR, CERT_NAME), '%s/%s.key' % (CERT_DIR,
-                                                               CERT_NAME))
 
 
 if __name__ == '__main__':
     logger.config_root_logger(LOG_LOCATION)
     # start the monitoring agent
+    _log.info('Running setup')
     _log.info('Checking that we have sufficient active images')
     if not dbget.active_im_count_at_least(ACTIVATION_CHUNK_SIZE):
         _log.info('Insufficient active images: Activating some')
@@ -496,37 +511,28 @@ if __name__ == '__main__':
     if to_generate:
         _log.info('Building %i new tasks and posting them' % to_generate)
         for _ in range(to_generate):
-            pool.add_task(create_hit, TASK_HIT_TYPE_ID)
+            scheduler.add_job(create_hit, args=[TASK_HIT_TYPE_ID])
     # note that this must be done *after* the tasks are generated, since it
     # is the tasks that actually activate new images.
     _log.info('Checking practice validity')
     check_practices(hit_type_id=PRACTICE_HIT_TYPE_ID)
-    _log.info('Starting scheduler')
-    scheduler = BackgroundScheduler()
     if CONTINUOUS_MODE:
-        scheduler.add_job(check_practices,
-                          trigger='interval',
-                          minutes=60*60*3,                  # every 3 hours
-                          args=[PRACTICE_HIT_TYPE_ID],
-                          id='practice check')
-    scheduler.add_job(unban_workers,
-                      trigger='interval',
-                      minutes=60*60*24,                 # every 24 hours
-                      id='unban workers')
-    scheduler.add_job(reset_worker_quotas,
-                      trigger='interval',
-                      minutes=60*60*24,                 # every 24 hours
+        scheduler.add_job(check_practices, 'interval', hours=3,
+                          args=[PRACTICE_HIT_TYPE_ID], id='practice check')
+    scheduler.add_job(unban_workers, 'interval', hours=24, id='unban workers')
+    scheduler.add_job(reset_worker_quotas, 'interval', hours=24,
                       id='task quota reset')
-    scheduler.add_job(reset_weekly_practices,
-                      trigger='interval',
-                      minutes=60*60*24*7,               # every 7 days
+    scheduler.add_job(reset_weekly_practices, 'interval', days=7,
                       id='practice quota reset')
     _log.info('Tasks being served on %s' % EXTERNAL_QUESTION_ENDPOINT)
+    _log.info('Starting scheduler')
     scheduler.start()
-    atexit.register(scheduler.shutdown)
-    atexit.register(pool.wait_completion())
     _log.info('Starting webserver')
     if LOCAL:
+        CERT_NAME = 'server'
+        CERT_DIR = 'certificates'
+        context = ('%s/%s.crt' % (CERT_DIR, CERT_NAME),
+                   '%s/%s.key' % (CERT_DIR, CERT_NAME))
         app.run(host='127.0.0.1', port=WEBSERVER_PORT,
                 debug=True, ssl_context=context)
     else:

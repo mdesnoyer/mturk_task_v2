@@ -18,11 +18,11 @@ def send_data(name, value):
     node = platform.node().replace('.', '-')
     timestamp = int(time.time())
     if MONITORING_SERVICE_NAME:
-        data = 'system.%s.%s.%s %s %d\n' % (node, 
-                                            MONITORING_SERVICE_NAME,
-                                            name, 
-                                            value, 
-                                            timestamp)
+        data = '%s.%s.%s %s %d\n' % (MONITORING_SERVICE_NAME,
+                                     node,
+                                     name,
+                                     value,
+                                     timestamp)
     else: 
         data = 'system.%s.%s %s %d\n' % (node, 
                                          name, 
