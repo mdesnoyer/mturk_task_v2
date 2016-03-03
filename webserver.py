@@ -176,7 +176,7 @@ def create_hit(mt, dbget, dbset, hit_type_id):
     mon.increment("n_tasks_generated")
 
 
-def check_practices(hit_type_id=None):
+def check_practices(mt, dbget, dbset, hit_type_id):
     """
     Checks to make sure that the practices are up, etc. If not, rebuilds them.
 
@@ -184,17 +184,12 @@ def check_practices(hit_type_id=None):
         Right now, if the practices are all used up (but not expired!) then
         they are not re-created. They are only re-created upon expiration.
 
+    :param mt: A MTurk object.
+    :param dbget: A database Get object.
+    :param dbset: A database Set object.
     :param hit_type_id: The HIT type ID, as a string.
     :return: None.
     """
-    conn = happybase.Connection(host=DATABASE_LOCATION)
-    mtconn = boto.mturk.connection.MTurkConnection(
-            aws_access_key_id=MTURK_ACCESS_ID,
-            aws_secret_access_key=MTURK_SECRET_KEY,
-            host=mturk_host)
-    mt = MTurk(mtconn)
-    dbget = Get(conn)
-    dbset = Set(conn)
     _log.info('Checking practices...')
     to_generate = 0
     practice_hits = mt.get_all_hits_of_type(hit_type_id=hit_type_id)
@@ -519,11 +514,11 @@ if __name__ == '__main__':
                               args=[mt, dbget, dbset, TASK_HIT_TYPE_ID])
     # note that this must be done *after* the tasks are generated, since it
     # is the tasks that actually activate new images.
-    _log.info('Checking practice validity')
     check_practices(hit_type_id=PRACTICE_HIT_TYPE_ID)
     if CONTINUOUS_MODE:
         scheduler.add_job(check_practices, 'interval', hours=3,
-                          args=[PRACTICE_HIT_TYPE_ID], id='practice check')
+                          args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID],
+                          id='practice check')
     scheduler.add_job(unban_workers, 'interval', hours=24, id='unban workers')
     scheduler.add_job(reset_worker_quotas, 'interval', hours=24,
                       id='task quota reset')
