@@ -105,7 +105,7 @@ mt = MTurk(mtconn)
 
 # instantiate the thread pool
 executors = {'default': ThreadPoolExecutor(NUM_THREADS)}
-scheduler = BackgroundScheduler(executors=executors)
+scheduler = BackgroundScheduler(executors=executors, misfire_grace_time=9999999)
 
 app = Flask(__name__)
 

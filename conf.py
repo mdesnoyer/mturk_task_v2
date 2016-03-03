@@ -193,7 +193,7 @@ LOCALES = [
 """
 WEBSERVER CONFIGURATION
 """
-NUM_THREADS = 5  # the number of threads to use on the webserver.
+NUM_THREADS = 1  # the number of threads to use on the webserver.
 ENABLE_BANNING = True  # whether or not to ban poor-performing workers.
 CONTINUOUS_MODE = True  # whether or not to run the task continuously.
 
