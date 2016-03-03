@@ -55,6 +55,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.executors.pool import ThreadPoolExecutor
 import statemon
 import monitor
+import logging
 
 
 _log = logger.setup_logger(__name__)
@@ -105,7 +106,9 @@ mt = MTurk(mtconn)
 
 # instantiate the thread pool
 executors = {'default': ThreadPoolExecutor(NUM_THREADS)}
-scheduler = BackgroundScheduler(executors=executors, misfire_grace_time=9999999)
+job_defaults = {'misfire_grace_time': 999999}
+scheduler = BackgroundScheduler(executors=executors,
+                                job_defaults=job_defaults)
 
 app = Flask(__name__)
 
