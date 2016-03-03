@@ -23,14 +23,16 @@ def config_root_logger(logfile=None):
     formatter = logging.Formatter(
         "%(levelname)-8s %(asctime)s - %(name)s - %(funcName)s: %(message)s",
         datefmt='%m/%d/%Y %I:%M:%S %p')
-    fltr = logging.Filter(name='mturk')
+    fltr1 = logging.Filter(name='mturk')
+    fltr2 = logging.Filter(name='apscheduler.scheduler')
     if logfile is not None:
         # Add a rotating file handler
         handler = logging.handlers.RotatingFileHandler(
             logfile,
             maxBytes=104857600L,  # 100 MB
             backupCount=3)
-        handler.addFilter(fltr)
+        handler.addFilter(fltr1)
+        handler.addFilter(fltr2)
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
