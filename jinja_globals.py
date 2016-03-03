@@ -10,13 +10,10 @@ redundant variables.
 from conf import *
 
 resources = [
-    'resources/instr_screenshots/accept_1.jpg',
-    'resources/instr_screenshots/accept_2.jpg',
-    'resources/instr_screenshots/reject_1.jpg',
-    'resources/templates/symbols/error.png',
-    'resources/templates/symbols/check.png',
-    'resources/templates/symbols/blocked.png',
-    'resources/templates/symbols/stop.png'
+    'https://s3.amazonaws.com/mturk-webserver-assets/error.png',
+    'https://s3.amazonaws.com/mturk-webserver-assets/check.png',
+    'https://s3.amazonaws.com/mturk-webserver-assets/blocked.png',
+    'https://s3.amazonaws.com/mturk-webserver-assets/stop.png'
 ]
 
 scripts = [  # note, this also includes the jsPsych-specific CSS.
