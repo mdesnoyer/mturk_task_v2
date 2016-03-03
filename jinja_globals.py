@@ -53,7 +53,7 @@ def _get_static_urls():
     for resource in resources:
         static_urls[
             os.path.basename(resource).replace('.', '_').replace('-', '_')] = \
-            os.path.join('static', resource)
+            resource
     for script in scripts:
         static_urls[
             os.path.basename(script).replace('.', '_').replace('-', '_')] = \
