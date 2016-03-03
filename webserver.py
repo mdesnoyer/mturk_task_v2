@@ -507,6 +507,8 @@ if __name__ == '__main__':
     num_extant_hits = mt.get_all_pending_hits_of_type(
         TASK_HIT_TYPE_ID, ids_only=True)
     to_generate = max(NUM_TASKS - len(num_extant_hits), 0)
+    scheduler.add_job(check_practices,
+                      args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID])
     if to_generate:
         _log.info('Building %i new tasks and posting them' % to_generate)
         for _ in range(to_generate):
@@ -514,8 +516,6 @@ if __name__ == '__main__':
                               args=[mt, dbget, dbset, TASK_HIT_TYPE_ID])
     # note that this must be done *after* the tasks are generated, since it
     # is the tasks that actually activate new images.
-    scheduler.add_job(check_practices,
-                      args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID])
     if CONTINUOUS_MODE:
         scheduler.add_job(check_practices, 'interval', hours=3,
                           args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID],
@@ -525,6 +525,8 @@ if __name__ == '__main__':
                       id='task quota reset')
     scheduler.add_job(reset_weekly_practices, 'interval', days=7,
                       id='practice quota reset')
+    import ipdb
+    ipdb.set_trace()
     _log.info('Tasks being served on %s' % EXTERNAL_QUESTION_ENDPOINT)
     _log.info('Starting scheduler')
     scheduler.start()
