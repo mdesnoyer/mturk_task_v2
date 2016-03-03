@@ -1578,7 +1578,7 @@ class Set(object):
         :return: None.
         """
         if is_practice:
-            _log.info('Registering task %s' % task_id)
+            _log.info('Registering practice %s' % task_id)
         else:
             _log.info('Registering task %s' % task_id)
         # determine the total number of images in this task.

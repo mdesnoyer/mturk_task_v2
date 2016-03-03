@@ -125,7 +125,7 @@ def check_tasks(mt, dbget, dbset, hit_type_id):
     :param hit_type_id: The HIT type ID, as a string.
     :return: None.
     """
-    _log.info('Looking for missing tasks')
+    _log.info('JOB STARTED check_tasks: Looking for missing tasks')
     num_extant_hits = mt.get_all_pending_hits_of_type(
         TASK_HIT_TYPE_ID, ids_only=True)
     to_generate = max(NUM_TASKS - len(num_extant_hits), 0)
@@ -150,6 +150,7 @@ def create_hit(mt, dbget, dbset, hit_type_id):
     :param hit_type_id: The HIT type ID, as a string.
     :return: None.
     """
+    _log.info('JOB_STARTED create_hit')
     _log.info('Checking image statuses')
     n_active = dbget.get_n_active_images_count(IMAGE_ATTRIBUTES)
     mean_seen = dbget.image_get_mean_seen(IMAGE_ATTRIBUTES)
@@ -190,7 +191,7 @@ def check_practices(mt, dbget, dbset, hit_type_id):
     :param hit_type_id: The HIT type ID, as a string.
     :return: None.
     """
-    _log.info('Checking practices...')
+    _log.info('JOB STARTED check_practices: Checking practices...')
     to_generate = 0
     practice_hits = mt.get_all_hits_of_type(hit_type_id=hit_type_id)
     to_generate += NUM_PRACTICES - len(practice_hits)
@@ -235,26 +236,24 @@ def check_ban(mt, dbget, dbset, worker_id=None):
     :param worker_id: The worker ID, as a string
     :return: None
     """
+    _log.info('JOB STARTED check_ban')
     if dbget.worker_autoban_check(worker_id):
         dbset.ban_worker(worker_id)
         mt.ban_worker(worker_id)
         mon.increment('n_workers_banned')
 
 
-def unban_workers():
+def unban_workers(mt, dbget, dbset):
     """
     Designed to run periodically, checks to see the workers -- if any -- that
     need to be unbanned.
 
+    :param mt: A MTurk object.
+    :param dbget: A database Get object.
+    :param dbset: A database Set object.
     :return: None
     """
-    conn = happybase.Connection(host=DATABASE_LOCATION)
-    mtconn = boto.mturk.connection.MTurkConnection(
-            aws_access_key_id=MTURK_ACCESS_ID,
-            aws_secret_access_key=MTURK_SECRET_KEY,
-            host=mturk_host)
-    mt = MTurk(mtconn)
-    dbset = Set(conn)
+    _log.info('JOB STARTED unban_workers')
     _log.info('Checking if any bans can be lifted...')
     # TODO: Get this for workers that are obtained from mturk, not the database
     for worker_id in dbget.get_all_workers():
@@ -263,63 +262,51 @@ def unban_workers():
             mon.increment("n_workers_unbanned")
 
 
-def reset_worker_quotas():
+def reset_worker_quotas(mt, dbget):
     """
     Designed to run periodically, resets all the worker completion quotas.
 
+    :param mt: A MTurk object.
+    :param dbget: A database Get object.
     :return: None
     """
-    conn = happybase.Connection(host=DATABASE_LOCATION)
-    mtconn = boto.mturk.connection.MTurkConnection(
-            aws_access_key_id=MTURK_ACCESS_ID,
-            aws_secret_access_key=MTURK_SECRET_KEY,
-            host=mturk_host)
-    mt = MTurk(mtconn)
-    dbget = Get(conn)
+    _log.info('JOB STARTED reset_worker_quotas')
     for worker_id in dbget.get_all_workers():
         mt.reset_worker_daily_quota(worker_id)
 
 
-def reset_weekly_practices():
+def reset_weekly_practices(mt, dbget):
     """
     Designed to run periodically, resets all the worker practice quotas.
 
+    :param mt: A MTurk object.
+    :param dbget: A database Get object.
     :return: None
     """
-    conn = happybase.Connection(host=DATABASE_LOCATION)
-    mtconn = boto.mturk.connection.MTurkConnection(
-            aws_access_key_id=MTURK_ACCESS_ID,
-            aws_secret_access_key=MTURK_SECRET_KEY,
-            host=mturk_host)
-    mt = MTurk(mtconn)
-    dbget = Get(conn)
+    _log.info('JOB STARTED reset_weekly_practices')
     for worker_id in dbget.get_all_workers():
         mt.reset_worker_weekly_practice_quota(worker_id)
 
 
-def handle_accepted_task(mt, dbget, dbset, assignment_id, task_id):
+def handle_accepted_task(dbset, task_id):
     """
     Handles an accepted task asynchronously, i.e., by being passed to the
     threadpool.
 
-    :param mt: A MTurk object.
-    :param dbget: A database Get object.
     :param dbset: A database Set object.
-    :param assignment_id: The MTurk assignment ID
     :param task_id: The internal task ID
     :return: None
     """
     dbset.accept_task(task_id)
 
 
-def handle_reject_task(mt, dbget, dbset, worker_id, assignment_id, task_id,
+def handle_reject_task(mt, dbset, worker_id, assignment_id, task_id,
                        reason):
     """
     Handles a rejected task asynchronously, i.e., by being passed to the
     threadpool.
 
     :param mt: A MTurk object.
-    :param dbget: A database Get object.
     :param dbset: A database Set object.
     :param worker_id: The worker ID
     :param assignment_id: The MTurk assignment ID
@@ -521,11 +508,12 @@ if __name__ == '__main__':
         scheduler.add_job(check_practices, 'interval', hours=3,
                           args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID],
                           id='practice check')
-    scheduler.add_job(unban_workers, 'interval', hours=24, id='unban workers')
+    scheduler.add_job(unban_workers, 'interval', hours=24,
+                      args=[mt, dbget, dbset], id='unban workers')
     scheduler.add_job(reset_worker_quotas, 'interval', hours=24,
-                      id='task quota reset')
+                      args=[mt, dbget], id='task quota reset')
     scheduler.add_job(reset_weekly_practices, 'interval', days=7,
-                      id='practice quota reset')
+                      args=[mt, dbget], id='practice quota reset')
     _log.info('Tasks being served on %s' % EXTERNAL_QUESTION_ENDPOINT)
     _log.info('Starting webserver')
     if LOCAL:
