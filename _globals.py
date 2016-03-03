@@ -71,14 +71,8 @@ OTHER MTURK INFORMATION
 # what the assignment ID is when they're just previewing
 PREVIEW_ASSIGN_ID = 'ASSIGNMENT_ID_NOT_AVAILABLE'
 # where to route external question urls
-if WEBSERVER_PORT is None:
-    EXTERNAL_QUESTION_ENDPOINT = 'https://%s/task' % WEBSERVER_URL
-    EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = 'https://%s/submit' % WEBSERVER_URL
-else:
-    EXTERNAL_QUESTION_ENDPOINT = \
-        'https://%s:%i/task' % (WEBSERVER_URL, WEBSERVER_PORT)
-    EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = \
-        'https://%s:%i/submit' % (WEBSERVER_URL,  WEBSERVER_PORT)
+EXTERNAL_QUESTION_ENDPOINT = 'https://%s/task' % WEBSERVER_URL
+EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = 'https://%s/submit' % WEBSERVER_URL
 
 # the host for the mturk sandbox
 MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'

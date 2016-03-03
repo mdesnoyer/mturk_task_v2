@@ -78,6 +78,11 @@ if not CONTINUOUS_MODE:
 else:
     _log.info('Running in continuous mode, will post tasks as long as there '
               'are funds available.')
+
+if LOCAL:
+    _log.info('Running in local mode')
+    EXTERNAL_QUESTION_ENDPOINT = 'https://127.0.0.1:12344/task'
+    EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = 'https://127.0.0.1:12344/submit'
 # instantiate a database connection & database objects
 _log.info('Instantiating database connection')
 conn = happybase.Connection(host=DATABASE_LOCATION)
@@ -472,7 +477,6 @@ def submit():
             mon.decrement("n_tasks_in_progress")
         if CONTINUOUS_MODE:
             scheduler.add_job(create_hit, args=[hit_type_id])
-        scheduler.add_job(handle_finished_hit, )
         scheduler.add_job(handle_finished_hit, args=[mt, dbget, dbset, hit_id])
     return to_return
 
