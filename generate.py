@@ -331,7 +331,7 @@ def _fit_images(images, hit_size):
     :return: A list of dictionaries with fields (x, y, width, height) tuples.
     """
     # gets the sizes for each image in [w, h]
-    im_dims = [n[1, 2] for n in images]
+    im_dims = [[n[1], n[2]] for n in images]
     images = [n[0] for n in images]
     for n in range(len(im_dims)):
         if im_dims[n][0] is None or im_dims[n][1] is None:
