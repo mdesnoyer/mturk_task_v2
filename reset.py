@@ -4,6 +4,8 @@ with the exception of preserving the information about the images and image
 database.
 """
 
+# remember to kill everything on the port: sudo kill $(sudo lsof -t -i:8080)
+
 from conf import *
 from db import Get
 from db import Set
