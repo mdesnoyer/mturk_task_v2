@@ -359,7 +359,7 @@ FLASK FUNCTIONS
 """
 
 
-@app.route('/shutdown', methods=['POST'])
+@app.route('/shutdown', methods=['GET', 'POST'])
 def shutdown():
     shutdown_server()
     return 'Server shutting down...'
