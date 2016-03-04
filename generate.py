@@ -332,6 +332,8 @@ def _fit_images(images, hit_size):
     """
     # gets the sizes for each image in [w, h]
     im_dims = [images[im] for im in images]
+    import ipdb
+    ipdb.set_trace()
     for n in range(len(im_dims)):
         im_dims[n] = _get_im_dims(images[n])
     # compute the maximum area, scale each image up so they're equal
