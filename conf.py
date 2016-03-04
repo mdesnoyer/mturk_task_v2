@@ -69,7 +69,7 @@ DEF_EXTENSION_TIME = 60*60*3  # The default time to extend a hit for during
 """
 TASK CONFIGURATION
 """
-DEF_NUM_IMAGES_PER_TASK = 100  # the default number of images that appear in a
+DEF_NUM_IMAGES_PER_TASK = 30   # the default number of images that appear in a
                                # block.
 DEF_NUM_IMAGE_APPEARANCE_PER_TASK = 3  # the default number of image
                                        # appearances per task. [no practice
