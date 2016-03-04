@@ -111,6 +111,12 @@ def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
     These take the form of dictionaries, called 'blocks':
         block['images'] = a list of lists, where each sublist is of the form
                          [image1, ...].
+        block['ims_width'] = a list of lists, identical to block['images'], only
+                             in lieu of the filenames these are the image
+                             widths.
+        block['ims_height'] = a list of lists, identical to block['images'],
+                              only in lieu of the filenames these are the image
+                              heights.
         block['type'] = 'keep' or 'reject', depending on the trial type. [
                         def: DEF_TRIAL_TYPE]
         block['name'] = The block name. If absent, will be dynamically named.
@@ -280,14 +286,16 @@ def _make_exp_block(block, box_size, hit_size, pos_type):
     rblock = dict()
     rblock['stimset'] = []
     images = []
-    for stimuli in block['images']:
+    for stimuli, widths, heights in zip(block['images'], block['ims_width'],
+                                        block['ims_height']):
         if pos_type == 'random':
             rx = np.random.randint(0, box_size[0] - hit_size[0])
             ry = np.random.randint(0, box_size[1] - hit_size[1])
         else:
             rx = int((box_size[0] - hit_size[0]) / 2.)
             ry = int((box_size[1] - hit_size[1]) / 2.)
-        cstimuli = _fit_images(stimuli, hit_size)
+        dstimuli = {x: [y, z] for x, y, z in zip(stimuli, widths, heights)}
+        cstimuli = _fit_images(dstimuli, hit_size)
         for stimulus in cstimuli:
             images.append(stimulus['file'])
             stimulus['id'] = stimulus['file'].split('/')[-1].split('.')[0]
@@ -317,12 +325,15 @@ def _fit_images(images, hit_size):
         - The images, laid side-by-side, occupy as much of the hit box's
           width as possible.
 
-    :param images: A list of image filenames or URLs.
+    :param images: A dictionary of image filenames or URLs to [width,
+                   height] tuples.
     :param hit_size: The size of the hitbox, see make()
     :return: A list of dictionaries with fields (x, y, width, height) tuples.
     """
     # gets the sizes for each image in [w, h]
-    im_dims = [_get_im_dims(im) for im in images]
+    im_dims = [images[im] for im in images]
+    for n in range(len(im_dims)):
+        im_dims[n] = _get_im_dims(images[n])
     # compute the maximum area, scale each image up so they're equal
     max_area = max([x*y for x, y in im_dims])
     for idx in range(len(im_dims)):

@@ -579,7 +579,6 @@ class Get(object):
         blocks = loads(pickled_blocks)
         _log.debug('Task blocks fetched')
         _log.debug('Fetching image urls...')
-        url_map = dict()
         table = self.conn.table(IMAGE_TABLE)
         # convert the image IDs into URLs
         # fetching with the 'rows' operation so it's not as slow
@@ -588,13 +587,24 @@ class Get(object):
             for im_list in block['images']:
                 for image in im_list:
                     ims_to_fetch.add(image)
-        fetched = table.rows(ims_to_fetch, columns=['metadata:url'])
+        fetched = table.rows(ims_to_fetch, columns=['metadata:url',
+                                                    'metadata:height',
+                                                    'metadata:width'])
+        url_map = dict()
+        height_map = dict()
+        width_map = dict()
         for im_key, im_dat in fetched:
             url_map[im_key] = im_dat.get('metadata:url', None)
+            height_map[im_key] = im_dat.get('metadata:height', None)
+            width_map[im_key] = im_dat.get('metadata:width', None)
         _log.debug('Image urls fetched')
         for block in blocks:
+            block['ims_width'] = [None for _ in block['images']]
+            block['ims_height'] = [None for _ in block['images']]
             for n, im_list in enumerate(block['images']):
                 block['images'][n] = [url_map[x] for x in im_list]
+                block['ims_width'][n] = [width_map[x] for x in im_list]
+                block['ims_height'][n] = [height_map[x] for x in im_list]
         return blocks
 
     def task_is_practice(self, task_id):
