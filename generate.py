@@ -294,7 +294,7 @@ def _make_exp_block(block, box_size, hit_size, pos_type):
         else:
             rx = int((box_size[0] - hit_size[0]) / 2.)
             ry = int((box_size[1] - hit_size[1]) / 2.)
-        dstimuli = {x: [y, z] for x, y, z in zip(stimuli, widths, heights)}
+        dstimuli = [[x, y, z] for x, y, z in zip(stimuli, widths, heights)]
         cstimuli = _fit_images(dstimuli, hit_size)
         for stimulus in cstimuli:
             images.append(stimulus['file'])
@@ -325,17 +325,17 @@ def _fit_images(images, hit_size):
         - The images, laid side-by-side, occupy as much of the hit box's
           width as possible.
 
-    :param images: A dictionary of image filenames or URLs to [width,
-                   height] tuples.
+    :param images: A list of the form [[filename, width, height], ...]
+                   filenames or URLs to [width, height] tuples.
     :param hit_size: The size of the hitbox, see make()
     :return: A list of dictionaries with fields (x, y, width, height) tuples.
     """
     # gets the sizes for each image in [w, h]
-    im_dims = [images[im] for im in images]
-    import ipdb
-    ipdb.set_trace()
+    im_dims = [n[1, 2] for n in images]
+    images = [n[0] for n in images]
     for n in range(len(im_dims)):
-        im_dims[n] = _get_im_dims(images[n])
+        if im_dims[n][0] is None or im_dims[n][1] is None:
+            im_dims[n] = _get_im_dims(images[n])
     # compute the maximum area, scale each image up so they're equal
     max_area = max([x*y for x, y in im_dims])
     for idx in range(len(im_dims)):
