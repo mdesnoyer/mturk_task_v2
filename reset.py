@@ -20,8 +20,9 @@ autopass_practice = False  # whether or not to automatically pass krypton
 
 wid = 'A1RPGGKICRYDKC'  # the krypton worker id
 
-file_root = os.path.dirname(os.path.realpath(__file__))
-logger.config_root_logger(os.path.join(file_root, 'logs/scratch_setup.log'))
+cleanup_log_loc = os.path.join(os.path.expanduser('~'), 'mturk_logs',
+                               'reset.log')
+logger.config_root_logger(cleanup_log_loc)
 _log = logger.setup_logger('reset')
 _log.setLevel(logging.DEBUG)
 
