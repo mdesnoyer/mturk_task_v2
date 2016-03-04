@@ -386,6 +386,7 @@ def task():
     response = fetch_task(dbget, dbset, task_id, worker_id)
     mon.increment("n_tasks_served")
     mon.increment("n_tasks_in_progress")
+    _log.debug('Returning request to %s' % str(src))
     return response
 
 
@@ -459,7 +460,7 @@ def submit():
             mon.decrement("n_tasks_in_progress")
         else:
             scheduler.add_job(handle_accepted_task,
-                              args=[mt, dbget, dbset, assignment_id, task_id])
+                              args=[dbset, task_id])
             mon.increment("n_tasks_accepted")
             mon.decrement("n_tasks_in_progress")
         if CONTINUOUS_MODE:
