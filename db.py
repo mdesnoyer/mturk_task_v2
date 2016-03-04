@@ -579,13 +579,15 @@ class Get(object):
         url_map = dict()
         table = self.conn.table(IMAGE_TABLE)
         # convert the image IDs into URLs
+        # fetching with the 'rows' operation so it's not as slow
+        ims_to_fetch = set()
         for block in blocks:
             for im_list in block['images']:
                 for image in im_list:
-                    if image not in url_map:
-                        url_map[image] = \
-                            table.row(image).get('metadata:url', None)
-        # now, replace this image IDs with their URLs
+                    ims_to_fetch.add(image)
+        fetched = table.rows(ims_to_fetch, columns=['metadata:url'])
+        for im_key, im_dat in fetched:
+            url_map[im_key] = im_dat.get('metadata:url', None)
         for block in blocks:
             for n, im_list in enumerate(block['images']):
                 block['images'][n] = [url_map[x] for x in im_list]

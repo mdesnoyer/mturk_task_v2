@@ -13,7 +13,8 @@ resources = [
     'https://s3.amazonaws.com/mturk-webserver-assets/error.png',
     'https://s3.amazonaws.com/mturk-webserver-assets/check.png',
     'https://s3.amazonaws.com/mturk-webserver-assets/blocked.png',
-    'https://s3.amazonaws.com/mturk-webserver-assets/stop.png'
+    'https://s3.amazonaws.com/mturk-webserver-assets/stop.png',
+    'https://s3.amazonaws.com/mturk-webserver-assets/attention.png'
 ]
 
 scripts = [  # note, this also includes the jsPsych-specific CSS.
