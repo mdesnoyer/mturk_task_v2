@@ -571,11 +571,14 @@ class Get(object):
                  problem returns None.
         """
         table = self.conn.table(TASK_TABLE)
+        _log.debug('Fetching task blocks...')
         pickled_blocks = \
             table.row(task_id, columns=['blocks:c1']).get('blocks:c1', None)
         if pickled_blocks is None:
             return None
         blocks = loads(pickled_blocks)
+        _log.debug('Task blocks fetched')
+        _log.debug('Fetching image urls...')
         url_map = dict()
         table = self.conn.table(IMAGE_TABLE)
         # convert the image IDs into URLs
@@ -588,6 +591,7 @@ class Get(object):
         fetched = table.rows(ims_to_fetch, columns=['metadata:url'])
         for im_key, im_dat in fetched:
             url_map[im_key] = im_dat.get('metadata:url', None)
+        _log.debug('Image urls fetched')
         for block in blocks:
             for n, im_list in enumerate(block['images']):
                 block['images'][n] = [url_map[x] for x in im_list]

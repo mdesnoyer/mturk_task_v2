@@ -160,6 +160,10 @@ def create_hit(mt, dbget, dbset, hit_type_id):
     if mean_seen > MEAN_SAMPLES_REQ_PER_IMAGE(n_active):
         _log.info('Images are sufficiently sampled, activating more')
         dbset.activate_n_images(ACTIVATION_CHUNK_SIZE)
+    else:
+        _log.info('Mean %.2f < required %.2f' % (mean_seen,
+                                                 MEAN_SAMPLES_REQ_PER_IMAGE(
+                                                     n_active)))
     hit_cost = DEFAULT_TASK_PAYMENT
     bal = mt.get_account_balance()
     if hit_cost > bal:
