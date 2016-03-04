@@ -595,8 +595,12 @@ class Get(object):
         width_map = dict()
         for im_key, im_dat in fetched:
             url_map[im_key] = im_dat.get('metadata:url', None)
-            height_map[im_key] = im_dat.get('metadata:height', None)
-            width_map[im_key] = im_dat.get('metadata:width', None)
+            height = im_dat.get('metadata:height', None)
+            if height is not None:
+                height_map[im_key] = int(height)
+            width = im_dat.get('metadata:width', None)
+            if width is not None:
+                width_map[im_key] = int(width)
         _log.debug('Image urls fetched')
         for block in blocks:
             block['ims_width'] = [None for _ in block['images']]
