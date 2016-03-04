@@ -377,6 +377,7 @@ function get_rt_string(thresh, min_speed){
     rstring += "faster than a human can reasonably make decisions, we exclude their data.</br></br>";
     rstring += "Let's see how you did.</br></br>";
     rstring += "Your average reaction time was: <strong>" + mean_rt + "</strong> milliseconds.</br></br>";
+    rstring += "<strong>" + mean_below * 100 + "%</strong> of your trials are too fast.</br></br>";
     if (mean_below > thresh){
         rstring += '<font color="red">Too many of your trials went too fast!</font>';
         passed_practice = false;
