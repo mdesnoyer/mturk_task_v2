@@ -362,7 +362,7 @@ FLASK FUNCTIONS
 @app.route('/shutdown', methods=['GET', 'POST'])
 def shutdown():
     src = request.remote_addr
-    _log.info('Shutdown request recieved from ')
+    _log.error('Shutdown request recieved from %s' % str(src))
     shutdown_server()
     return 'Server shutting down...'
 
@@ -375,7 +375,7 @@ def healthcheck():
     :return: Health Check page
     """
     src = request.remote_addr
-    _log.error('Shutdown request from %s received' % str(src))
+    _log.debug('Healthcheck request from %s received' % str(src))
     return "OK"
 
 

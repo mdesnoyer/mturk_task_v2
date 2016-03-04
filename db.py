@@ -2165,6 +2165,8 @@ class Set(object):
         location_info = geolite2.lookup(worker_ip)
         if location_info is None:
             _log.warn('Could not fetch location info for worker %s' % worker_id)
+            import ipdb
+            ipdb.set_trace()
             return
         table.put(worker_id,
                   {'location:'+k: str(v) for k, v in location_info.to_dict(
