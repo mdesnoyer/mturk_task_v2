@@ -26,10 +26,10 @@
 
   var debrief = {
     type: 'instructions',
-    pages: [function() {return get_rt_string(300);},
-            function() {return get_missed_string(0.1);},
-            function() {return get_bias_string(0.9);},
-            function() {return get_contradictions_string(0.1,
+    pages: [function() {return get_rt_string({{ jg['MAX_FRAC_TOO_FAST'] }}, {{ jg['MIN_TRIAL_RT'] }});},
+            function() {return get_missed_string({{ jg['MAX_FRAC_UNANSWERED'] }});},
+            function() {return get_bias_string({{ jg['MAX_PROB_RANDOM'] }});},
+            function() {return get_contradictions_string({{ jg['MAX_FRAC_CONTRADICTIONS'] }},
             '{{ jg['attribute'] }}');}],
     show_clickable_nav: true
   }

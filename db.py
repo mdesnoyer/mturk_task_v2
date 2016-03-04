@@ -1958,9 +1958,10 @@ class Set(object):
         frac_contradictions = float(num_contradictions) / len(data)
         frac_unanswered = float(num_unanswered) / len(data)
         if frac_unanswered < 1.0:
-            mean_rt = np.mean(filter(lambda x: x > -1, rts))
+            def_rts = filter(lambda x: x > -1, rts)  # defined rts
+            frac_too_fast = np.mean(np.array(def_rts) <= MIN_TRIAL_RT)
         else:
-            mean_rt = 0
+            frac_too_fast = 0
         table = self.conn.table(TASK_TABLE)
         input_dict = {'metadata:worker_id': worker_id,
                       'metadata:hit_id': hit_id,
@@ -1976,7 +1977,8 @@ class Set(object):
                           '%.4f' % frac_contradictions,
                       'validation_statistics:frac_no_response':
                           '%.4f' % frac_unanswered,
-                      'validation_statistics:mean_rt': '%.4f' % mean_rt,
+                      'validation_statistics:frac_too_fast': '%.4f' %
+                                                             frac_too_fast,
                       'status:pending_evaluation': TRUE,
                       'status:pending_completion': FALSE}
         try:
@@ -2005,10 +2007,10 @@ class Set(object):
                                  'user_agent:string': user_agent.string}))
         _log.info('Stored task data for task %s, worker %s. Total time: %i '
                   'seconds' % (task_id, worker_id, seconds / 1000))
-        return frac_contradictions, frac_unanswered, mean_rt, p_value
+        return frac_contradictions, frac_unanswered, frac_too_fast, p_value
 
     def validate_task(self, task_id=None, frac_contradictions=None,
-                      frac_unanswered=None, mean_rt=None,
+                      frac_unanswered=None, frac_too_fast=None,
                       prob_random=None):
         """
         Validates a task, either by providing it with the task id or the
@@ -2020,7 +2022,7 @@ class Set(object):
         :param frac_contradictions: The fraction of contradictory selections
                                     in the task.
         :param frac_unanswered: The fraction of missed selections in the task.
-        :param mean_rt: The average reaction time, in milliseconds.
+        :param frac_too_fast: The average reaction time, in milliseconds.
         :param prob_random: The Chisquare distribution p-value for whether or
                             not this individual behaved randomly. In other
                             words, it assesses the probability that they were
@@ -2032,28 +2034,25 @@ class Set(object):
         """
         table = self.conn.table(TASK_TABLE)
 
-        def validate_rt(task_id, mean_rt):
+        def validate_rt(task_id, frac_too_fast):
             """validates based on reaction time"""
-            if mean_rt is None:
+            if frac_too_fast is None:
                 if task_id is None:
-                    _log.warning('Average reaction time not provided nor is '
-                                 'task_id. Task will not be judged on '
-                                 'reaction time.')
+                    _log.warning('The fraction of too-fast trials not '
+                                 'provided.')
                     return True, None
                 else:
                     try:
-                        mean_rt_str = float(table.row(task_id).get(
-                            'validation_statistics:mean_rt', None))
+                        frac_too_fast_str = float(table.row(task_id).get(
+                            'validation_statistics:frac_too_fast', None))
                     except TypeError:
-                        _log.warning(('Could not acquire mean_rt for task %s. '
-                                      'Task will not be judged on reaction '
-                                      'time') % task_id)
+                        _log.warning(('Could not acquire frac_too_fast for '
+                                      'task %s. Task will not be judged on '
+                                      'reaction time') % task_id)
                         return True, None
-                    mean_rt = float(mean_rt_str)
-            if mean_rt < MIN_MEAN_RT:
+                    frac_too_fast = float(frac_too_fast_str)
+            if frac_too_fast > MAX_FRAC_TOO_FAST:
                 return False, BAD_DATA_TOO_FAST
-            if mean_rt > MAX_MEAN_RT:
-                return False, BAD_DATA_TOO_SLOW
             return True, None
 
         def validate_frac_unanswered(task_id, frac_unanswered):
@@ -2131,7 +2130,7 @@ class Set(object):
         val, reason = validate_frac_unanswered(task_id, frac_unanswered)
         if not val:
             return val, reason
-        val, reason = validate_rt(task_id, mean_rt)
+        val, reason = validate_rt(task_id, frac_too_fast)
         if not val:
             return val, reason
         val, reason = validate_prob_random(task_id, prob_random)

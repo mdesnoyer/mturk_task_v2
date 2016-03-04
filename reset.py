@@ -76,4 +76,13 @@ _log.info('Disposing of all HITs')
 mt.disable_all_hits_of_type()
 
 if autopass_practice:
-    mt.grant_worker_practice_passed(wid)
+    try:
+        mt.grant_worker_practice_passed(wid)
+    except:
+        _log.warn('Could not grant worker passed practice.')
+else:
+    # revoke it
+    try:
+        mt.revoke_worker_practice_passed(wid)
+    except:
+        _log.warn('Could not revoke worker passed practice.')

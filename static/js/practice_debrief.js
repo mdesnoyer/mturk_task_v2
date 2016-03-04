@@ -296,7 +296,7 @@ function get_contradictions_string(thresh, attribute){
             break;
         }
     }
-    var mean_conts = tot_conts * 1.0 / valid_trials_count;
+    var mean_conts = tot_conts * 2.0 / valid_trials_count;  // since only keep trials are counted
     var rstring = "The last measure, but possibly the most important, is the number of times a worker contradicts ";
     rstring += "themselves. If they pick the same image as both the most " + attribute + " and the least " + attribute;
     rstring += " then it is clear that they are not following directions.</br></br>"
@@ -320,65 +320,6 @@ function get_contradictions_string(thresh, attribute){
     }
     return rstring;
 }
-
-// this is the old get_contradictions_string, which wasn't robust against independent trial type randomization
-// see: db.py, generate.py
-/*
-function get_contradictions_string(thresh, attribute){
-    // Returns a string to inform the worker of the number of contradictions they have created. It gives them an
-    // example of their contradictions.
-    var kept = {};
-    var rejected = {};
-    var start_time = (new Date()).getTime();  // why are we fetching this!?
-    var trials = jsPsych.data.getTrialsOfType("click-choice");
-    var valid_trials_count = 0;
-    var tot_conts = 0;
-    var exemplar_trial = 0;
-    for (var i = 0; i < trials.length; i++) {
-        if (trials[i].choice < 0){
-            continue;
-        } else {
-            valid_trials_count ++;
-        }
-        if (trials[i].action_type == 'keep'){
-            kept[trials[i].choice] = i;
-        } else {
-            rejected[trials[i].choice] = i;
-        }
-    }
-    for (var key in kept) {
-        if (kept.hasOwnProperty(key)){
-            if (rejected.hasOwnProperty(key)){
-                exemplar_trial = kept[key];
-                tot_conts++;
-            }
-        }
-    }
-    var mean_conts = tot_conts * 1.0 / valid_trials_count;
-    var rstring = "The last measure, but possibly the most important, is the number of times a worker contradicts ";
-    rstring += "themselves. If they pick the same image as both the most " + attribute + " and the least " + attribute;
-    rstring += " then it is clear that they are not following directions.</br></br>"
-    if (tot_conts == 0){
-        rstring += '<font color="green">However, you never contradicted yourself! Congratulations.</font>';
-        return rstring
-    }
-    rstring += 'For instance, when asked to choose among these images: </br></br><center>';
-    for (var i = 0; i < trials[exemplar_trial].stims.length; i++){
-        rstring += '<img src="' + trials[exemplar_trial].stims[i].file + '" style="width:' + trials[exemplar_trial].stims[i].width + 'px;height:' + trials[exemplar_trial].stims[i].height +'px;">';
-    }
-    rstring += '</center></br></br>you chose</br></br>';
-    rstring += '<center><img src="' + trials[exemplar_trial].stims[trials[exemplar_trial].choice_idx].file + '" style="width:' + trials[exemplar_trial].stims[trials[exemplar_trial].choice_idx].width + 'px;height:' + trials[exemplar_trial].stims[trials[exemplar_trial].choice_idx].height +'px;"></center>';
-    rstring += '</br></br>as both the most ' + attribute + ' and the least ' + attribute + '. ';
-    rstring += 'In total, <strong>' + Math.floor(mean_conts * 200.0) + '%</strong> of choices were contradicted. <br><br>';
-    if (mean_conts > thresh){
-        rstring += '<font color="red">Unfortunately you made too many contradictions! Please repeat the practice.</font>';
-        passed_practice = false;
-    } else {
-        rstring += '<font color="green">You are within limits for contradictions.</font>';
-    }
-    return rstring;
-}
-*/
 
 function get_missed_string(thresh){
     /*
@@ -408,7 +349,7 @@ function get_missed_string(thresh){
     }
 }
 
-function get_rt_string(thresh){
+function get_rt_string(thresh, min_speed){
     /*
     * Determines if the response time is too fast.
     */
@@ -416,6 +357,7 @@ function get_rt_string(thresh){
         var start_time = (new Date()).getTime();
         var trials = jsPsych.data.getTrialsOfType("click-choice");
         var sum_rt = 0;
+        var num_below = 0;
         var valid_trials_count = 0;
         for (var i = 0; i < trials.length; i++) {
             if (trials[i].choice < 0){
@@ -423,16 +365,20 @@ function get_rt_string(thresh){
             }
             sum_rt += trials[i].rt;
             valid_trials_count++;
+            if (trials[i].rt <= min_speed){
+                num_below++;
+            }
         }
         var mean_rt = Math.floor(sum_rt / valid_trials_count);
+        var mean_below = Math.floor(num_below / valid_trials_count);
     }
     var rstring = "Some workers try to speed through the experiment by clicking as fast as possible. To avoid this, we ";
     rstring += "measure your mean reaction time; in other words, how quickly you make decisions. If a worker goes ";
     rstring += "faster than a human can reasonably make decisions, we exclude their data.</br></br>";
     rstring += "Let's see how you did.</br></br>";
     rstring += "Your average reaction time was: <strong>" + mean_rt + "</strong> milliseconds.</br></br>";
-    if (mean_rt < thresh){
-        rstring += '<font color="red">You went too fast! Please repeat the practice.</font>';
+    if (mean_below < thresh){
+        rstring += '<font color="red">Too many of your trials went too fast!</font>';
         passed_practice = false;
     } else {
         rstring += '<font color="green">You are within limits for reaction time.</font>';
