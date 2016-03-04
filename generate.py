@@ -572,11 +572,13 @@ def fetch_task(dbget, dbset, task_id, worker_id=None):
         # display an error-fetching-task page.
         _log.warn('Could not fetch blocks for task %s' % task_id)
         return make_error_fetching_task_html()
+    _log.debug('Assembling HTML')
     html = make_html(blocks,
                      practice=is_practice,
                      collect_demo=collect_demo,
                      intro_instructions=intro_instructions,
                      task_id=task_id)
+    _log.debug('HTML assembly finished')
     if not is_practice:
         # this is now disabled
         # dbset.set_task_html(task_id, html)
