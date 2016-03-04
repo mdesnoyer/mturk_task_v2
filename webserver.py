@@ -370,6 +370,8 @@ def task():
 
     :return: The Task / Practice / Error page / etc HTML.
     """
+    src = request.remote_addr
+    _log.debug('Task request from %s received' % str(src))
     is_preview = request.values.get('assignmentId', '') == PREVIEW_ASSIGN_ID
     hit_id = request.values.get('hitId', None)
     if hit_id is None:

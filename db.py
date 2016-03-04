@@ -1470,6 +1470,7 @@ class Set(object):
         scanner = table.scan(columns=['metadata:is_active'],
                              filter=attribute_image_filter([],
                                                            only_active=True))
+        n = 0
         for n, (im_key, _) in enumerate(scanner):
             table.counter_set(im_key, 'stats:num_times_seen', 0)
             table.counter_set(im_key, 'stats:sampling_surplus', 0)
