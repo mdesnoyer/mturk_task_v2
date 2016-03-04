@@ -529,4 +529,5 @@ if __name__ == '__main__':
         app.run(host='127.0.0.1', port=WEBSERVER_PORT,
                 debug=True, ssl_context=context)
     else:
-        app.run(host='0.0.0.0', port=WEBSERVER_PORT, threaded=True)
+        app.run(host='0.0.0.0', port=WEBSERVER_PORT, threaded=True,
+                debug=True)
