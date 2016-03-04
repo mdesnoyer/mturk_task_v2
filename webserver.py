@@ -344,9 +344,25 @@ def handle_finished_hit(mt, dbget, dbset, hit_id):
     # mt.disable_hit(hit_id)
 
 
+def shutdown_server():
+    """
+    Function to shutdown the server.
+    """
+    scheduler.shutdown()
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    func()
+
 """
 FLASK FUNCTIONS
 """
+
+
+@app.route('/shutdown', methods=['POST'])
+def shutdown():
+    shutdown_server()
+    return 'Server shutting down...'
 
 
 @app.route('/healthcheck', methods=['GET'])
