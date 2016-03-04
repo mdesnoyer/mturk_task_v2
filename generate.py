@@ -567,6 +567,7 @@ def fetch_task(dbget, dbset, task_id, worker_id=None):
     else:
         dbset.task_served(task_id, worker_id)
     blocks = dbget.get_task_blocks(task_id)
+    _log.debug('Fetched task blocks for task %s' % task_id)
     if blocks is None:
         # display an error-fetching-task page.
         _log.warn('Could not fetch blocks for task %s' % task_id)

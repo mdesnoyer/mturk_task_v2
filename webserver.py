@@ -375,12 +375,14 @@ def task():
     is_preview = request.values.get('assignmentId', '') == PREVIEW_ASSIGN_ID
     hit_id = request.values.get('hitId', None)
     if hit_id is None:
+        _log.debug('Returning request to %s' % str(src))
         return make_error_fetching_task_html()
     hit_info = mt.get_hit(hit_id)
     task_id = hit_info.RequesterAnnotation
     if is_preview:
         is_practice = dbget.task_is_practice(task_id)
         task_time = dbget.get_task_time(task_id)
+        _log.debug('Returning request to %s' % str(src))
         return make_preview_page(is_practice, task_time)
     worker_id = request.values.get('workerId', '')
     response = fetch_task(dbget, dbset, task_id, worker_id)
@@ -452,7 +454,7 @@ def submit():
             reason = None
         if not is_valid:
             scheduler.add_job(handle_reject_task,
-                              args=[mt, dbget, dbset, worker_id,
+                              args=[mt, dbset, worker_id,
                                     assignment_id, task_id, reason])
             scheduler.add_job(check_ban,
                               args=[mt, dbget, dbset, worker_id])
