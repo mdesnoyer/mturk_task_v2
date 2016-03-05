@@ -472,7 +472,7 @@ class MTurk(object):
             # be sure to grant them a daily quota
             self.reset_worker_daily_quota(worker_id)
         except boto.mturk.connection.MTurkRequestError as e:
-            _log.error('Error granting worker main qualification: %s' +
+            _log.error('Error granting worker main qualification: ' +
                        e.message)
 
     def revoke_worker_practice_passed(self, worker_id, reason=None):
@@ -503,11 +503,18 @@ class MTurk(object):
         :return: None
         """
         try:
+            self.mtconn.update_qualification_score(
+                self.quota_id, worker_id, value=MAX_SUBMITS_PER_DAY)
+            return
+        except boto.mturk.connection.MTurkRequestError:
+            _log.warn('No daily task quota for worker %s, trying to grant it' %
+                      worker_id)
+        try:
             self.mtconn.assign_qualification(self.quota_id, worker_id,
                                              value=MAX_SUBMITS_PER_DAY,
                                              send_notification=False)
         except boto.mturk.connection.MTurkRequestError as e:
-            _log.error('Error resetting daily quota for worker: %s' + e.message)
+            _log.error('Error resetting daily quota for worker: ' + e.message)
 
     def reset_worker_weekly_practice_quota(self, worker_id):
         """
