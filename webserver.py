@@ -392,9 +392,10 @@ def task():
 
     :return: The Task / Practice / Error page / etc HTML.
     """
-    import ipdb
-    ipdb.set_trace()
-    src = request.remote_addr
+    if request.headers.getlist("X-Forwarded-For"):
+       src = request.headers.getlist("X-Forwarded-For")[0]
+    else:
+       src = request.remote_addr
     _log.debug('Task request from %s received' % str(src))
     is_preview = request.values.get('assignmentId', '') == PREVIEW_ASSIGN_ID
     hit_id = request.values.get('hitId', None)
