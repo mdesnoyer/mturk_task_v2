@@ -454,12 +454,8 @@ def submit():
             to_return = make_practice_passed()
             dbset.practice_pass(request.json)
             mt.grant_worker_practice_passed(worker_id)
-            try:
-                mon.increment("n_practices_passed")
-                mon.decrement("n_tasks_in_progress")
-            except Exception as e:
-                import ipdb
-                ipdb.set_trace()
+            mon.increment("n_practices_passed")
+            mon.decrement("n_tasks_in_progress")
         else:
             to_return = make_practice_failed()
             mon.increment("n_practices_rejected")
@@ -484,8 +480,11 @@ def submit():
                                     frac_contradictions=frac_contradictions,
                                     frac_unanswered=frac_unanswered,
                                     mean_rt=mean_rt, prob_random=prob_random)
-        except:
-            _log.error('Could not validate task, default to accept')
+        except Exception as e:
+            _log.error('Could not validate task, default to accept. Error '
+                       'was: %s' % e.message)
+            import ipdb
+            ipdb.set_trace()
             is_valid = True
             reason = None
         if not is_valid:
