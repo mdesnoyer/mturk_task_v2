@@ -311,7 +311,7 @@ function get_contradictions_string(thresh, attribute){
     rstring += '</center></br></br>you chose</br></br>';
     rstring += '<center><img src="' + trials[exemplar_trial].stims[trials[exemplar_trial].choice_idx].file + '" style="width:' + trials[exemplar_trial].stims[trials[exemplar_trial].choice_idx].width + 'px;height:' + trials[exemplar_trial].stims[trials[exemplar_trial].choice_idx].height +'px;"></center>';
     rstring += '</br></br>as both the most ' + attribute + ' and the least ' + attribute + '. ';
-    rstring += 'In total, <strong>' + Math.floor(mean_conts * 200.0) + '%</strong> of choices were contradicted. <br><br>';
+    rstring += 'In total, <strong>' + Math.floor(mean_conts * 100.0) + '%</strong> of choices were contradicted. <br><br>';
     if (mean_conts > thresh){
         rstring += '<font color="red">Unfortunately you made too many contradictions! Please repeat the practice.</font>';
         passed_practice = false;
