@@ -251,7 +251,7 @@ random, the graph is Erdos-Renyi and the spectral gap has a lower bound by
 some probability and hence the complexity is O(n * poly(log(n))). poly(x)
 denotes x^O(1), which we assume to be x^1.
 """
-_gamma = 1.  # the gamma multiplier, O(gamma n log(n))
+_gamma = 2.  # the gamma multiplier, O(gamma n log(n))
 MEAN_SAMPLES_REQ_PER_IMAGE = lambda n_active: _gamma * np.log(n_active)
 
 
