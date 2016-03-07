@@ -350,6 +350,8 @@ def handle_reject_task(mt, dbset, worker_id, assignment_id, task_id,
     :param reason: The reason for the rejection
     :return: None
     """
+    _log.info('Soft rejection assignment %s from worker %s: %s' % (
+        assignment_id, worker_id, reason))
     mt.soft_reject_assignment(worker_id, assignment_id, reason)
     dbset.reject_task(task_id, reason)
 
@@ -501,6 +503,12 @@ def submit():
             frac_contradictions, frac_unanswered, frac_too_fast, prob_random = \
                 dbset.task_finished_from_json(request.json,
                                               hit_type_id=hit_type_id)
+            _log.debug('Assignment %s submitted from %s:\n\tFraction '
+                       'contractions: %.2f\n\tFraction unanswered: '
+                       '%.2f\n\tFraction too fast: %.2f\n\tChi Square score: '
+                       '%.2f' % (assignment_id, worker_id,
+                                 frac_contradictions, frac_unanswered,
+                                 frac_too_fast, prob_random))
         except:
             _log.error('Problem storing task data - dumping task json')
             _log.info('TASK JSON: %s' % str(request.json))

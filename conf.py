@@ -69,7 +69,7 @@ DEF_EXTENSION_TIME = 60*60*3  # The default time to extend a hit for during
 """
 TASK CONFIGURATION
 """
-DEF_NUM_IMAGES_PER_TASK = 30   # the default number of images that appear in a
+DEF_NUM_IMAGES_PER_TASK = 99   # the default number of images that appear in a
                                # block.
 DEF_NUM_IMAGE_APPEARANCE_PER_TASK = 1  # the default number of image
                                        # appearances per task. [no practice
@@ -103,7 +103,7 @@ DEF_KEEP_BLOCKS = 1  # the default number of keep blocks for a task
 DEF_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
 RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized
                                  # within task.
-DEFAULT_TASK_PAYMENT = 0.40  # the default payment for
+DEFAULT_TASK_PAYMENT = 0.66  # the default payment for
 DEFAULT_TASK_NAME = 'Choosing images'  # The title for the actual tasks.
 DESCRIPTION = ('Choosing %s images. These HITs are always instantly accepted.' %
                ATTRIBUTE)
@@ -114,7 +114,7 @@ KEYWORDS = []  # the keywords for the HIT / HIT Type
 """
 PRACTICE TASK CONFIGURATION
 """
-DEF_PRACTICE_NUM_IMAGES_PER_TASK = 18  # the default number of images
+DEF_PRACTICE_NUM_IMAGES_PER_TASK = 30  # the default number of images
                                        # per practice.
 DEF_PRACTICE_INTO_INSTRUCTIONS = \
     '/instructions/practice_template.html'  # the default practice introduction
