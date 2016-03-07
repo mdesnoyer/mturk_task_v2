@@ -114,8 +114,8 @@ KEYWORDS = []  # the keywords for the HIT / HIT Type
 """
 PRACTICE TASK CONFIGURATION
 """
-DEF_PRACTICE_NUM_IMAGES_PER_TASK = 9  # the default number of images
-                                      # per practice.
+DEF_PRACTICE_NUM_IMAGES_PER_TASK = 18  # the default number of images
+                                       # per practice.
 DEF_PRACTICE_INTO_INSTRUCTIONS = \
     '/instructions/practice_template.html'  # the default practice introduction
 DEF_RESPONSE_ENDS_TRIAL = 'true'  # whether or not a response ends a trial
@@ -167,7 +167,7 @@ BAD_DATA_TOO_MANY_UNANSWERED = 'You are not answering too many of the trials.'
 WORKER OPTIONS
 """
 # the maximum number of tasks a worker can complete per day
-MAX_SUBMITS_PER_DAY = 20
+MAX_SUBMITS_PER_DAY = 100
 # the default reason for a ban
 DEFAULT_BAN_REASON = 'You have been banned for one week from completing our ' \
                      'tasks due to poor task performance.'
@@ -175,7 +175,7 @@ DEFAULT_BAN_REASON = 'You have been banned for one week from completing our ' \
 # counts reset.
 TASK_SUBMISSION_RESET_VALUE = MAX_SUBMITS_PER_DAY * 7
 # the minimum number of rejections (in a week) to be eligible for a ban
-MIN_REJECT_AUTOBAN_ELIGIBLE = 3
+MIN_REJECT_AUTOBAN_ELIGIBLE = 8
 # the ratio of rejections / acceptances to be eligible for a ban
 AUTOBAN_REJECT_ACCEPT_RATIO = 0.33
 # these are countries from which we accept workers
@@ -204,7 +204,8 @@ MTURK OPTIONS
 """
 NUM_PRACTICES = 5  # how many practices to post at once
 NUM_TASKS = 5  # how many tasks to maintain online
-NUM_ASSIGNMENTS_PER_PRACTICE = 100  # how many people can take a given practice?
+NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
+                                      # practice?
 PRACTICE_TASK_LIFETIME = 60*60*24*7   # the time a practice task exists for.
                                       # default is 1 week.
 

@@ -234,6 +234,34 @@ def check_practices(mt, dbget, dbset, hit_type_id):
         mon.increment('n_practices_generated')
 
 
+def create_practice(mt, dbget, dbset, hit_type_id):
+    """
+    Mirrors the functionality of create_hit, only creates practices instead.
+
+    :param mt: A MTurk object.
+    :param dbget: A database Get object.
+    :param dbset: A database Set object.
+    :param hit_type_id: The HIT type ID, as a string.
+    :return: None.
+    """
+    _log.info('JOB_STARTED create_practice')
+    hit_cost = DEFAULT_PRACTICE_PAYMENT
+    bal = mt.get_account_balance()
+    if hit_cost > bal:
+        _log.warn('Insufficient funds to generate new tasks: %.2f cost vs. '
+                  '%.2f balance', hit_cost, bal)
+        return
+    task_id, exp_seq, attribute, register_task_kwargs = \
+        dbget.gen_task(DEF_PRACTICE_NUM_IMAGES_PER_TASK, 3,
+                       DEF_NUM_IMAGE_APPEARANCE_PER_TASK, n_keep_blocks=1,
+                       n_reject_blocks=1, hit_type_id=hit_type_id,
+                       practice=True)
+    dbset.register_task(task_id, exp_seq, attribute,
+                        **register_task_kwargs)
+    mt.add_practice_hit_to_hit_type(hit_type_id, task_id)
+    mon.increment('n_practices_generated')
+
+
 def check_ban(mt, dbget, dbset, worker_id=None):
     """
     Checks to see if a worker needs to be banned
@@ -460,6 +488,9 @@ def submit():
             to_return = make_practice_failed()
             mon.increment("n_practices_rejected")
             mon.decrement("n_tasks_in_progress")
+        if CONTINUOUS_MODE:
+            scheduler.add_job(create_practice,
+                              args=[mt, dbget, dbset, hit_type_id])
     else:
         to_return = make_success()
         try:
@@ -533,23 +564,11 @@ if __name__ == '__main__':
         TASK_HIT_TYPE_ID, PRACTICE_HIT_TYPE_ID = mt.register_hit_type_mturk()
         dbset.register_hit_type(TASK_HIT_TYPE_ID)
         dbset.register_hit_type(PRACTICE_HIT_TYPE_ID, is_practice=True)
-    _log.info('Looking for missing tasks')
-    num_extant_hits = mt.get_all_pending_hits_of_type(
-        TASK_HIT_TYPE_ID, ids_only=True)
-    to_generate = max(NUM_TASKS - len(num_extant_hits), 0)
     scheduler.add_job(check_practices,
                       args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID])
-    if to_generate:
-        _log.info('Building %i new tasks and posting them' % to_generate)
-        for _ in range(to_generate):
-            scheduler.add_job(create_hit,
-                              args=[mt, dbget, dbset, TASK_HIT_TYPE_ID])
+    scheduler.add_job(check_tasks, args=[mt, dbget, dbset, TASK_HIT_TYPE_ID])
     # note that this must be done *after* the tasks are generated, since it
     # is the tasks that actually activate new images.
-    if CONTINUOUS_MODE:
-        scheduler.add_job(check_practices, 'interval', hours=3,
-                          args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID],
-                          id='practice check')
     scheduler.add_job(unban_workers, 'interval', hours=24,
                       args=[mt, dbget, dbset], id='unban workers')
     scheduler.add_job(reset_worker_quotas, 'interval', hours=24,
