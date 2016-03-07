@@ -559,4 +559,4 @@ if __name__ == '__main__':
                 debug=True, ssl_context=context)
     else:
         app.run(host='0.0.0.0', port=WEBSERVER_PORT, threaded=True,
-                debug=True)
+                debug=True, use_reloader=False)
