@@ -454,9 +454,9 @@ def submit():
             try:
                 mon.increment("n_practices_passed")
                 mon.decrement("n_tasks_in_progress")
-            except:
+            except Exception as e:
                 import ipdb
-                ipdb.pm()
+                ipdb.set_trace()
         else:
             to_return = make_practice_failed()
             mon.increment("n_practices_rejected")
