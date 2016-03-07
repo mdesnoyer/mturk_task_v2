@@ -467,7 +467,7 @@ def submit():
         except:
             _log.warn('Problem decrementing daily quota for %s' % worker_id)
         try:
-            frac_contradictions, frac_unanswered, mean_rt, prob_random = \
+            frac_contradictions, frac_unanswered, frac_too_fast, prob_random = \
                 dbset.task_finished_from_json(request.json,
                                               hit_type_id=hit_type_id)
         except:
@@ -479,12 +479,11 @@ def submit():
                 dbset.validate_task(task_id=None,
                                     frac_contradictions=frac_contradictions,
                                     frac_unanswered=frac_unanswered,
-                                    mean_rt=mean_rt, prob_random=prob_random)
+                                    frac_too_fast=frac_too_fast,
+                                    prob_random=prob_random)
         except Exception as e:
             _log.error('Could not validate task, default to accept. Error '
                        'was: %s' % e.message)
-            import ipdb
-            ipdb.set_trace()
             is_valid = True
             reason = None
         if not is_valid:
