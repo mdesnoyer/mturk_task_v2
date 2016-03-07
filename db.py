@@ -1011,7 +1011,7 @@ class Get(object):
         :param n: The number of distinct elements involved in the experiment.
         :param t: The number of elements to present each trial.
         :param j: The number of times each element should appear during the
-                  experiment.
+                  experiment in each segment.
         :param image_attributes: The attributes that images must have to be
                                  into the study. Images must have any of
                                  these attributes.
@@ -1038,7 +1038,6 @@ class Get(object):
             for c in comb(range(n), t):
                 if np.min(occ) == j:
                     return design  # you're done
-                cvio = 0  # the count of current violations
                 # check the candidate tuple
                 cur_tuple = tuple([images[x] for x in c])
                 if not _tuple_permitted(cur_tuple, obs):
@@ -1052,8 +1051,6 @@ class Get(object):
                     # make sure that at least one of these images even needs
                     # to be shown!
                     continue
-                # ug, I was storing observed image indices instead of the
-                # keys. I'm an idiot.
                 for x1, x2 in comb(cur_tuple, 2):
                     obs.add(pair_to_tuple(x1, x2))
                 for i in c:

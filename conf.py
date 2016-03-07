@@ -71,7 +71,7 @@ TASK CONFIGURATION
 """
 DEF_NUM_IMAGES_PER_TASK = 30   # the default number of images that appear in a
                                # block.
-DEF_NUM_IMAGE_APPEARANCE_PER_TASK = 3  # the default number of image
+DEF_NUM_IMAGE_APPEARANCE_PER_TASK = 1  # the default number of image
                                        # appearances per task. [no practice
                                        # analogue]
 DEF_INTRO_INSTRUCTIONS = \
