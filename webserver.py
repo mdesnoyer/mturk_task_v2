@@ -103,6 +103,7 @@ mtconn = boto.mturk.connection.MTurkConnection(
             host=mturk_host)
 
 mt = MTurk(mtconn)
+mt.setup_quals()
 
 # instantiate the thread pool
 executors = {'default': ThreadPoolExecutor(NUM_THREADS)}

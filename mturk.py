@@ -83,13 +83,20 @@ class MTurk(object):
         :return: An instance of MTurk.
         """
         self.mtconn = mtconn
-        # TODO: figure out which functions can be discarded and stuff.
-        self._get_qualification_ids()
-        self._gen_requirement()
-        self._gen_practice_requirement()
         self.current_balance = 0
         self.get_account_balance()  # get the current account balance
         _log.info('Current account funds: $%.2f' % self.current_balance)
+
+    def setup_quals(self):
+        """
+        Creates the qualifications and elaborates them into the appropriate
+        MTurk requirements.
+
+        :return: None
+        """
+        self._get_qualification_ids()
+        self._gen_requirement()
+        self._gen_practice_requirement()
 
     def _get_all_hits_of_type_by_status_selector(self, hit_type_id=None,
                                                  ids_only=False,
