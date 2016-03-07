@@ -448,8 +448,12 @@ def submit():
             to_return = make_practice_passed()
             dbset.practice_pass(request.json)
             mt.grant_worker_practice_passed(worker_id)
-            mon.increment("n_practices_passed")
-            mon.decrement("n_tasks_in_progress")
+            try:
+                mon.increment("n_practices_passed")
+                mon.decrement("n_tasks_in_progress")
+            except:
+                import ipdb
+                ipdb.pm()
         else:
             to_return = make_practice_failed()
             mon.increment("n_practices_rejected")
