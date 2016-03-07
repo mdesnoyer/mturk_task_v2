@@ -426,7 +426,10 @@ def submit():
 
     :return: Success page.
     """
-    worker_ip = request.remote_addr
+    if request.headers.getlist("X-Forwarded-For"):
+       worker_ip = request.headers.getlist("X-Forwarded-For")[0]
+    else:
+       worker_ip = request.remote_addr
     hit_id = request.json[0]['hitId']
     worker_id = request.json[0]['workerId']
     task_id = request.json[0]['taskId']
