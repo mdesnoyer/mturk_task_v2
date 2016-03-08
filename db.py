@@ -1978,7 +1978,8 @@ class Set(object):
                     num_contradictions += 1
         # compute the distribution of clicks.
         total_observations = 0
-        max_index = 0
+        # TODO: Fix this hard coding (how?)
+        max_index = 3  # HARD CODING!
         counts_by_index = Counter()
         for idx in choice_idxs:
             if idx > -1:
@@ -1987,11 +1988,9 @@ class Set(object):
                 if max_index < idx:
                     max_index = idx
             # compute the p value
-        obs = [float(counts_by_index[key]) / total_observations for key in
-               range(max_index)]
-        expected = [float(total_observations) / max_index for _ in range(
-            max_index)]
-        chi_stat, p_value = stats.chisquare(obs, expected)
+        obs = [counts_by_index[key] for key in range(max_index)]
+        chi_stat, p_value = stats.chisquare(obs)
+        p_value = 1 - p_value
         frac_contradictions = float(num_contradictions) / len(data)
         frac_unanswered = float(num_unanswered) / len(data)
         if frac_unanswered < 1.0:
