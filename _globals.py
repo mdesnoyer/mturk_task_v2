@@ -78,7 +78,8 @@ EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = 'https://%s/submit' % WEBSERVER_URL
 MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'
 # the host for the vanilla sandbox
 MTURK_HOST = 'mechanicalturk.amazonaws.com'
-KRYPTON_WID = 'A1RPGGKICRYDKC'
+KRYPTON_WID = 'A1RPGGKICRYDKC'  # Krypton's worker ID
+KRYPTON_RID = None  # Krypton's requester ID
 
 """
 TEMPLATES
@@ -133,7 +134,7 @@ DATABASE_LOCATION = "10.0.36.202"
 # if True, will store all practice pairs as if they were in real trials.
 STORE_PRACTICE_PAIRS = False
 # The number of images to activate in a chunk.
-ACTIVATION_CHUNK_SIZE = 2000
+ACTIVATION_CHUNK_SIZE = 4000
 # the default length of time for a ban
 DEFAULT_BAN_LENGTH = float(60*60*24*7)
 # the amount of time a task may be pending without being completed

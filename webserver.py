@@ -221,6 +221,8 @@ def check_practices(mt, dbget, dbset, hit_type_id):
             # disable it
             mt.disable_hit(hit.HITId)
             to_generate += 1
+    if to_generate <= 0:
+        return
     _log.info('Need to generate %i more practices' % to_generate)
     for _ in range(to_generate):
         task_id, exp_seq, attribute, register_task_kwargs = \

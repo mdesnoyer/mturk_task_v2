@@ -301,7 +301,7 @@ class MTurk(object):
         if hit.HITStatus == 'Disposed':
             return HIT_DISPOSED
         assignments = self.mtconn.get_assignments(hit.HITId)
-        if len(assignments) == hit.MaxAssignments:
+        if len(assignments) == int(hit.MaxAssignments):
             if assignments[0].AssignmentStatus == 'Assignable':
                 return HIT_APPROVED
             elif assignments[0].AssignmentStatus == 'Rejected':
