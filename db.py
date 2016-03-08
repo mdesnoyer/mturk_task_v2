@@ -70,7 +70,7 @@ def _get_preexisting_pairs(conn, images):
     :return: A set of tuples of forbidden image ID pairs.
     """
     found_pairs = set()
-    table = conn.table(IMAGE_TABLE)
+    table = conn.table(PAIR_TABLE)
     im_set = set(images)
     for im1 in images:
         scanner = table.scan(row_prefix=im1,
