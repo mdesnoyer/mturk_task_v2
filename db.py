@@ -997,7 +997,43 @@ class Get(object):
         return list(images)
 
     # TASK DESIGN STUFF
-    
+
+    def gen_design_simple(self, n, t, image_attributes=IMAGE_ATTRIBUTES):
+        """
+        Simplified version of gen_design, which accepts fewer parameters:
+        instead of having the image appear n times per segment type, the image
+        appears precisely once across all 'keep' segments and once across all
+        'reject' segments. If the total number of images presented is less
+        than n, then it will simply return as many as it can. Additionally,
+        note that the following must be true: n % t = 0. If not true, then it
+        will adjust n such that:
+
+            n := n - (n % t)
+
+        :param n: The number of distinct elements involved in the experiment.
+        :param t: The number of elements to present each trial.
+        :param image_attributes:
+        :param image_attributes: The attributes that images must have to be
+                                 into the study. Images must have any of
+                                 these attributes.
+        :return: A list of tuples representing each subset. Elements may be
+                 randomized within trial and subset order may be randomized
+                 without consequence. If there is not enough images to
+                 generate, returns None.
+        """
+        n = n - (n % t)
+        images = self.get_n_images(n, image_attributes=image_attributes)
+        if images is None:
+            _log.error('Unable to fetch images to generate design!')
+            return None
+        np.random.shuffle(images)
+        obs = _get_preexisting_pairs(self.conn, images)
+        design = [tuple(images[i:i+t]) for i in range(0, len(images), t)]
+        design = filter(lambda x: _tuple_permitted(x, obs), design)
+        _log.debug('Design generated, %i tuples requested, %i obtained' % (
+            n/t, len(design)))
+        return design
+
     def gen_design(self, n, t, j, image_attributes=IMAGE_ATTRIBUTES):
         """
         Returns a task design, as a series of tuples of images. This is based
@@ -1146,8 +1182,12 @@ class Get(object):
             else:
                 prompt = DEF_PROMPT
         # get the tuples
-        image_tuples = self.gen_design(n, t, j,
-                                       image_attributes=image_attributes)
+        if j == 1:
+            image_tuples = \
+                self.gen_design_simple(n, t, image_attributes=image_attributes)
+        else:
+            image_tuples = \
+                self.gen_design(n, t, j, image_attributes=image_attributes)
         if image_tuples is None:
             return None, None, None, None
         # assemble a dict mapping image_tuples images to an index
