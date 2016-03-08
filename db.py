@@ -619,8 +619,17 @@ class Get(object):
         :return: Boolean. Returns True if the task specified by the task ID
                  is a practice, otherwise false.
         """
-        table = self.conn.table(TASK_TABLE)
-        return table.row(task_id).get('metadata:is_practice', FALSE) == TRUE
+        try:
+            table = self.conn.table(TASK_TABLE)
+            return table.row(task_id).get('metadata:is_practice', FALSE) == TRUE
+        except Exception as e:
+            _log.warn('Problem determining if task %s is practice: %s' % (
+                task_id, e.message))
+            # default to the backup method
+            if PRACTICE_PREFIX in task_id:
+                return True
+            else:
+                return False
 
     # HIT TYPES
     

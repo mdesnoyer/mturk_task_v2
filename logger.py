@@ -30,11 +30,17 @@ def config_root_logger(logfile=None):
         handler = logging.handlers.RotatingFileHandler(
             logfile,
             maxBytes=104857600L,  # 100 MB
-            backupCount=3)
+            backupCount=6)
         handler.addFilter(fltr1)
-        handler.addFilter(fltr2)
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+        handler_aps = logging.handlers.RotatingFileHandler(
+            logfile,
+            maxBytes=104857600L,  # 100 MB
+            backupCount=6)
+        handler_aps.addFilter(fltr2)
+        handler_aps.setFormatter(formatter)
+        logger.addHandler(handler_aps)
 
 
 def setup_logger(log_name):
