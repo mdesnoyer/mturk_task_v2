@@ -86,9 +86,9 @@ if LOCAL:
     EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = 'https://127.0.0.1:12344/submit'
 # instantiate a database connection & database objects
 _log.info('Instantiating database connection')
-conn = happybase.Connection(host=DATABASE_LOCATION)
-dbget = Get(conn)
-dbset = Set(conn)
+pool = happybase.ConnectionPool(size=8, host=DATABASE_LOCATION)
+dbget = Get(pool)
+dbset = Set(pool)
 
 # instantiate the mechanical turk connection & mturk objects
 _log.info('Instantiating mturk connection')

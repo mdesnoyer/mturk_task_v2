@@ -28,8 +28,8 @@ AWS STUFF
 MTURK_ACCESS_ID = 'AKIAJPB4VQCDGOUQK2JA'
 MTURK_SECRET_KEY = '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'
 # AWS
-AWS_ACCESS_ID = None #os.environ['AWS_ACCESS_ID']
-AWS_SECRET_KEY = None #os.environ['AWS_SECRET_KEY']
+AWS_ACCESS_ID = None  # os.environ['AWS_ACCESS_ID']
+AWS_SECRET_KEY = None  # os.environ['AWS_SECRET_KEY']
 IMAGE_BUCKET = 'neon-image-library'  # the location on S3 of the images
 
 """
@@ -69,7 +69,7 @@ DEF_EXTENSION_TIME = 60*60*3  # The default time to extend a hit for during
 """
 TASK CONFIGURATION
 """
-DEF_NUM_IMAGES_PER_TASK = 99   # the default number of images that appear in a
+DEF_NUM_IMAGES_PER_TASK = 198   # the default number of images that appear in a
                                # block.
 DEF_NUM_IMAGE_APPEARANCE_PER_TASK = 1  # the default number of image
                                        # appearances per task. [no practice
@@ -103,7 +103,13 @@ DEF_KEEP_BLOCKS = 1  # the default number of keep blocks for a task
 DEF_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
 RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized
                                  # within task.
-DEFAULT_TASK_PAYMENT = 0.66  # the default payment for
+#DEFAULT_TASK_PAYMENT = 0.45  # the default payment for tasks
+# we are computing the default task payment as:
+# (number of tuples to rate per segment) * (number of segments) * (secs per
+# tuple) * (price per minute)
+DEFAULT_TASK_PAYMENT = (DEF_NUM_IMAGES_PER_TASK / 3. *
+                        DEF_NUM_IMAGE_APPEARANCE_PER_TASK) * 2 * \
+                       DEF_TRIAL_TIME / 1000 * (0.125 / 60)
 DEFAULT_TASK_NAME = 'Choosing images'  # The title for the actual tasks.
 DESCRIPTION = ('Choosing %s images. These HITs are always instantly accepted.' %
                ATTRIBUTE)
@@ -125,7 +131,7 @@ DEF_PRACTICE_PROMPT = \
 DEF_PRACTICE_KEEP_BLOCKS = 1  # the default number of keep blocks for a
                               # practice task
 DEF_PRACTICE_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
-DEFAULT_PRACTICE_PAYMENT = 0.20  # the default payment for practices
+DEFAULT_PRACTICE_PAYMENT = 0.10  # the default payment for practices
 DEFAULT_PRACTICE_TASK_NAME = \
     'Practice choosing images'  # The title for practice tasks.
 PRACTICE_DESCRIPTION = \
@@ -140,8 +146,8 @@ TASK_VALIDATION
 """
 # TODO: Change debrief js to use these values.
 MAX_MEAN_RT = np.inf
-MIN_TRIAL_RT = 300
-MAX_PROB_RANDOM = 0.8
+MIN_TRIAL_RT = 400
+MAX_PROB_RANDOM = 0.95
 MAX_FRAC_CONTRADICTIONS = 0.3
 MAX_FRAC_UNANSWERED = 0.2
 MAX_FRAC_TOO_FAST = 0.2

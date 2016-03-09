@@ -365,12 +365,12 @@ class Get(object):
     Handles general query events for the task. These are more abstract than
     the 'set' functions, as there is a larger variety of possibilities here.
     """
-    def __init__(self, conn):
+    def __init__(self, pool):
         """
-        :param conn: The HappyBase / HBase connection object.
+        :param pool: A HappyBase connection pool object
         :return: A Get instance.
         """
-        self.conn = conn
+        self.pool = pool
         self._last_active_im = None  # stores the last active image scanned
     
     def worker_exists(self, worker_id):
@@ -380,8 +380,9 @@ class Get(object):
         :param worker_id: The Worker ID (from MTurk), as a string.
         :return: True if the there are records of this worker, otherwise false.
         """
-        table = self.conn.table(WORKER_TABLE)
-        return self.table_has_row(table, worker_id)
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            return self.table_has_row(table, worker_id)
 
     def worker_need_demographics(self, worker_id):
         """
@@ -391,8 +392,9 @@ class Get(object):
         :return: True if we need demographic information from the worker. False
                  otherwise.
         """
-        table = self.conn.table(WORKER_TABLE)
-        row_data = table.row(worker_id)
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            row_data = table.row(worker_id)
         if not len(row_data.get('demographics:gender', '')):
             return True
         else:
@@ -404,10 +406,11 @@ class Get(object):
 
         :return: An iterator over workers, which returns worker IDs.
         """
-        table = self.conn.table(WORKER_TABLE)
-        scanner = table.scan(filter=b'KeyOnlyFilter() AND FirstKeyOnlyFilter()')
-        for row_key, data in scanner:
-            yield row_key
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            scanner = table.scan(filter=b'KeyOnlyFilter() AND FirstKeyOnlyFilter()')
+            for row_key, data in scanner:
+                yield row_key
         return
 
     def worker_need_practice(self, worker_id):
@@ -418,8 +421,9 @@ class Get(object):
         :return: True if the worker has not passed a practice yet and must be
                  served one. False otherwise.
         """
-        table = self.conn.table(WORKER_TABLE)
-        row_data = table.row(worker_id)
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            row_data = table.row(worker_id)
         return row_data.get('status:passed_practice', FALSE) != TRUE
 
     def current_worker_practices_number(self, worker_id):
@@ -430,8 +434,9 @@ class Get(object):
         :return: An integer corresponding to the practice the worker needs
                  (starting from the top 'row')
         """
-        table = self.conn.table(WORKER_TABLE)
-        row_data = table.row(worker_id)
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            row_data = table.row(worker_id)
         return int(row_data.get(
             'status:num_practices_attempted_interval', '0'))
 
@@ -442,8 +447,9 @@ class Get(object):
         :param worker_id: The Worker ID (from MTurk), as a string.
         :return: True if the worker is banned, False otherwise.
         """
-        table = self.conn.table(WORKER_TABLE)
-        data = table.row(worker_id, columns=['status:is_banned'])
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            data = table.row(worker_id, columns=['status:is_banned'])
         return data.get('status:is_banned', FALSE) == TRUE
 
     def get_worker_ban_time_reason(self, worker_id):
@@ -456,10 +462,11 @@ class Get(object):
         """
         if not self.worker_is_banned(worker_id):
             return None, None
-        table = self.conn.table(WORKER_TABLE)
-        data = table.row(worker_id,
-                         columns=['status:ban_length', 'status:ban_reason'],
-                         include_timestamp=True)
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            data = table.row(worker_id,
+                             columns=['status:ban_length', 'status:ban_reason'],
+                             include_timestamp=True)
         ban_time, timestamp = data.get('status:ban_length',
                                        (DEFAULT_BAN_LENGTH, 0))
         ban_reason, _ = data.get('status:ban_reason', (DEFAULT_BAN_REASON, 0))
@@ -474,8 +481,10 @@ class Get(object):
         :return: Integer, the number of tasks the worker has attempted this
                  week.
         """
-        table = self.conn.table(WORKER_TABLE)
-        data = table.row(worker_id, columns=['stats:num_attempted_interval'])
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            data = table.row(worker_id,
+                             columns=['stats:num_attempted_interval'])
         return int(data.get('stats:num_attempted_interval', '0'))
 
     def worker_attempted_too_much(self, worker_id):
@@ -499,8 +508,9 @@ class Get(object):
         :return: Float, the number of tasks rejected divided by the number of
                  tasks accepted.
         """
-        table = self.conn.table(WORKER_TABLE)
-        return table.counter_get(worker_id, 'stats:num_rejected_interval')
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            return table.counter_get(worker_id, 'stats:num_rejected_interval')
 
     def worker_weekly_reject_accept_ratio(self, worker_id):
         """
@@ -510,11 +520,12 @@ class Get(object):
         :return: Float, the number of tasks rejected divided by the number of
                  tasks accepted.
         """
-        table = self.conn.table(WORKER_TABLE)
-        num_acc = float(table.counter_get(worker_id,
-                                          'stats:num_accepted_interval'))
-        num_rej = float(table.counter_get(worker_id,
-                                          'stats:num_rejected_interval'))
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            num_acc = float(table.counter_get(worker_id,
+                                              'stats:num_accepted_interval'))
+            num_rej = float(table.counter_get(worker_id,
+                                              'stats:num_rejected_interval'))
         return num_rej / (num_acc + num_rej)
 
     # TASK
@@ -526,10 +537,9 @@ class Get(object):
         :param task_id: The task ID, which is the row key.
         :return: A status code, as defined in conf.
         """
-        table = self.conn.table(TASK_TABLE)
-        if not self.table_has_row(table, task_id):
-            return DOES_NOT_EXIST
-        task = table.row(task_id)
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            task = table.row(task_id)
         if task.get('metadata:is_practice', FALSE) == TRUE:
             return IS_PRACTICE
         if task.get('status:awaiting_serve', FALSE) == TRUE:
@@ -555,10 +565,11 @@ class Get(object):
         row_filter = general_filter([('status', 'awaiting_hit_type'),
                                      ('status', 'awaiting_serve')],
                                     [FALSE, TRUE], key_only=False)
-        scanner = self.conn.table(TASK_TABLE).scan(filter=row_filter)
-        awaiting_serve_cnt = 0
-        for _ in scanner:
-            awaiting_serve_cnt += 1
+        with self.pool.connection() as conn:
+            scanner = conn.table(TASK_TABLE).scan(filter=row_filter)
+            awaiting_serve_cnt = 0
+            for _ in scanner:
+                awaiting_serve_cnt += 1
         return awaiting_serve_cnt
 
     def get_task_blocks(self, task_id):
@@ -570,26 +581,28 @@ class Get(object):
         :return: List of blocks represented as dictionaries, if there is a
                  problem returns None.
         """
-        table = self.conn.table(TASK_TABLE)
-        _log.debug('Fetching task blocks...')
-        pickled_blocks = \
-            table.row(task_id, columns=['blocks:c1']).get('blocks:c1', None)
-        if pickled_blocks is None:
-            return None
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            _log.debug('Fetching task blocks...')
+            pickled_blocks = \
+                table.row(task_id, columns=['blocks:c1']).get('blocks:c1', None)
+            if pickled_blocks is None:
+                return None
         blocks = loads(pickled_blocks)
         _log.debug('Task blocks fetched')
         _log.debug('Fetching image urls...')
-        table = self.conn.table(IMAGE_TABLE)
-        # convert the image IDs into URLs
-        # fetching with the 'rows' operation so it's not as slow
-        ims_to_fetch = set()
-        for block in blocks:
-            for im_list in block['images']:
-                for image in im_list:
-                    ims_to_fetch.add(image)
-        fetched = table.rows(ims_to_fetch, columns=['metadata:url',
-                                                    'metadata:height',
-                                                    'metadata:width'])
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            # convert the image IDs into URLs
+            # fetching with the 'rows' operation so it's not as slow
+            ims_to_fetch = set()
+            for block in blocks:
+                for im_list in block['images']:
+                    for image in im_list:
+                        ims_to_fetch.add(image)
+            fetched = table.rows(ims_to_fetch, columns=['metadata:url',
+                                                        'metadata:height',
+                                                        'metadata:width'])
         url_map = dict()
         height_map = dict()
         width_map = dict()
@@ -620,8 +633,10 @@ class Get(object):
                  is a practice, otherwise false.
         """
         try:
-            table = self.conn.table(TASK_TABLE)
-            return table.row(task_id).get('metadata:is_practice', FALSE) == TRUE
+            with self.pool.connection() as conn:
+                table = conn.table(TASK_TABLE)
+                return table.row(task_id).get(
+                    'metadata:is_practice', FALSE) == TRUE
         except Exception as e:
             _log.warn('Problem determining if task %s is practice: %s' % (
                 task_id, e.message))
@@ -641,8 +656,9 @@ class Get(object):
         :return: The HIT Type information, as a dictionary. If this hit_type_id
                  does not exist, returns an empty dictionary.
         """
-        table = self.conn.table(HIT_TYPE_TABLE)
-        return table.row(hit_type_id)
+        with self.pool.connection() as conn:
+            table = conn.table(HIT_TYPE_TABLE)
+            return table.row(hit_type_id)
 
     def hit_type_matches(self, hit_type_id,
                          task_attribute=ATTRIBUTE,
@@ -690,11 +706,12 @@ class Get(object):
                                  assigned to this HIT type.
         :return: The active HIT Type ID, otherwise returns None.
         """
-        for hid_type_id, _ in self.get_active_hit_types():
-            if self.hit_type_matches(hid_type_id,
-                                     task_attribute,
-                                     image_attributes):
-                return hid_type_id
+        with self.pool.connection() as conn:
+            for hid_type_id, _ in self.get_active_hit_types(conn):
+                if self.hit_type_matches(hid_type_id,
+                                         task_attribute,
+                                         image_attributes):
+                    return hid_type_id
 
     def get_active_practice_hit_type_for(self, task_attribute=ATTRIBUTE,
                                          image_attributes=IMAGE_ATTRIBUTES):
@@ -708,34 +725,37 @@ class Get(object):
                                  assigned to this HIT type.
         :return: The active HIT Type ID, otherwise returns None.
         """
-        for hid_type_id, _ in self.get_active_practice_hit_types():
-            if self.hit_type_matches(hid_type_id,
-                                     task_attribute,
-                                     image_attributes):
-                return hid_type_id
+        with self.pool.connection() as conn:
+            for hid_type_id, _ in self.get_active_practice_hit_types(conn):
+                if self.hit_type_matches(hid_type_id,
+                                         task_attribute,
+                                         image_attributes):
+                    return hid_type_id
 
-    def get_active_hit_types(self):
+    def get_active_hit_types(self, conn):
         """
         Obtains active hit types which correspond to non-practice tasks.
 
+        :param conn: A HappyBase connection object.
         :return: An iterator over active hit types.
         """
         row_filter = \
             general_filter([('status', 'active'), ('metadata', 'is_practice')],
                            values=[TRUE, FALSE],
                            key_only=False)
-        return self.conn.table(HIT_TYPE_TABLE).scan(filter=row_filter)
+        return conn.table(HIT_TYPE_TABLE).scan(filter=row_filter)
 
-    def get_active_practice_hit_types(self):
+    def get_active_practice_hit_types(self, conn):
         """
         Obtains active hit types that correspond to practice tasks.
 
+        :param conn: A HappyBase connection object.
         :return: An iterator over active practice hit types.
         """
         row_filter = \
             general_filter([('status', 'active'), ('metadata', 'is_practice')],
                            values=[TRUE, TRUE], key_only=False)
-        return self.conn.table(HIT_TYPE_TABLE).scan(filter=row_filter)
+        return conn.table(HIT_TYPE_TABLE).scan(filter=row_filter)
 
     # GENERAL QUERIES
 
@@ -746,7 +766,8 @@ class Get(object):
         :param table_name: The name of the table to check for existence.
         :return: True if table exists, false otherwise.
         """
-        return table_name in self.conn.tables()
+        with self.pool.connection() as conn:
+            return table_name in conn.tables()
 
     @staticmethod
     def table_has_row(table, row_key):
@@ -802,14 +823,14 @@ class Get(object):
                                  considered must satisfy.
         :return: True if the number of active images >= n, False otherwise.
         """
-        table = self.conn.table(IMAGE_TABLE)
-        scanner = table.scan()
-        scanner = table.scan(columns=['metadata:is_active'],
-                             filter=attribute_image_filter(image_attributes,
-                                                           only_active=True))
-        for cnt, _ in enumerate(scanner):
-            if (cnt + 1) >= n:
-                return True
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            scanner = table.scan(columns=['metadata:is_active'],
+                                 filter=attribute_image_filter(
+                                     image_attributes, only_active=True))
+            for cnt, _ in enumerate(scanner):
+                if (cnt + 1) >= n:
+                    return True
         return False
 
     def get_active_image_scanner(self, image_attributes=IMAGE_ATTRIBUTES):
@@ -819,42 +840,47 @@ class Get(object):
         the _last_active_im attribute of the class so it can 'remember' where
         it left off each time. This will iterate indefinitely over images,
         looping over the list again and again, until it is destructed. When a
-        new one is instaniated, it will pick up where the previous one left off.
+        new one is instantiated, it will pick up where the previous one left
+        off.
 
         :param image_attributes: The image attributes that the images
                                  considered must satisfy.
         :return: A generator over active images which match the attribute
                  criteria.
         """
-        table = self.conn.table(IMAGE_TABLE)
-        scanner = table.scan(row_start=self._last_active_im,
-                             columns=['metadata:is_active'],
-                             filter=attribute_image_filter(image_attributes,
-                                                           only_active=True))
-        if self._last_active_im is not None:
-            # the row_start argument is inclusive, so if _last_active_im is not
-            # none, then it will first return the last seen image--so we need
-            # to omit it.
-            try:
-                _ = scanner.next()
-            except StopIteration:
-                self._last_active_im = None
-                scanner = table.scan(row_start=self._last_active_im,
-                             columns=['metadata:is_active'],
-                             filter=attribute_image_filter(image_attributes,
-                                                           only_active=True))
-        while True:
-            try:
-                im_id, _ = scanner.next()
-            except StopIteration:
-                self._last_active_im = None
-                scanner = table.scan(row_start=self._last_active_im,
-                             columns=['metadata:is_active'],
-                             filter=attribute_image_filter(image_attributes,
-                                                           only_active=True))
-                im_id, _ = scanner.next()
-            self._last_active_im = im_id
-            yield im_id
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            scanner = table.scan(
+                row_start=self._last_active_im,
+                columns=['metadata:is_active'],
+                filter=attribute_image_filter(image_attributes,
+                                              only_active=True))
+            if self._last_active_im is not None:
+                # the row_start argument is inclusive, so if _last_active_im is
+                # not none, then it will first return the last seen image--so
+                # we need to omit it.
+                try:
+                    _ = scanner.next()
+                except StopIteration:
+                    self._last_active_im = None
+                    scanner = table.scan(
+                        row_start=self._last_active_im,
+                        columns=['metadata:is_active'],
+                        filter=attribute_image_filter(image_attributes,
+                                                      only_active=True))
+            while True:
+                try:
+                    im_id, _ = scanner.next()
+                except StopIteration:
+                    self._last_active_im = None
+                    scanner = table.scan(
+                        row_start=self._last_active_im,
+                        columns=['metadata:is_active'],
+                        filter=attribute_image_filter(image_attributes,
+                                                      only_active=True))
+                    im_id, _ = scanner.next()
+                self._last_active_im = im_id
+                yield im_id
 
     def get_n_active_images_count(self, image_attributes=IMAGE_ATTRIBUTES):
         """
@@ -864,15 +890,17 @@ class Get(object):
                                  considered must satisfy.
         :return: An integer, the number of active images.
         """
-        table = self.conn.table(IMAGE_TABLE)
-        # note: do NOTE use binary prefix, because 1 does not correspond to the
-        # string 1, but to the binary 1.
-        scanner = table.scan(columns=['metadata:is_active'],
-                             filter=attribute_image_filter(image_attributes,
-                                                           only_active=True))
-        active_image_count = 0
-        for _ in scanner:
-            active_image_count += 1
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            # note: do NOTE use binary prefix, because 1 does not correspond
+            # to the string 1, but to the binary 1.
+            scanner = table.scan(
+                columns=['metadata:is_active'],
+                filter=attribute_image_filter(image_attributes,
+                                              only_active=True))
+            active_image_count = 0
+            for _ in scanner:
+                active_image_count += 1
         return active_image_count
 
     def get_active_images(self, image_attributes=IMAGE_ATTRIBUTES):
@@ -883,15 +911,17 @@ class Get(object):
                                  considered must satisfy.
         :return: A list of active images
         """
-        table = self.conn.table(IMAGE_TABLE)
-        # note: do NOTE use binary prefix, because 1 does not correspond to the
-        # string 1, but to the binary 1.
-        scanner = table.scan(columns=['metadata:is_active'],
-                             filter=attribute_image_filter(image_attributes,
-                                                           only_active=True))
-        active_images = []
-        for im_key, im_data in scanner:
-            active_images.append(im_key)
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            # note: do NOTE use binary prefix, because 1 does not correspond
+            # to the string 1, but to the binary 1.
+            scanner = table.scan(
+                columns=['metadata:is_active'],
+                filter=attribute_image_filter(image_attributes,
+                                              only_active=True))
+            active_images = []
+            for im_key, im_data in scanner:
+                active_images.append(im_key)
         return active_images
 
     def image_is_active(self, image_id):
@@ -902,10 +932,11 @@ class Get(object):
         :param image_id: The image ID, which is the row key.
         :return: True if the image is active. False otherwise.
         """
-        table = self.conn.table(IMAGE_TABLE)
-        is_active = table.row(image_id,
-                              columns=['metadata:is_active']
-                              ).get('metadata:is_active', None)
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            is_active = table.row(image_id,
+                                  columns=['metadata:is_active']
+                                  ).get('metadata:is_active', None)
         if is_active == TRUE:
             return True
         else:
@@ -922,23 +953,26 @@ class Get(object):
         :return: Integer, the min number of times seen.
         """
         obs_min = np.inf
-        table = self.conn.table(IMAGE_TABLE)
-        # note that if we provide a column argument, rows without this column
-        #  are not emitted.
-        scanner = table.scan(columns=['stats:num_times_seen'],
-                             filter=attribute_image_filter(image_attributes,
-                                                           only_active=True))
-        been_seen = 0
-        for row_key, _ in scanner:
-            been_seen += 1
-            cur_seen = table.counter_get(row_key, 'stats:num_times_seen')
-            if cur_seen < obs_min:
-                obs_min = cur_seen
-            if obs_min == 0:
-                return 0  # it can't go below 0, so you can cut the scan short
-        if not been_seen:
-            return 0  # this is an edge case, where none of the images have
-            # been seen.
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            # note that if we provide a column argument, rows without this
+            # column are not emitted.
+            scanner = table.scan(
+                columns=['stats:num_times_seen'],
+                filter=attribute_image_filter(image_attributes,
+                                              only_active=True))
+            been_seen = 0
+            for row_key, _ in scanner:
+                been_seen += 1
+                cur_seen = table.counter_get(row_key, 'stats:num_times_seen')
+                if cur_seen < obs_min:
+                    obs_min = cur_seen
+                if obs_min == 0:
+                    # it can't go below 0, so you can cut the scan short
+                    return 0
+            if not been_seen:
+                # this is an edge case, where none of the images have been seen.
+                return 0
         return obs_min
 
     def image_get_mean_seen(self, image_attributes=IMAGE_ATTRIBUTES):
@@ -949,21 +983,23 @@ class Get(object):
                                  considered must satisfy.
         :return: Integer, the min number of times seen.
         """
-        table = self.conn.table(IMAGE_TABLE)
-        scanner = table.scan(columns=['stats:num_times_seen'],
-                             filter=attribute_image_filter(image_attributes,
-                                                           only_active=True))
-        tot_ims = 0
-        tot_seen = 0
-        for row_key, _ in scanner:
-            tot_ims += 1
-            tot_seen += table.counter_get(row_key, 'stats:num_times_seen')
-        if not tot_ims:
-            rval = 0.
-        else:
-            rval = float(tot_seen) / tot_ims
-        mon.val_mean_image_seen = rval
-        return rval
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            scanner = table.scan(
+                columns=['stats:num_times_seen'],
+                filter=attribute_image_filter(image_attributes,
+                                              only_active=True))
+            tot_ims = 0
+            tot_seen = 0
+            for row_key, _ in scanner:
+                tot_ims += 1
+                tot_seen += table.counter_get(row_key, 'stats:num_times_seen')
+            if not tot_ims:
+                rval = 0.
+            else:
+                rval = float(tot_seen) / tot_ims
+            mon.val_mean_image_seen = rval
+            return rval
 
     def get_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES,
                      is_practice=False):
@@ -981,28 +1017,29 @@ class Get(object):
         :return: A list of image IDs, unless it cannot get enough images --
                  then returns None.
         """
-        table = self.conn.table(IMAGE_TABLE)
         count = self.get_n_active_images_count(
             image_attributes=image_attributes)
-        if n > count:
-            _log.warning('Insufficient number of active images, '
-                         'activating %i more.' % ACTIVATION_CHUNK_SIZE)
-            return None
-        generator = \
-            self.get_active_image_scanner(image_attributes=image_attributes)
-        prob = float(n) / count
-        images = set()
-        while len(images) < n:
-            im_id = generator.next()
-            if np.random.rand() > prob:
-                continue
-            if is_practice:
-                images.add(im_id)
-            sd = table.counter_get(im_id, 'stats:sampling_surplus')
-            if sd <= 0:
-                images.add(im_id)
-            else:
-                table.counter_dec(im_id, 'stats:sampling_surplus')
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            if n > count:
+                _log.warning('Insufficient number of active images, '
+                             'activating %i more.' % ACTIVATION_CHUNK_SIZE)
+                return None
+            generator = \
+                self.get_active_image_scanner(image_attributes=image_attributes)
+            prob = float(n) / count
+            images = set()
+            while len(images) < n:
+                im_id = generator.next()
+                if np.random.rand() > prob:
+                    continue
+                if is_practice:
+                    images.add(im_id)
+                sd = table.counter_get(im_id, 'stats:sampling_surplus')
+                if sd <= 0:
+                    images.add(im_id)
+                else:
+                    table.counter_dec(im_id, 'stats:sampling_surplus')
         return list(images)
 
     # TASK DESIGN STUFF
@@ -1036,7 +1073,8 @@ class Get(object):
             _log.error('Unable to fetch images to generate design!')
             return None
         np.random.shuffle(images)
-        obs = _get_preexisting_pairs(self.conn, images)
+        with self.pool.connection() as conn:
+            obs = _get_preexisting_pairs(conn, images)
         design = [tuple(images[i:i+t]) for i in range(0, len(images), t)]
         design = filter(lambda x: _tuple_permitted(x, obs), design)
         _log.debug('Design generated, %i tuples requested, %i obtained' % (
@@ -1075,7 +1113,8 @@ class Get(object):
         # shuffle the images (remember its in-place! >.<)
         np.random.shuffle(images)
         # the set of observed tuples
-        obs = _get_preexisting_pairs(self.conn, images)
+        with self.pool.connection() as conn:
+            obs = _get_preexisting_pairs(conn, images)
         for iocc in range(0, t + j):
             # maximize the efficiency of the design, and also ensure that the
             #  number of j-violations (the number of times an image is shown
@@ -1259,20 +1298,21 @@ class Get(object):
         :return: An appropriate HIT type ID for this task, otherwise None.
         Returns the first one it finds.
         """
-        task_info = self.conn.table(TASK_TABLE).row(task_id)
-        cur_task_is_practice = task_info.get('metadata:is_practice', FALSE) \
-                               == TRUE
-        task_attribute = task_info.get('metadata:attribute', ATTRIBUTE)
-        image_attributes = loads(task_info.get('metadata:image_attributes',
-                                               dumps(IMAGE_ATTRIBUTES)))
-        if cur_task_is_practice:
-            scanner = self.get_active_practice_hit_types()
-        else:
-            scanner = self.get_active_hit_types()
-        for hit_type_id, _ in scanner:
-            if self.hit_type_matches(hit_type_id, task_attribute,
-                                     image_attributes):
-                return hit_type_id
+        with self.pool.connection() as conn:
+            task_info = conn.table(TASK_TABLE).row(task_id)
+            cur_task_is_practice = task_info.get(
+                'metadata:is_practice', FALSE) == TRUE
+            task_attribute = task_info.get('metadata:attribute', ATTRIBUTE)
+            image_attributes = loads(task_info.get('metadata:image_attributes',
+                                                   dumps(IMAGE_ATTRIBUTES)))
+            if cur_task_is_practice:
+                scanner = self.get_active_practice_hit_types(conn)
+            else:
+                scanner = self.get_active_hit_types(conn)
+            for hit_type_id, _ in scanner:
+                if self.hit_type_matches(hit_type_id, task_attribute,
+                                         image_attributes):
+                    return hit_type_id
         return None
 
     def get_task_time(self, task_id):
@@ -1283,7 +1323,8 @@ class Get(object):
         :return: The upper-bound on the number of seconds the task will take
         to complete, assuming that the directions take 0 seconds to read.
         """
-        task_info = self.conn.table(TASK_TABLE).row(task_id)
+        with self.pool.connection() as conn:
+            task_info = conn.table(TASK_TABLE).row(task_id)
         num_tuples = int(task_info.get('metadata:num_tuples', '0'))
         trial_time = DEF_TRIAL_TIME + TIMING_POST_TRIAL
         # get the task time in milliseconds
@@ -1351,12 +1392,12 @@ class Set(object):
     Create/recreate pairs table
     Create/recreate wins table
     """
-    def __init__(self, conn):
+    def __init__(self, pool):
         """
-        :param conn: The HappyBase / HBase connection object.
+        :param pool: A HappyBase connection pool.
         :return: A Get instance.
         """
-        self.conn = conn
+        self.pool = pool
 
     def _image_is_active(self, image_id):
         """
@@ -1370,9 +1411,11 @@ class Set(object):
         :param image_id: The image ID, which is the row key.
         :return: True if the image is active. False otherwise.
         """
-        table = self.conn.table(IMAGE_TABLE)
-        is_active = table.row(image_id, columns=['metadata:is_active']).get(
-            'metadata:is_active', None)
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            is_active = table.row(
+                image_id, columns=['metadata:is_active']).get(
+                'metadata:is_active', None)
         if is_active == TRUE:
             return True
         else:
@@ -1407,10 +1450,9 @@ class Set(object):
         :param task_id: The task ID, which is the row key.
         :return: A status code, as defined in conf.
         """
-        table = self.conn.table(TASK_TABLE)
-        if not self._table_has_row(table, task_id):
-            return DOES_NOT_EXIST
-        task = table.row(task_id)
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            task = table.row(task_id)
         if task.get('metadata:is_practice', FALSE) == TRUE:
             return IS_PRACTICE
         if task.get('status:awaiting_serve', FALSE) == TRUE:
@@ -1436,7 +1478,8 @@ class Set(object):
         :return: True if table was created. False otherwise.
         """
         _log.info('Creating worker table.')
-        return _create_table(self.conn, WORKER_TABLE, WORKER_FAMILIES, clobber)
+        with self.pool.connection() as conn:
+            return _create_table(conn, WORKER_TABLE, WORKER_FAMILIES, clobber)
 
     def create_task_table(self, clobber=False):
         """
@@ -1447,7 +1490,8 @@ class Set(object):
         :return: True if table was created. False otherwise.
         """
         _log.info('Creating task table.')
-        return _create_table(self.conn, TASK_TABLE, TASK_FAMILIES, clobber)
+        with self.pool.connection() as conn:
+            return _create_table(conn, TASK_TABLE, TASK_FAMILIES, clobber)
 
     def create_image_table(self, clobber=False):
         """
@@ -1458,7 +1502,8 @@ class Set(object):
         :return: True if table was created. False otherwise.
         """
         _log.info('Creating image table.')
-        return _create_table(self.conn, IMAGE_TABLE, IMAGE_FAMILIES, clobber)
+        with self.pool.connection() as conn:
+            return _create_table(conn, IMAGE_TABLE, IMAGE_FAMILIES, clobber)
 
     def create_pair_table(self, clobber=False):
         """
@@ -1469,7 +1514,8 @@ class Set(object):
         :return: True if table was created. False otherwise.
         """
         _log.info('Creating pair table.')
-        return _create_table(self.conn, PAIR_TABLE, PAIR_FAMILIES, clobber)
+        with self.pool.connection() as conn:
+            return _create_table(conn, PAIR_TABLE, PAIR_FAMILIES, clobber)
 
     def create_win_table(self, clobber=False):
         """
@@ -1480,7 +1526,8 @@ class Set(object):
         :return: True if table was created. False otherwise.
         """
         _log.info('Creating win table.')
-        return _create_table(self.conn, WIN_TABLE, WIN_FAMILIES, clobber)
+        with self.pool.connection() as conn:
+            return _create_table(conn, WIN_TABLE, WIN_FAMILIES, clobber)
 
     def create_task_type_table(self, clobber=False):
         """
@@ -1491,8 +1538,9 @@ class Set(object):
         :return: True if table was created. False otherwise.
         """
         _log.info('Creating HIT type table')
-        return _create_table(self.conn, HIT_TYPE_TABLE, HIT_TYPE_FAMILIES,
-                             clobber)
+        with self.pool.connection() as conn:
+            return _create_table(conn, HIT_TYPE_TABLE, HIT_TYPE_FAMILIES,
+                                 clobber)
 
     def force_regen_tables(self):
         """
@@ -1532,16 +1580,18 @@ class Set(object):
         #   - set is_active to false
         # you should only need to iterate over active images.
         _log.warn('Resetting image data')
-        table = self.conn.table(IMAGE_TABLE)
-        scanner = table.scan(columns=['metadata:is_active'],
-                             filter=attribute_image_filter([],
-                                                           only_active=True))
-        n = 0
-        for n, (im_key, _) in enumerate(scanner):
-            table.counter_set(im_key, 'stats:num_times_seen', 0)
-            table.counter_set(im_key, 'stats:sampling_surplus', 0)
-            table.counter_set(im_key, 'stats:num_wins', 0)
-            table.put(im_key, {'metadata:is_active': FALSE})
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            scanner = table.scan(
+                columns=['metadata:is_active'],
+                filter=attribute_image_filter([],
+                                              only_active=True))
+            n = 0
+            for n, (im_key, _) in enumerate(scanner):
+                table.counter_set(im_key, 'stats:num_times_seen', 0)
+                table.counter_set(im_key, 'stats:sampling_surplus', 0)
+                table.counter_set(im_key, 'stats:num_wins', 0)
+                table.put(im_key, {'metadata:is_active': FALSE})
         _log.info('Reset %i images' % (n + 1))
 
 
@@ -1603,8 +1653,9 @@ class Set(object):
                          'metadata:auto_approve_delay': auto_approve_delay,
                          'metadata:is_practice': is_practice,
                          'status:active': active}
-        table = self.conn.table(HIT_TYPE_TABLE)
-        table.put(hit_type_id, _conv_dict_vals(hit_type_dict))
+        with self.pool.connection() as conn:
+            table = conn.table(HIT_TYPE_TABLE)
+            table.put(hit_type_id, _conv_dict_vals(hit_type_dict))
 
     def register_task(self, task_id, exp_seq, attribute, blocks=None,
                       is_practice=False, check_ims=False, image_attributes=[]):
@@ -1658,24 +1709,25 @@ class Set(object):
         # some need to be incremented more than once
         im_tuples = []
         im_tuple_types = []
-        table = self.conn.table(IMAGE_TABLE)
-        for seg_type, segment in exp_seq:
-            for im_tuple in segment:
-                for im in im_tuple:
-                    if check_ims:
-                        if not self._image_is_active(im):
-                            _log.warning('Image %s is not active or does not '
-                                         'exist.' % im)
-                            continue
-                    images.add(im)
-                    image_list.append(im)
-                for imPair in comb(im_tuple, 2):
-                    pair_list.add(tuple(sorted(imPair)))
-                im_tuples.append(im_tuple)
-                im_tuple_types.append(seg_type)
-        if not is_practice:
-            for img in image_list:
-                table.counter_inc(img, 'stats:num_times_seen')
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            for seg_type, segment in exp_seq:
+                for im_tuple in segment:
+                    for im in im_tuple:
+                        if check_ims:
+                            if not self._image_is_active(im):
+                                _log.warning('Image %s is not active or does '
+                                             'not exist.' % im)
+                                continue
+                        images.add(im)
+                        image_list.append(im)
+                    for imPair in comb(im_tuple, 2):
+                        pair_list.add(tuple(sorted(imPair)))
+                    im_tuples.append(im_tuple)
+                    im_tuple_types.append(seg_type)
+            if not is_practice:
+                for img in image_list:
+                    table.counter_inc(img, 'stats:num_times_seen')
         # note: not in order of presentation!
         task_dict['metadata:images'] = dumps(images)
         task_dict['metadata:tuples'] = dumps(im_tuples)
@@ -1690,17 +1742,19 @@ class Set(object):
         else:
             task_dict['blocks:c1'] = dumps(blocks)
         # Input the data for the task table
-        table = self.conn.table(TASK_TABLE)
-        table.put(task_id, _conv_dict_vals(task_dict))
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            table.put(task_id, _conv_dict_vals(task_dict))
         # Input the data for the pair table.
         if is_practice and not STORE_PRACTICE_PAIRS:
             return
-        table = self.conn.table(PAIR_TABLE)
-        b = table.batch()
-        for pair in pair_list:
-            pid = _get_pair_key(pair[0], pair[1])
-            b.put(pid, _get_pair_dict(pair[0], pair[1], task_id, attribute))
-        b.send()
+        with self.pool.connection() as conn:
+            table = conn.table(PAIR_TABLE)
+            b = table.batch()
+            for pair in pair_list:
+                pid = _get_pair_key(pair[0], pair[1])
+                b.put(pid, _get_pair_dict(pair[0], pair[1], task_id, attribute))
+            b.send()
 
     def deactivate_hit_type(self, hit_type_id):
         """
@@ -1711,11 +1765,12 @@ class Set(object):
         :return: None
         """
         _log.info('Deactivating HIT Type %s' % hit_type_id)
-        table = self.conn.table(HIT_TYPE_TABLE)
-        if not self._table_has_row(table, hit_type_id):
-            _log.warn('No such HIT type: %s' % hit_type_id)
-            return
-        table.put(hit_type_id, {'status:active': FALSE})
+        with self.pool.connection() as conn:
+            table = conn.table(HIT_TYPE_TABLE)
+            if not self._table_has_row(table, hit_type_id):
+                _log.warn('No such HIT type: %s' % hit_type_id)
+                return
+            table.put(hit_type_id, {'status:active': FALSE})
 
     def indicate_task_has_hit_type(self, task_id):
         """
@@ -1725,8 +1780,9 @@ class Set(object):
         :param task_id: The task ID, as a string.
         :return: None
         """
-        table = self.conn.table(TASK_TABLE)
-        table.put(task_id, {'status:awaiting_hit_type': TRUE})
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            table.put(task_id, {'status:awaiting_hit_type': TRUE})
 
     def set_task_html(self, task_id, html):
         """
@@ -1737,8 +1793,9 @@ class Set(object):
                      pickled?]
         :return: None
         """
-        table = self.conn.table(TASK_TABLE)
-        table.put(task_id, {'html:c1': html})
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            table.put(task_id, {'html:c1': html})
 
     def register_worker(self, worker_id):
         """
@@ -1751,15 +1808,16 @@ class Set(object):
         :return: None.
         """
         _log.info('Registering worker %s' % worker_id)
-        table = self.conn.table(WORKER_TABLE)
-        if self._table_has_row(table, worker_id):
-            _log.warning('User %s already exists, aborting.' % worker_id)
-        table.put(worker_id, {'status:passed_practice': FALSE,
-                              'status:is_legacy': FALSE,
-                              'status:is_banned': FALSE,
-                              'status:random_seed': str(int((datetime.now(
-                              )-datetime(2016, 1, 1)).total_seconds()))})
-        mon.increment("n_workers_registered")
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            if self._table_has_row(table, worker_id):
+                _log.warning('User %s already exists, aborting.' % worker_id)
+            table.put(worker_id, {'status:passed_practice': FALSE,
+                                  'status:is_legacy': FALSE,
+                                  'status:is_banned': FALSE,
+                                  'status:random_seed': str(int((datetime.now(
+                                  )-datetime(2016, 1, 1)).total_seconds()))})
+            mon.increment("n_workers_registered")
 
     def register_images(self, image_ids, image_urls, attributes=[]):
         """
@@ -1776,18 +1834,19 @@ class Set(object):
         """
         # get the table
         _log.info('Registering %i images.'%(len(image_ids)))
-        table = self.conn.table(IMAGE_TABLE)
-        b = table.batch()
-        if type(attributes) is str:
-            attributes = [attributes]
-        for iid, iurl in zip(image_ids, image_urls):
-            imdict = _get_image_dict(iurl)
-            if imdict is None:
-                continue
-            for attribute in attributes:
-                imdict['attributes:%s' % attribute] = TRUE
-            b.put(iid, imdict)
-        b.send()
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            b = table.batch()
+            if type(attributes) is str:
+                attributes = [attributes]
+            for iid, iurl in zip(image_ids, image_urls):
+                imdict = _get_image_dict(iurl)
+                if imdict is None:
+                    continue
+                for attribute in attributes:
+                    imdict['attributes:%s' % attribute] = TRUE
+                b.put(iid, imdict)
+            b.send()
 
     def add_attributes_to_images(self, image_ids, attributes):
         """
@@ -1803,14 +1862,15 @@ class Set(object):
             attributes = [attributes]
         _log.info('Adding %i attributes to %i images.'%(len(attributes),
                                                         len(image_ids)))
-        table = self.conn.table(IMAGE_TABLE)
-        b = table.batch()
-        for iid in image_ids:
-            up_dict = dict()
-            for attribute in attributes:
-                up_dict['attributes:%s' % attribute] = TRUE
-            b.put(iid, up_dict)
-        b.send()
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            b = table.batch()
+            for iid in image_ids:
+                up_dict = dict()
+                for attribute in attributes:
+                    up_dict['attributes:%s' % attribute] = TRUE
+                b.put(iid, up_dict)
+            b.send()
 
     def _reset_sampling_counts(self):
         """
@@ -1828,15 +1888,17 @@ class Set(object):
         :return: None.
         """
         _log.info('Resetting sampling counts')
-        table = self.conn.table(IMAGE_TABLE)
-        scanner = table.scan(columns=['metadata:is_active'],
-                             filter=attribute_image_filter(only_active=True))
-        for im_key, _ in scanner:
-            cur_im_sample_surplus = \
-                table.counter_get(im_key, 'stats:num_times_seen')
-            table.counter_set(im_key,
-                              'stats:sampling_surplus',
-                              cur_im_sample_surplus)
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            scanner = table.scan(
+                columns=['metadata:is_active'],
+                filter=attribute_image_filter(only_active=True))
+            for im_key, _ in scanner:
+                cur_im_sample_surplus = \
+                    table.counter_get(im_key, 'stats:num_times_seen')
+                table.counter_set(im_key,
+                                  'stats:sampling_surplus',
+                                  cur_im_sample_surplus)
 
     def activate_images(self, image_ids):
         """
@@ -1846,16 +1908,17 @@ class Set(object):
         :return: None.
         """
         _log.info('Activating %i images.' % len(image_ids))
-        table = self.conn.table(IMAGE_TABLE)
-        b = table.batch()
-        for iid in image_ids:
-            if not self._table_has_row(table, iid):
-                _log.warning('No data for image %s'%(iid))
-                continue
-            b.put(iid, {'metadata:is_active': TRUE})
-        b.send()
-        self._reset_sampling_counts()
-        mon.increment("n_images_activated", diff=len(image_ids))
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            b = table.batch()
+            for iid in image_ids:
+                if not self._table_has_row(table, iid):
+                    _log.warning('No data for image %s'%(iid))
+                    continue
+                b.put(iid, {'metadata:is_active': TRUE})
+            b.send()
+            self._reset_sampling_counts()
+            mon.increment("n_images_activated", diff=len(image_ids))
 
     def activate_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES):
         """
@@ -1865,15 +1928,17 @@ class Set(object):
         :param image_attributes: The attributes of the images we are selecting.
         :return: None.
         """
-        table = self.conn.table(IMAGE_TABLE)
-        scanner = table.scan(columns=['metadata:is_active'],
-                             filter=attribute_image_filter(image_attributes,
-                                                           only_inactive=True))
-        to_activate = []
-        for row_key, rowData in scanner:
-            to_activate.append(row_key)
-            if len(to_activate) == n:
-                break
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            scanner = table.scan(
+                columns=['metadata:is_active'],
+                filter=attribute_image_filter(image_attributes,
+                                              only_inactive=True))
+            to_activate = []
+            for row_key, rowData in scanner:
+                to_activate.append(row_key)
+                if len(to_activate) == n:
+                    break
         self.activate_images(to_activate)
 
     def practice_served(self, task_id, worker_id):
@@ -1885,9 +1950,11 @@ class Set(object):
         :return: None.
         """
         _log.info('Serving practice %s to worker %s' % (task_id, worker_id))
-        table = self.conn.table(WORKER_TABLE)
-        table.counter_inc(worker_id, 'stats:num_practices_attempted')
-        table.counter_inc(worker_id, 'stats:num_practices_attempted_interval')
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            table.counter_inc(worker_id, 'stats:num_practices_attempted')
+            table.counter_inc(
+                worker_id, 'stats:num_practices_attempted_interval')
 
     def task_served(self, task_id, worker_id, hit_id=None, hit_type_id=None,
                     payment=None):
@@ -1904,18 +1971,22 @@ class Set(object):
         :return: None.
         """
         _log.info('Serving task %s served to %s' % (task_id, worker_id))
-        table = self.conn.table(TASK_TABLE)
-        table.put(task_id, _conv_dict_vals({'metadata:worker_id': worker_id,
-                                            'metadata:hit_id': hit_id,
-                                            'metadata:hit_type_id': hit_type_id,
-                                            'metadata:payment': payment,
-                                            'status:pending_completion': TRUE,
-                                            'status:awaiting_serve': FALSE}))
-        table = self.conn.table(WORKER_TABLE)
-        # increment the number of incomplete trials for this worker.
-        table.counter_inc(worker_id, 'stats:num_incomplete')
-        table.counter_inc(worker_id, 'stats:numAttempted')
-        table.counter_inc(worker_id, 'stats:numAttemptedThisWeek')
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            table.put(
+                task_id,
+                _conv_dict_vals({'metadata:worker_id': worker_id,
+                                 'metadata:hit_id': hit_id,
+                                 'metadata:hit_type_id': hit_type_id,
+                                 'metadata:payment': payment,
+                                 'status:pending_completion': TRUE,
+                                 'status:awaiting_serve': FALSE}))
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            # increment the number of incomplete trials for this worker.
+            table.counter_inc(worker_id, 'stats:num_incomplete')
+            table.counter_inc(worker_id, 'stats:numAttempted')
+            table.counter_inc(worker_id, 'stats:numAttemptedThisWeek')
 
     def worker_demographics(self, worker_id, gender, birthyear):
         """
@@ -1927,10 +1998,11 @@ class Set(object):
         :return: None
         """
         _log.info('Saving demographics for worker %s'% worker_id)
-        table = self.conn.table(WORKER_TABLE)
-        table.put(worker_id,
-                  _conv_dict_vals({'demographics:birthyear': birthyear,
-                                   'demographics:gender': gender}))
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            table.put(worker_id,
+                      _conv_dict_vals({'demographics:birthyear': birthyear,
+                                       'demographics:gender': gender}))
 
     def task_finished_from_json(self, resp_json, user_agent=None,
                                 hit_type_id=None):
@@ -2007,7 +2079,6 @@ class Set(object):
             frac_too_fast = np.mean(np.array(def_rts) <= MIN_TRIAL_RT)
         else:
             frac_too_fast = 0
-        table = self.conn.table(TASK_TABLE)
         input_dict = {'metadata:worker_id': worker_id,
                       'metadata:hit_id': hit_id,
                       'metadata:assignment_id': assignment_id,
@@ -2026,30 +2097,31 @@ class Set(object):
                                                              frac_too_fast,
                       'status:pending_evaluation': TRUE,
                       'status:pending_completion': FALSE}
-        try:
-            table.put(task_id, _conv_dict_vals(input_dict))
-        except Exception as e:
-            _log.critical('COULD NOT STORE TASK DATA FOR %s: %s' % (task_id,
-                                                                    e))
-            import ipdb
-            ipdb.set_trace()
-        # acquire the task timing. I'm aware this is not an efficient method,
-        # but i'm not sure how to ensure that the hbase timing is consistent.
-        r = table.row(task_id,
-                      columns=['status:pending_evaluation',
-                               'status:awaiting_serve'],
-                      include_timestamp=True)
-        start_time = r.get('status:awaiting_serve', (None, 0))[1]
-        end_time = r.get('status:pending_evaluation', (None, 0))[1]
-        seconds = end_time - start_time
-        table.put(task_id, {'status:total_time': str(seconds)})
-        if user_agent is not None:
-            table.put(task_id, _conv_dict_vals(
-                                {'user_agent:browser': user_agent.browser,
-                                 'user_agent:language': user_agent.language,
-                                 'user_agent:platform': user_agent.platform,
-                                 'user_agent:version': user_agent.version,
-                                 'user_agent:string': user_agent.string}))
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            try:
+                table.put(task_id, _conv_dict_vals(input_dict))
+            except Exception as e:
+                _log.critical('COULD NOT STORE TASK DATA FOR %s: %s' % (task_id,
+                                                                        e))
+                import ipdb
+                ipdb.set_trace()
+            # acquire the task timing
+            r = table.row(task_id,
+                          columns=['status:pending_evaluation',
+                                   'status:awaiting_serve'],
+                          include_timestamp=True)
+            start_time = r.get('status:awaiting_serve', (None, 0))[1]
+            end_time = r.get('status:pending_evaluation', (None, 0))[1]
+            seconds = end_time - start_time
+            table.put(task_id, {'status:total_time': str(seconds)})
+            if user_agent is not None:
+                table.put(task_id, _conv_dict_vals(
+                                    {'user_agent:browser': user_agent.browser,
+                                     'user_agent:language': user_agent.language,
+                                     'user_agent:platform': user_agent.platform,
+                                     'user_agent:version': user_agent.version,
+                                     'user_agent:string': user_agent.string}))
         _log.info('Stored task data for task %s, worker %s. Total time: %i '
                   'seconds' % (task_id, worker_id, seconds / 1000))
         return frac_contradictions, frac_unanswered, frac_too_fast, p_value
@@ -2077,9 +2149,7 @@ class Set(object):
                  as well as a reason for the rejection (if it is
                  unacceptable) or None.
         """
-        table = self.conn.table(TASK_TABLE)
-
-        def validate_rt(task_id, frac_too_fast):
+        def validate_rt(task_id, frac_too_fast, table):
             """validates based on reaction time"""
             if frac_too_fast is None:
                 if task_id is None:
@@ -2100,7 +2170,7 @@ class Set(object):
                 return False, BAD_DATA_TOO_FAST
             return True, None
 
-        def validate_frac_unanswered(task_id, frac_unanswered):
+        def validate_frac_unanswered(task_id, frac_unanswered, table):
             """validates based on the fraction unanswered."""
             if frac_unanswered is None:
                 if task_id is None:
@@ -2122,7 +2192,7 @@ class Set(object):
                 return False, BAD_DATA_TOO_MANY_UNANSWERED
             return True, None
 
-        def validate_frac_contradictions(task_id, frac_contradictions):
+        def validate_frac_contradictions(task_id, frac_contradictions, table):
             """validates based on the fraction of contradictions."""
             if frac_contradictions is None:
                 if task_id is None:
@@ -2147,7 +2217,7 @@ class Set(object):
                 return False, BAD_DATA_TOO_CONTRADICTORY
             return True, None
 
-        def validate_prob_random(task_id, prob_random):
+        def validate_prob_random(task_id, prob_random, table):
             """validates based on the probability that they are behaving
             randomly."""
             if prob_random is None:
@@ -2172,19 +2242,25 @@ class Set(object):
                 return False, BAD_DATA_CLICKING
             return True, None
 
-        val, reason = validate_frac_unanswered(task_id, frac_unanswered)
-        if not val:
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            val, reason = validate_frac_unanswered(
+                task_id, frac_unanswered, table)
+            if not val:
+                return val, reason
+            val, reason = validate_rt(
+                task_id, frac_too_fast, table)
+            if not val:
+                return val, reason
+            val, reason = validate_prob_random(
+                task_id, prob_random, table)
+            if not val:
+                return val, reason
+            val, reason = validate_frac_contradictions(
+                task_id, frac_contradictions, table)
+            if not val:
+                return val, reason
             return val, reason
-        val, reason = validate_rt(task_id, frac_too_fast)
-        if not val:
-            return val, reason
-        val, reason = validate_prob_random(task_id, prob_random)
-        if not val:
-            return val, reason
-        val, reason = validate_frac_contradictions(task_id, frac_contradictions)
-        if not val:
-            return val, reason
-        return val, reason
 
     def register_demographics(self, resp_json, worker_ip):
         """
@@ -2195,7 +2271,6 @@ class Set(object):
         :return: None
         """
         worker_id = resp_json[0]['workerId']
-        table = self.conn.table(WORKER_TABLE)
         # note: jsPsych does not provide a means to identify different tasks
         # (say, for instance, by a trial name) hence to find the demographics
         #  trial (if present!) we will have to search through each of them.
@@ -2205,15 +2280,17 @@ class Set(object):
             return
         birthyear = dem_json['birthyear']
         gender = dem_json['gender']
-        table.put(worker_id, {'demographics:birthyear': str(birthyear),
-                              'demographics:gender': str(gender)})
         location_info = geolite2.lookup(worker_ip)
         if location_info is None:
             _log.warn('Could not fetch location info for worker %s' % worker_id)
             return
-        table.put(worker_id,
-                  {'location:'+k: str(v) for k, v in location_info.to_dict(
-                  ).iteritems()})
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            table.put(worker_id, {'demographics:birthyear': str(birthyear),
+                              'demographics:gender': str(gender)})
+            table.put(worker_id,
+                      {'location:'+k: str(v) for k, v in location_info.to_dict(
+                      ).iteritems()})
 
     def practice_pass(self, resp_json):
         """
@@ -2223,15 +2300,16 @@ class Set(object):
                           just passed.
         :return: None.
         """
-        table = self.conn.table(WORKER_TABLE)
         # note: jsPsych does not provide a means to identify different tasks
         # (say, for instance, by a trial name) hence to find the demographics
         #  trial (if present!) we will have to search through each of them.
         # Guh.
         worker_id = resp_json[0]['workerId']
         task_id = resp_json[0]['taskId']
-        table.put(worker_id, {'status:passed_practice': TRUE,
-                              'stats:passed_practice_id': task_id})
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            table.put(worker_id, {'status:passed_practice': TRUE,
+                                  'stats:passed_practice_id': task_id})
 
     def practice_failure(self, task_id, reason=None):
         """
@@ -2254,7 +2332,6 @@ class Set(object):
         """
         # update task table, get task data
         _log.info('Task %s has been accepted.' % task_id)
-        table = self.conn.table(TASK_TABLE)
         task_status = self._get_task_status(task_id)
         if task_status == DOES_NOT_EXIST:
             _log.error('No such task exists!')
@@ -2262,65 +2339,70 @@ class Set(object):
         if task_status != EVALUATION_PENDING:
             _log.warning('Task status indicates it is not ready to be '
                          'accepted, but proceeding anyway')
-        task_data = table.row(task_id)
-        table.put(task_id, {'status:pending_evaluation': FALSE,
-                            'status:accepted': TRUE})
-        # update worker table
-        worker_id = task_data.get('metadata:worker_id', None)
-        if worker_id is None:
-            _log.warning('No associated worker for task %s' % task_id)
-        table = self.conn.table(WORKER_TABLE)
-        # decrement pending evaluation count
-        table.counter_dec(worker_id, 'stats:num_pending_eval')
-        # increment accepted count
-        table.counter_inc(worker_id, 'stats:num_accepted')
-        # update images table
-        table = self.conn.table(IMAGE_TABLE)
-        # unfortunately, happybase does not support batch incrementation (arg!)
-        choices = loads(task_data.get('completion_data:choices', None))
-        for img in choices:
-            if img == -1:
-                continue
-            table.counter_inc(img, 'stats:num_wins')
-        # update the win matrix table
-        table = self.conn.table(WIN_TABLE)
-        b = table.batch()
-        img_tuples = loads(task_data.get('metadata:tuples', None))
-        img_tuple_types = loads(task_data.get('metadata:tuple_types', None))
-        worker_id = task_data.get('metadata:worker_id', None)
-        attribute = task_data.get('metadata:attribute', None)
-        # iterate over all the values, and store the data in the win table --
-        #  as a batch this will store all the ids that we have to increment (
-        # which cant be incremented in a batch)
-        ids_to_inc = []
-        for ch, tup, tuptype in zip(choices, img_tuples, img_tuple_types):
-            if ch == -1:
-                continue
-            for img in tup:
-                if img != ch:
-                    if tuptype.lower() == 'keep':
-                        # compute the id for this win element
-                        cid = ch + ',' + img
-                        ids_to_inc.append(cid)
-                        b.put(cid,
-                              _conv_dict_vals({'data:winner_id': ch,
-                                               'data:loser_id': img,
-                                               'data:task_id': task_id,
-                                               'data:worker_id': worker_id,
-                                               'data:attribute': attribute}))
-                    else:
-                        cid = img + ',' + ch
-                        ids_to_inc.append(cid)
-                        b.put(cid,
-                              _conv_dict_vals({'data:winner_id': img,
-                                               'data:loser_id': ch,
-                                               'data:task_id': task_id,
-                                               'data:worker_id': worker_id,
-                                               'data:attribute': attribute}))
-        b.send()
-        for cid in ids_to_inc:
-            # this increment accounts for legacy shit (uggg)
-            table.counter_inc(cid, 'data:win_count')
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            task_data = table.row(task_id)
+            table.put(task_id, {'status:pending_evaluation': FALSE,
+                                'status:accepted': TRUE})
+            img_tuples = loads(task_data.get('metadata:tuples', None))
+            img_tuple_types = loads(task_data.get('metadata:tuple_types', None))
+            worker_id = task_data.get('metadata:worker_id', None)
+            attribute = task_data.get('metadata:attribute', None)
+            # update worker table
+            worker_id = task_data.get('metadata:worker_id', None)
+            if worker_id is None:
+                _log.warning('No associated worker for task %s' % task_id)
+            table = conn.table(WORKER_TABLE)
+            # decrement pending evaluation count
+            table.counter_dec(worker_id, 'stats:num_pending_eval')
+            # increment accepted count
+            table.counter_inc(worker_id, 'stats:num_accepted')
+            # update images table
+            table = conn.table(IMAGE_TABLE)
+            # unfortunately, happybase does not support batch incrementation
+            # (arg!)
+            choices = loads(task_data.get('completion_data:choices', None))
+            for img in choices:
+                if img == -1:
+                    continue
+                table.counter_inc(img, 'stats:num_wins')
+            # update the win matrix table
+            table = conn.table(WIN_TABLE)
+            b = table.batch()
+            # iterate over all the values, and store the data in the win
+            # table -- as a batch this will store all the ids that we have to
+            # increment (which cant be incremented in a batch)
+            ids_to_inc = []
+            for ch, tup, tuptype in zip(choices, img_tuples, img_tuple_types):
+                if ch == -1:
+                    continue
+                for img in tup:
+                    if img != ch:
+                        if tuptype.lower() == 'keep':
+                            # compute the id for this win element
+                            cid = ch + ',' + img
+                            ids_to_inc.append(cid)
+                            b.put(cid,
+                                  _conv_dict_vals({'data:winner_id': ch,
+                                                   'data:loser_id': img,
+                                                   'data:task_id': task_id,
+                                                   'data:worker_id': worker_id,
+                                                   'data:attribute':
+                                                       attribute}))
+                        else:
+                            cid = img + ',' + ch
+                            ids_to_inc.append(cid)
+                            b.put(cid,
+                                  _conv_dict_vals({'data:winner_id': img,
+                                                   'data:loser_id': ch,
+                                                   'data:task_id': task_id,
+                                                   'data:worker_id': worker_id,
+                                                   'data:attribute':
+                                                       attribute}))
+            b.send()
+            for cid in ids_to_inc:
+                # this increment accounts for legacy shit (uggg)
+                table.counter_inc(cid, 'data:win_count')
 
     def reject_task(self, task_id, reason=None):
         """
@@ -2333,25 +2415,27 @@ class Set(object):
         # fortunately, not much needs to be done for this.
         # update task table, get task data
         _log.info('Task %s has been rejected.' % task_id)
-        table = self.conn.table(TASK_TABLE)
         task_status = self._get_task_status(task_id)
         if task_status == DOES_NOT_EXIST:
             _log.error('No such task exists!')
             return
-        table.put(task_id, _conv_dict_vals({'status:pending_evaluation': FALSE,
-                                            'status:rejected': TRUE,
-                                            'status:rejection_reason': reason}))
-        # update worker table
-        task_data = table.row(task_id)
-        worker_id = task_data.get('metadata:worker_id', None)
-        if worker_id is None:
-            _log.warning('No associated worker for task %s' % task_id)
-        table = self.conn.table(WORKER_TABLE)
-        # decrement pending evaluation count
-        table.counter_dec(worker_id, 'stats:num_pending_eval')
-        # increment rejected count
-        table.counter_inc(worker_id, 'stats:num_rejected')
-        table.counter_inc(worker_id, 'stats:num_rejected_interval')
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            table.put(task_id,
+                      _conv_dict_vals({'status:pending_evaluation': FALSE,
+                                       'status:rejected': TRUE,
+                                       'status:rejection_reason': reason}))
+            # update worker table
+            task_data = table.row(task_id)
+            worker_id = task_data.get('metadata:worker_id', None)
+            if worker_id is None:
+                _log.warning('No associated worker for task %s' % task_id)
+            table = conn.table(WORKER_TABLE)
+            # decrement pending evaluation count
+            table.counter_dec(worker_id, 'stats:num_pending_eval')
+            # increment rejected count
+            table.counter_inc(worker_id, 'stats:num_rejected')
+            table.counter_inc(worker_id, 'stats:num_rejected_interval')
 
     def reset_worker_counts(self, worker_id):
         """
@@ -2360,19 +2444,20 @@ class Set(object):
         :param worker_id: The worker ID, as a string, as provided by MTurk.
         :return: None.
         """
-        table = self.conn.table(WORKER_TABLE)
-        table.counter_set(worker_id,
-                          'stats:num_practices_attempted_interval',
-                          value=0)
-        table.counter_set(worker_id,
-                          'stats:num_attempted_interval',
-                          value=0)
-        table.counter_set(worker_id,
-                          'stats:num_rejected_interval',
-                          value=0)
-        table.counter_set(worker_id,
-                          'stats:interval_completed_count',
-                          value=0)
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            table.counter_set(worker_id,
+                              'stats:num_practices_attempted_interval',
+                              value=0)
+            table.counter_set(worker_id,
+                              'stats:num_attempted_interval',
+                              value=0)
+            table.counter_set(worker_id,
+                              'stats:num_rejected_interval',
+                              value=0)
+            table.counter_set(worker_id,
+                              'stats:interval_completed_count',
+                              value=0)
 
     def ban_worker(self, worker_id,
                    duration=DEFAULT_BAN_LENGTH,
@@ -2386,10 +2471,12 @@ class Set(object):
         :param reason: The reason for the ban.
         :return: None.
         """
-        table = self.conn.table(WORKER_TABLE)
-        table.put(worker_id, _conv_dict_vals({'status:is_banned': TRUE,
-                                              'status:ban_duration': duration,
-                                              'status:ban_reason': reason}))
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            table.put(worker_id,
+                      _conv_dict_vals({'status:is_banned': TRUE,
+                                       'status:ban_duration': duration,
+                                       'status:ban_reason': reason}))
 
     def worker_ban_expires_in(self, worker_id):
         """
@@ -2401,20 +2488,21 @@ class Set(object):
         :return: 0 if the subject is not or is no longer banned, otherwise
                  returns the time until the ban expires.
         """
-        table = self.conn.table(WORKER_TABLE)
-        data = table.row(worker_id, include_timestamp=True)
-        ban_data = data.get('status:is_banned', (FALSE, 0))
-        if ban_data[0] == FALSE:
-            return 0
-        ban_date = time.mktime(time.localtime(float(ban_data[1])/1000))
-        cur_date = time.mktime(time.localtime())
-        ban_dur = float(data.get('status:ban_length', ('0', 0))[0])
-        if (cur_date - ban_date) > ban_dur:
-            table.put(worker_id, {'status:is_banned': FALSE,
-                                  'status:ban_length': '0'})
-            return 0
-        else:
-            return (cur_date - ban_date) - ban_dur
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            data = table.row(worker_id, include_timestamp=True)
+            ban_data = data.get('status:is_banned', (FALSE, 0))
+            if ban_data[0] == FALSE:
+                return 0
+            ban_date = time.mktime(time.localtime(float(ban_data[1])/1000))
+            cur_date = time.mktime(time.localtime())
+            ban_dur = float(data.get('status:ban_length', ('0', 0))[0])
+            if (cur_date - ban_date) > ban_dur:
+                table.put(worker_id, {'status:is_banned': FALSE,
+                                      'status:ban_length': '0'})
+                return 0
+            else:
+                return (cur_date - ban_date) - ban_dur
 
     def reset_timed_out_tasks(self):
         """
@@ -2423,29 +2511,31 @@ class Set(object):
 
         :return: None
         """
-        table = self.conn.table(TASK_TABLE)
-        to_reset = []  # a list of task IDs to reset.
-        scanner = table.scan(columns=['status:pending_completion'],
-                             filter=PENDING_COMPLETION_FILTER,
-                             include_timestamp=True)
-        for row_key, rowData in scanner:
-            start_timestamp = rowData.get('status:pending_completion',
-                                          (FALSE, '0'))[1]
-            start_date = time.mktime(time.localtime(float(
-                start_timestamp)/1000))
-            cur_date = time.mktime(time.localtime())
-            if (cur_date - start_date) > TASK_COMPLETION_TIMEOUT:
-                to_reset.append(row_key)
-        # Now, un-serve all those tasks
-        b = table.batch()
-        for task_id in to_reset:
-            b.put(task_id, _conv_dict_vals({'metadata:worker_id': '',
-                                            'metadata:assignment_id': '',
-                                            'metadata:hit_id': '',
-                                            'metadata:payment': '',
-                                            'status:pending_completion': FALSE,
-                                            'status:awaiting_serve': TRUE}))
-        b.send()
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            to_reset = []  # a list of task IDs to reset.
+            scanner = table.scan(columns=['status:pending_completion'],
+                                 filter=PENDING_COMPLETION_FILTER,
+                                 include_timestamp=True)
+            for row_key, rowData in scanner:
+                start_timestamp = rowData.get('status:pending_completion',
+                                              (FALSE, '0'))[1]
+                start_date = time.mktime(time.localtime(float(
+                    start_timestamp)/1000))
+                cur_date = time.mktime(time.localtime())
+                if (cur_date - start_date) > TASK_COMPLETION_TIMEOUT:
+                    to_reset.append(row_key)
+            # Now, un-serve all those tasks
+            b = table.batch()
+            for task_id in to_reset:
+                b.put(task_id,
+                      _conv_dict_vals({'metadata:worker_id': '',
+                                       'metadata:assignment_id': '',
+                                       'metadata:hit_id': '',
+                                       'metadata:payment': '',
+                                       'status:pending_completion': FALSE,
+                                       'status:awaiting_serve': TRUE}))
+            b.send()
         _log.info('Found %i incomplete tasks to be reset.' % len(to_reset))
 
     def deactivate_images(self, image_ids):
@@ -2456,11 +2546,12 @@ class Set(object):
         :return: None
         """
         _log.info('Deactivating %i images.' % len(image_ids))
-        table = self.conn.table(IMAGE_TABLE)
-        b = table.batch()
-        for iid in image_ids:
-            if not self._table_has_row(table, iid):
-                _log.warning('No data for image %s'%(iid))
-                continue
-            b.put(iid, {'metadata:is_active': FALSE})
-        b.send()
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            b = table.batch()
+            for iid in image_ids:
+                if not self._table_has_row(table, iid):
+                    _log.warning('No data for image %s'%(iid))
+                    continue
+                b.put(iid, {'metadata:is_active': FALSE})
+            b.send()
