@@ -53,10 +53,11 @@ def cleanup_mturk(mtconn):
 
 
 _log.info('Instantiating db connections')
-conn = happybase.Connection(DATABASE_LOCATION)  # make sure to instantiate
+pool = happybase.ConnectionPool(size=2, host=DATABASE_LOCATION)  # make sure to
+# instantiate
 
-dbget = Get(conn)
-dbset = Set(conn)
+dbget = Get(pool)
+dbset = Set(pool)
 
 _log.info('Intantiating mturk connection')
 mtconn = boto.mturk.connection.MTurkConnection(aws_access_key_id=MTURK_ACCESS_ID,
