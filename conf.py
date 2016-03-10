@@ -84,15 +84,16 @@ DEF_REJECT_BLOCK_INSTRUCTIONS = \
     ['/instructions/segment_preface/reject.html']  # def in-task reject segment
                                                    # instructions
 POS_TYPE = 'random'  # the position type, see make_html.py
-ATTRIBUTE = 'interesting'  # the default attribute to use
+ATTRIBUTE = 'eye catching'  # the default attribute to use
 # the attribute description is an elaboration of what we mean by ATTRIBUTE
-ATTRIBUTE_DESCRIPTION = 'What we mean by INTERESTING is images that you ' \
+ATTRIBUTE_DESCRIPTION = 'What we mean by EYE CATCHING is images that you ' \
                         'want to' \
                         ' know more about. For instance, if that image were ' \
                         'the thumbnail for a video, would you want to watch ' \
                         'that video? Or if that image were from a gallery, ' \
                         'would you want to see the rest of the gallery? In ' \
-                        'essence, \'INTERESTING\' means images that you think' \
+                        'essence, \'EYE CATCHING\' means images that you ' \
+                        'think' \
                         ' are beautiful, compelling, intriguing, or which ' \
                         'grab your attention.'
 IMAGE_ATTRIBUTES = []  # the types of images to be included in the task.

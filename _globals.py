@@ -107,6 +107,14 @@ PRACTICE_PREVIEW_QUOTA_EXCEEDED = 'preview/practice_preview_too_many_practice.ht
 PRACTICE_PREVIEW_ALREADY_PASSED = 'preview/practice_preview_already_passed.html'
 
 """
+HIT PAGE
+"""
+# of the form:
+# https://workersandbox.mturk.com/mturk/searchbar?requesterId=A16DTSBAGJT9RT
+# i.e.,
+# https://workersandbox.mturk.com/mturk/searchbar?requesterId=<RID>
+
+"""
 DIRECTORIES
 """
 ROOT = os.path.dirname(os.path.abspath(__file__))

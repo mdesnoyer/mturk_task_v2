@@ -504,7 +504,8 @@ def submit():
         try:
             frac_contradictions, frac_unanswered, frac_too_fast, prob_random = \
                 dbset.task_finished_from_json(request.json,
-                                              hit_type_id=hit_type_id)
+                                              hit_type_id=hit_type_id,
+                                              user_agent=request.user_agent)
             _log.debug('Assignment %s submitted from %s:\n\tFraction '
                        'contractions: %.2f\n\tFraction unanswered: '
                        '%.2f\n\tFraction too fast: %.2f\n\tChi Square score: '
