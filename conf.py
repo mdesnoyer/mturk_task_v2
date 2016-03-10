@@ -25,8 +25,11 @@ _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 AWS STUFF
 """
 # MTURK -- image.inference@gmail.com
-MTURK_ACCESS_ID = 'AKIAJPB4VQCDGOUQK2JA'
-MTURK_SECRET_KEY = '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'
+# MTURK_ACCESS_ID = 'AKIAJPB4VQCDGOUQK2JA'
+# MTURK_SECRET_KEY = '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'
+# MTRUK -- kryptonlabs99@gmail.com
+MTURK_ACCESS_ID = 'AKIAI3D7J3K3MABR2FOQ'
+MTURK_SECRET_KEY = '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'
 # AWS
 AWS_ACCESS_ID = None  # os.environ['AWS_ACCESS_ID']
 AWS_SECRET_KEY = None  # os.environ['AWS_SECRET_KEY']
@@ -112,7 +115,8 @@ _DEFAULT_TASK_PAYMENT = (DEF_NUM_IMAGES_PER_TASK / 3. *
                          DEF_NUM_IMAGE_APPEARANCE_PER_TASK) * 2 * \
                         DEF_TRIAL_TIME / 1000 * (0.125 / 60)
 DEFAULT_TASK_PAYMENT = float(int(_DEFAULT_TASK_PAYMENT * 100))/100
-DEFAULT_TASK_NAME = 'Choosing images'  # The title for the actual tasks.
+DEFAULT_TASK_NAME = 'Choosing %s images' % ATTRIBUTE  # The title for the
+# actual tasks.
 DESCRIPTION = ('Choosing %s images. These HITs are always instantly accepted.' %
                ATTRIBUTE)
 # The
@@ -135,7 +139,7 @@ DEF_PRACTICE_KEEP_BLOCKS = 1  # the default number of keep blocks for a
 DEF_PRACTICE_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
 DEFAULT_PRACTICE_PAYMENT = 0.10  # the default payment for practices
 DEFAULT_PRACTICE_TASK_NAME = \
-    'Practice choosing images'  # The title for practice tasks.
+    DEFAULT_TASK_NAME + ' PRACTICE'  # The title for practice tasks.
 PRACTICE_DESCRIPTION = \
     ('Practice for choosing %s images (you only need pass the practice once). '
      'The required qualifications are automatically granted, be sure to '
@@ -146,7 +150,6 @@ PRACTICE_DESCRIPTION = \
 """
 TASK_VALIDATION
 """
-# TODO: Change debrief js to use these values.
 MAX_MEAN_RT = np.inf
 MIN_TRIAL_RT = 400
 MAX_PROB_RANDOM = 0.95
@@ -168,7 +171,8 @@ BAD_DATA_CLICKING = \
 BAD_DATA_TOO_CONTRADICTORY = \
     'You are making too many contradictions. Please do not click around ' \
     'randomly, but make deliberate choices.'
-BAD_DATA_TOO_MANY_UNANSWERED = 'You are not answering too many of the trials.'
+BAD_DATA_TOO_MANY_UNANSWERED = 'You are responding too slowly or choosing ' \
+                               'not to answer too many of the trials.'
 
 
 """
