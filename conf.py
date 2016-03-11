@@ -139,7 +139,7 @@ DEF_PRACTICE_PROMPT = \
 DEF_PRACTICE_KEEP_BLOCKS = 1  # the default number of keep blocks for a
                               # practice task
 DEF_PRACTICE_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
-DEFAULT_PRACTICE_PAYMENT = 0.10  # the default payment for practices
+DEFAULT_PRACTICE_PAYMENT = 0.12  # the default payment for practices
 DEFAULT_PRACTICE_TASK_NAME = \
     DEFAULT_TASK_NAME + ' PRACTICE'  # The title for practice tasks.
 PRACTICE_DESCRIPTION = \
