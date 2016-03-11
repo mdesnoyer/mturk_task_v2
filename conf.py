@@ -15,7 +15,7 @@ from _utils import *
 For debugging
 """
 TESTING = False
-MTURK_SANDBOX = True
+MTURK_SANDBOX = False
 LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
@@ -27,11 +27,11 @@ CONTINUOUS_MODE = False  # whether or not to run the task continuously.
 AWS STUFF
 """
 # MTURK -- image.inference@gmail.com
-MTURK_ACCESS_ID = 'AKIAJPB4VQCDGOUQK2JA'
-MTURK_SECRET_KEY = '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'
+# MTURK_ACCESS_ID = 'AKIAJPB4VQCDGOUQK2JA'
+# MTURK_SECRET_KEY = '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'
 # MTRUK -- kryptonlabs99@gmail.com
-# MTURK_ACCESS_ID = 'AKIAI3D7J3K3MABR2FOQ'
-# MTURK_SECRET_KEY = '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'
+MTURK_ACCESS_ID = 'AKIAI3D7J3K3MABR2FOQ'
+MTURK_SECRET_KEY = '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'
 # AWS
 AWS_ACCESS_ID = None  # os.environ['AWS_ACCESS_ID']
 AWS_SECRET_KEY = None  # os.environ['AWS_SECRET_KEY']
@@ -215,8 +215,8 @@ ENABLE_BANNING = True  # whether or not to ban poor-performing workers.
 """
 MTURK OPTIONS
 """
-NUM_PRACTICES = 5  # how many practices to post at once
-NUM_TASKS = 5  # how many tasks to maintain online
+NUM_PRACTICES = 50  # how many practices to post at once
+NUM_TASKS = 100  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 PRACTICE_TASK_LIFETIME = 60*60*24*7   # the time a practice task exists for.
