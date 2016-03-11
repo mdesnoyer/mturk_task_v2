@@ -15,7 +15,7 @@ from _utils import *
 For debugging
 """
 TESTING = False
-MTURK_SANDBOX = False
+_MTURK_SANDBOX = True
 LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
@@ -27,15 +27,20 @@ CONTINUOUS_MODE = False  # whether or not to run the task continuously.
 AWS STUFF
 """
 # MTURK -- image.inference@gmail.com
-# MTURK_ACCESS_ID = 'AKIAJPB4VQCDGOUQK2JA'
-# MTURK_SECRET_KEY = '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'
+MTURK_ACCESS_ID = 'AKIAJPB4VQCDGOUQK2JA'
+MTURK_SECRET_KEY = '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'
 # MTRUK -- kryptonlabs99@gmail.com
-MTURK_ACCESS_ID = 'AKIAI3D7J3K3MABR2FOQ'
-MTURK_SECRET_KEY = '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'
+# MTURK_ACCESS_ID = 'AKIAI3D7J3K3MABR2FOQ'
+# MTURK_SECRET_KEY = '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'
 # AWS
 AWS_ACCESS_ID = None  # os.environ['AWS_ACCESS_ID']
 AWS_SECRET_KEY = None  # os.environ['AWS_SECRET_KEY']
 IMAGE_BUCKET = 'neon-image-library'  # the location on S3 of the images
+
+if _MTURK_SANDBOX:
+    MTURK_HOST = MTURK_SANDBOX_HOST
+else:
+    MTURK_HOST = MTURK_REGULAR_HOST
 
 """
 GLOBAL TASK APPEARANCE CONFIGURATION

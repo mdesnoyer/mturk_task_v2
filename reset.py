@@ -62,7 +62,7 @@ dbset = Set(pool)
 _log.info('Intantiating mturk connection')
 mtconn = boto.mturk.connection.MTurkConnection(aws_access_key_id=MTURK_ACCESS_ID,
                                                aws_secret_access_key=MTURK_SECRET_KEY,
-                                               host='mechanicalturk.sandbox.amazonaws.com')
+                                               host=MTURK_HOST)
 
 if reset_quals:
     cleanup_mturk(mtconn)

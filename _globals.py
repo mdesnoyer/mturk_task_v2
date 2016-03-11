@@ -79,7 +79,7 @@ EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = 'https://%s/submit' % WEBSERVER_URL
 # the host for the mturk sandbox
 MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'
 # the host for the vanilla sandbox
-MTURK_HOST = 'mechanicalturk.amazonaws.com'
+MTURK_REGULAR_HOST = 'mechanicalturk.amazonaws.com'
 KRYPTON_WID = 'A1RPGGKICRYDKC'  # Krypton's worker ID
 KRYPTON_RID = 'A1RPGGKICRYDKC'  # Krypton's requester ID
 
@@ -219,6 +219,7 @@ IMAGE_TABLE = 'images'
 PAIR_TABLE = 'pairs'
 WIN_TABLE = 'wins'
 HIT_TYPE_TABLE = 'hittypes'
+STATISTICS_TABLE = 'imagestats'
 
 
 """
@@ -247,6 +248,7 @@ PAIR_FAMILIES = {'metadata': dict(max_versions=1),
 WIN_FAMILIES = {'data': dict(max_versions=1)}
 HIT_TYPE_FAMILIES = {'metadata': dict(max_versions=1),
                      'status': dict(max_versions=1)}
+STATISTICS_FAMILIES = {'statistics': dict(max_versions=1)}
 
 
 """

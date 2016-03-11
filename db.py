@@ -43,6 +43,17 @@ PRIVATE METHODS
 """
 
 
+def _get_stats_key(image_attributes=IMAGE_ATTRIBUTES):
+    """
+    Returns the image stat's table key for a given set of image attributes.
+
+    :param image_attributes: The image attributes as list/tuple of strings.
+    :return: The row key, as a string.
+    """
+    cstr = tuple(sorted(image_attributes))
+    return str(cstr)
+
+
 def _get_pair_key(image1, image2):
     """
     Returns a row key for a given pair. Row keys for pairs are the image IDs,
@@ -632,19 +643,10 @@ class Get(object):
         :return: Boolean. Returns True if the task specified by the task ID
                  is a practice, otherwise false.
         """
-        try:
-            with self.pool.connection() as conn:
-                table = conn.table(TASK_TABLE)
-                return table.row(task_id).get(
-                    'metadata:is_practice', FALSE) == TRUE
-        except Exception as e:
-            _log.warn('Problem determining if task %s is practice: %s' % (
-                task_id, e.message))
-            # default to the backup method
-            if PRACTICE_PREFIX in task_id:
+        if len(task_id) >= len(PRACTICE_PREFIX):
+            if task_id[:len(PRACTICE_PREFIX)] == PRACTICE_PREFIX:
                 return True
-            else:
-                return False
+        return False
 
     # HIT TYPES
     
@@ -824,6 +826,13 @@ class Get(object):
         :return: True if the number of active images >= n, False otherwise.
         """
         with self.pool.connection() as conn:
+            # first, try to get it from the statistics database
+            table = conn.table(STATISTICS_TABLE)
+            skey = _get_stats_key(image_attributes)
+            if self.table_has_row(table, skey):
+                return table.counter_get(skey, 'statistics:n_active') >= n
+            _log.debug('Could not find active im count for %s, counting '
+                       'manually' % skey)
             table = conn.table(IMAGE_TABLE)
             scanner = table.scan(columns=['metadata:is_active'],
                                  filter=attribute_image_filter(
@@ -891,6 +900,12 @@ class Get(object):
         :return: An integer, the number of active images.
         """
         with self.pool.connection() as conn:
+            table = conn.table(STATISTICS_TABLE)
+            skey = _get_stats_key(image_attributes)
+            if self.table_has_row(table, skey):
+                return table.counter_get(skey, 'statistics:n_active')
+            _log.debug('Could not find active im count for %s, counting '
+                       'manually' % skey)
             table = conn.table(IMAGE_TABLE)
             # note: do NOTE use binary prefix, because 1 does not correspond
             # to the string 1, but to the binary 1.
@@ -984,6 +999,14 @@ class Get(object):
         :return: Integer, the min number of times seen.
         """
         with self.pool.connection() as conn:
+            table = conn.table(STATISTICS_TABLE)
+            skey = _get_stats_key(image_attributes)
+            if self.table_has_row(table, skey):
+                n_active = table.counter_get(skey, 'statistics:n_active')
+                n_samples = table.counter_get(skey, 'statistics:n_samples')
+                return float(n_samples) / float(n_active)
+            _log.debug('Could not find active im count for %s, counting '
+                       'manually' % skey)
             table = conn.table(IMAGE_TABLE)
             scanner = table.scan(
                 columns=['stats:num_times_seen'],
@@ -1542,6 +1565,19 @@ class Set(object):
             return _create_table(conn, HIT_TYPE_TABLE, HIT_TYPE_FAMILIES,
                                  clobber)
 
+    def create_statistics_table(self, clobber=False):
+        """
+        Creates a table for storing image statistics.
+
+        :param clobber: Boolean, if true will erase old stats table if it
+               exists. [def: False]
+        :return: True if table was created. False otherwise.
+        """
+        _log.info('Creating stats table')
+        with self.pool.connection() as conn:
+            return _create_table(conn, STATISTICS_TABLE, STATISTICS_FAMILIES,
+                                 clobber)
+
     def force_regen_tables(self):
         """
         Forcibly rebuilds all tables.
@@ -1557,6 +1593,7 @@ class Set(object):
         succ = succ and self.create_task_table(clobber=True)
         succ = succ and self.create_win_table(clobber=True)
         succ = succ and self.create_task_type_table(clobber=True)
+        succ = succ and self.create_statistics_table(clobber=True)
         return succ
 
     def wipe_database_except_images(self):
@@ -1711,6 +1748,8 @@ class Set(object):
         im_tuple_types = []
         with self.pool.connection() as conn:
             table = conn.table(IMAGE_TABLE)
+            stats_table = conn.table(STATISTICS_TABLE)
+            skey = _get_stats_key(image_attributes)
             for seg_type, segment in exp_seq:
                 for im_tuple in segment:
                     for im in im_tuple:
@@ -1728,6 +1767,8 @@ class Set(object):
             if not is_practice:
                 for img in image_list:
                     table.counter_inc(img, 'stats:num_times_seen')
+                stats_table.counter_inc(skey, 'statistcs:n_samples',
+                                        len(image_list))
         # note: not in order of presentation!
         task_dict['metadata:images'] = dumps(images)
         task_dict['metadata:tuples'] = dumps(im_tuples)
@@ -1810,8 +1851,6 @@ class Set(object):
         _log.info('Registering worker %s' % worker_id)
         with self.pool.connection() as conn:
             table = conn.table(WORKER_TABLE)
-            if self._table_has_row(table, worker_id):
-                _log.warning('User %s already exists, aborting.' % worker_id)
             table.put(worker_id, {'status:passed_practice': FALSE,
                                   'status:is_legacy': FALSE,
                                   'status:is_banned': FALSE,
@@ -1904,6 +1943,8 @@ class Set(object):
         """
         Activates some number of images, i.e., makes them available for tasks.
 
+        WARNING: This does not increment the image statistics value!
+
         :param image_ids: A list of strings, the image IDs.
         :return: None.
         """
@@ -1928,8 +1969,10 @@ class Set(object):
         :param image_attributes: The attributes of the images we are selecting.
         :return: None.
         """
+        skey = _get_stats_key(image_attributes)
         with self.pool.connection() as conn:
             table = conn.table(IMAGE_TABLE)
+            stats_table = conn.table(STATISTICS_TABLE)
             scanner = table.scan(
                 columns=['metadata:is_active'],
                 filter=attribute_image_filter(image_attributes,
@@ -1939,6 +1982,8 @@ class Set(object):
                 to_activate.append(row_key)
                 if len(to_activate) == n:
                     break
+            stats_table.counter_inc(skey, 'statistics:n_active',
+                                    len(to_activate))
         self.activate_images(to_activate)
 
     def practice_served(self, task_id, worker_id):

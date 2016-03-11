@@ -44,7 +44,7 @@ from generate import make_practice_passed
 from generate import make_practice_failed
 from generate import make_practice_already_passed
 from generate import make_preview_page
-from generate import make_error_fetching_task_html
+from generate import make_error
 from mturk import MTurk
 import boto.mturk.connection
 import happybase
@@ -55,6 +55,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.executors.pool import ThreadPoolExecutor
 import statemon
 import monitor
+import boto.ses
+import traceback
 import logging
 
 
@@ -90,17 +92,15 @@ pool = happybase.ConnectionPool(size=8, host=DATABASE_LOCATION)
 dbget = Get(pool)
 dbset = Set(pool)
 
+emconn = boto.ses.connect_to_region('us-east-1')
+
 # instantiate the mechanical turk connection & mturk objects
 _log.info('Instantiating mturk connection')
-if MTURK_SANDBOX:
-    mturk_host = MTURK_SANDBOX_HOST
-else:
-    mturk_host = MTURK_HOST
 
 mtconn = boto.mturk.connection.MTurkConnection(
             aws_access_key_id=MTURK_ACCESS_ID,
             aws_secret_access_key=MTURK_SECRET_KEY,
-            host=mturk_host)
+            host=MTURK_HOST)
 
 mt = MTurk(mtconn)
 mt.setup_quals()
@@ -387,9 +387,63 @@ def shutdown_server():
         raise RuntimeError('Not running with the Werkzeug Server')
     func()
 
+
+"""
+HELPER FUNCTIONS
+"""
+
+
+def dispatch_err(e, tb='', request=None):
+    """
+    Dispatches an error email.
+
+    :param e: The exception.
+    :param tb: The traceback.
+    :param request: The Flask request.
+    """
+    if request is not None:
+        if request.headers.getlist("X-Forwarded-For"):
+           src = request.headers.getlist("X-Forwarded-For")[0]
+        else:
+           src = request.remote_addr
+        try:
+            req_json = request.json
+        except:
+            req_json = 'No JSON'
+        try:
+            ua = str(request.user_agent)
+        except:
+            ua = 'No User Agent'
+    else:
+        src = 'No request'
+        req_json = 'No request'
+        ua = 'No request'
+    subj = 'MTurk Error %s' % e.message
+    body_elem = ['Error: %s' % e.message,
+                 'Traceback:\n%s' % tb,
+                 'IP: %s' % src,
+                 'User Agent: %s' % ua,
+                 'JSON: %s' % str(req_json)]
+    body = '\n\n----------------------------\n\n'.join(body_elem)
+    emconn.send_email('ops@kryto.me', subj, body, ['dufour@neon-lab.com'])
+
+
 """
 FLASK FUNCTIONS
 """
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    try:
+        _log.warn('Internal server error.')
+        dispatch_err(e)
+    except:
+        pass
+    try:
+        return make_error('Unknown internal server error.')
+    except:
+        return 'Error 500 Otherwise Unknown'
 
 
 @app.route('/shutdown', methods=['GET', 'POST'])
@@ -410,8 +464,8 @@ def healthcheck():
 
     :return: Health Check page
     """
-    src = request.remote_addr
-    #_log.debug('Healthcheck request from %s received' % str(src))
+    # src = request.remote_addr
+    # _log.debug('Healthcheck request from %s received' % str(src))
     return "OK"
 
 
@@ -437,18 +491,39 @@ def task():
     hit_id = request.values.get('hitId', None)
     if hit_id is None:
         _log.debug('Returning request to %s' % str(src))
-        return make_error_fetching_task_html()
-    hit_info = mt.get_hit(hit_id)
-    task_id = hit_info.RequesterAnnotation
+        return make_error('Could not fetch HIT ID.')
+    try:
+        hit_info = mt.get_hit(hit_id)
+        task_id = hit_info.RequesterAnnotation
+    except Exception as e:
+        tb = traceback.format_exc()
+        dispatch_err(e, tb, request)
+        err_dict = {'HIT ID': hit_id}
+        return make_error('Could not fetch HIT information.',
+                          error_data=err_dict, hit_id=hit_id)
     if is_preview:
         is_practice = dbget.task_is_practice(task_id)
         task_time = dbget.get_task_time(task_id)
         _log.debug('Returning request to %s' % str(src))
         return make_preview_page(is_practice, task_time)
     worker_id = request.values.get('workerId', '')
-    response = fetch_task(dbget, dbset, task_id, worker_id)
-    mon.increment("n_tasks_served")
-    mon.increment("n_tasks_in_progress")
+    if not dbget.worker_exists(worker_id):
+        _log.debug('Registering worker %s' % worker_id)
+        dbset.register_worker(worker_id)
+    try:
+        response = fetch_task(dbget, dbset, task_id, worker_id)
+    except Exception as e:
+        tb = traceback.format_exc()
+        dispatch_err(e, tb, request)
+        return make_error('Could not fetch HIT, please try again later.',
+                          error_data={'HIT ID': hit_id, 'TASK ID': task_id,
+                                      'WORKER ID': worker_id},
+                          hit_id=hit_id, task_id=task_id)
+    try:
+        mon.increment("n_tasks_served")
+        mon.increment("n_tasks_in_progress")
+    except Exception as e:
+        _log.warn('Could not increment statemons: %s' % e.message)
     _log.debug('Returning request to %s' % str(src))
     return response
 
@@ -461,15 +536,22 @@ def submit():
 
     :return: Success page.
     """
-    if request.headers.getlist("X-Forwarded-For"):
-       worker_ip = request.headers.getlist("X-Forwarded-For")[0]
-    else:
-       worker_ip = request.remote_addr
-    hit_id = request.json[0]['hitId']
-    worker_id = request.json[0]['workerId']
-    task_id = request.json[0]['taskId']
-    assignment_id = request.json[0]['assignmentId']
-    hit_info = mt.get_hit(hit_id)
+    try:
+        if request.headers.getlist("X-Forwarded-For"):
+           worker_ip = request.headers.getlist("X-Forwarded-For")[0]
+        else:
+           worker_ip = request.remote_addr
+        hit_id = request.json[0]['hitId']
+        worker_id = request.json[0]['workerId']
+        task_id = request.json[0]['taskId']
+        assignment_id = request.json[0]['assignmentId']
+        hit_info = mt.get_hit(hit_id)
+    except Exception as e:
+        tb = traceback.format_exc()
+        dispatch_err(e, tb, request)
+        return make_error('Problem fetching submission information.')
+    err_dict = {'HIT ID': hit_id, 'WORKER ID': worker_id, 'TASK ID': task_id,
+                'ASSIGNMENT ID': assignment_id}
     try:
         hit_type_id = hit_info.HITTypeId
     except AttributeError as e:
@@ -477,34 +559,74 @@ def submit():
         hit_type_id = ''
     is_practice = request.json[0]['is_practice']
     if is_practice:
-        mt.decrement_worker_practice_weekly_quota(worker_id)
-        dbset.register_demographics(request.json, worker_ip)
+        try:
+            mt.decrement_worker_practice_weekly_quota(worker_id)
+        except Exception as e:
+            _log.warn('Problem decrementing worker weekly practice quota for '
+                      '%s', worker_id)
+        try:
+            dbset.register_demographics(request.json, worker_ip)
+        except Exception as e:
+            tb = traceback.format_exc()
+            dispatch_err(e, tb, request)
         passed_practice = request.json[0]['passed_practice']
         if mt.get_worker_passed_practice(worker_id):
             to_return = make_practice_already_passed(hit_id=hit_id,
                                                      task_id=task_id)
         elif passed_practice:
-            to_return = make_practice_passed(hit_id=hit_id,
-                                             task_id=task_id)
-            dbset.practice_pass(request.json)
-            mt.grant_worker_practice_passed(worker_id)
-            mon.increment("n_practices_passed")
-            mon.decrement("n_tasks_in_progress")
+            try:
+                to_return = make_practice_passed(hit_id=hit_id,
+                                                 task_id=task_id)
+            except Exception as e:
+                tb = traceback.format_exc()
+                dispatch_err(e, tb, request)
+                return make_error('Error creating practice passed page',
+                                  error_data=err_dict, hit_id=hit_id,
+                                  task_id=task_id, allow_submit=True)
+            try:
+                dbset.practice_pass(request.json)
+                mt.grant_worker_practice_passed(worker_id)
+            except Exception as e:
+                tb = traceback.format_exc()
+                dispatch_err(e, tb, request)
+            try:
+                mon.increment("n_practices_passed")
+                mon.decrement("n_tasks_in_progress")
+            except Exception as e:
+                _log.warn('Could not increment statemons: %s' % e.message)
         else:
-            to_return = make_practice_failed(hit_id=hit_id,
-                                             task_id=task_id)
-            mon.increment("n_practices_rejected")
-            mon.decrement("n_tasks_in_progress")
+            try:
+                to_return = make_practice_failed(hit_id=hit_id,
+                                                 task_id=task_id)
+            except Exception as e:
+                tb = traceback.format_exc()
+                dispatch_err(e, tb, request)
+                return make_error('Error creating practice passed page',
+                                  error_data=err_dict, hit_id=hit_id,
+                                  task_id=task_id, allow_submit=True)
+            try:
+                mon.increment("n_practices_rejected")
+                mon.decrement("n_tasks_in_progress")
+            except Exception as e:
+                _log.warn('Could not increment statemons: %s' % e.message)
         if CONTINUOUS_MODE:
             scheduler.add_job(create_practice,
                               args=[mt, dbget, dbset, hit_type_id])
     else:
-        to_return = make_success(hit_id=hit_id,
-                                 task_id=task_id)
+        try:
+            to_return = make_success(hit_id=hit_id,
+                                     task_id=task_id)
+        except Exception as e:
+            tb = traceback.format_exc()
+            dispatch_err(e, tb, request)
+            return make_error('Error creating submit page.',
+                              error_data=err_dict, hit_id=hit_id,
+                              task_id=task_id, allow_submit=True)
         try:
             mt.decrement_worker_daily_quota(worker_id)
-        except:
-            _log.warn('Problem decrementing daily quota for %s' % worker_id)
+        except Exception as e:
+            _log.warn('Problem decrementing daily quota for %s: %s',
+                      worker_id, e.message)
         try:
             frac_contradictions, frac_unanswered, frac_too_fast, prob_random = \
                 dbset.task_finished_from_json(request.json,
@@ -516,9 +638,10 @@ def submit():
                        '%.2f' % (assignment_id, worker_id,
                                  frac_contradictions, frac_unanswered,
                                  frac_too_fast, prob_random))
-        except:
-            _log.error('Problem storing task data - dumping task json')
-            _log.info('TASK JSON: %s' % str(request.json))
+        except Exception as e:
+            _log.error('Problem storing task data: %s' % e.message)
+            tb = traceback.format_exc()
+            dispatch_err(e, tb, request)
             return to_return
         try:
             is_valid, reason = \
@@ -530,6 +653,8 @@ def submit():
         except Exception as e:
             _log.error('Could not validate task, default to accept. Error '
                        'was: %s' % e.message)
+            tb = traceback.format_exc()
+            dispatch_err(e, tb, request)
             is_valid = True
             reason = None
         if not is_valid:
@@ -538,13 +663,19 @@ def submit():
                                     assignment_id, task_id, reason])
             scheduler.add_job(check_ban,
                               args=[mt, dbget, dbset, worker_id])
-            mon.increment("n_tasks_rejected")
-            mon.decrement("n_tasks_in_progress")
+            try:
+                mon.increment("n_tasks_rejected")
+                mon.decrement("n_tasks_in_progress")
+            except Exception as e:
+                _log.warn('Could not increment statemons: %s' % e.message)
         else:
             scheduler.add_job(handle_accepted_task,
                               args=[dbset, task_id])
-            mon.increment("n_tasks_accepted")
-            mon.decrement("n_tasks_in_progress")
+            try:
+                mon.increment("n_tasks_accepted")
+                mon.decrement("n_tasks_in_progress")
+            except Exception as e:
+                _log.warn('Could not increment statemons: %s' % e.message)
         if CONTINUOUS_MODE:
             scheduler.add_job(create_hit, args=[mt, dbget, dbset, hit_type_id])
         scheduler.add_job(handle_finished_hit, args=[mt, dbget, dbset, hit_id])

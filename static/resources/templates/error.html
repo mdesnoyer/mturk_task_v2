@@ -12,9 +12,27 @@
         <img src="{{ jg['error_png'] }}" alt="error" style="width:300px;height:300px;">
         <br><br>
         An error has occurred.
-        <br><br>
-        We apologize for the error. A notification has been dispatched to us, and we are working to correct the problem as soon as possible.
         <p>Contact us: <a href="{{ feedback_url }}" target="_blank">Click here</a></p>
+        <p>Please include any additional information:</p>
+        <br><br>
+        The error was: "{{ error }}"
+        <br>
+        {% for key, value in errordata.iteritems() %}
+            {{ key }} = {{ value }}
+        {% endfor %}
+        {% if allow_submit %}
+            <p>You can still submit your task by clicking here:
+            <button onclick="sendData();">Submit HIT</button></p>
+        {% endif %}
     </center>
 </body>
+{% if allow_submit %}
+    <script>
+        function sendData() {
+            jsPsych.turk.submitToTurk({
+                code: 'completed'
+            });
+        }
+    </script>
+{% endif %}
 </html>

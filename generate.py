@@ -267,31 +267,23 @@ def make_practice_limit_html():
     return html
 
 
-def make_error_fetching_task_html(hit_id=None, task_id=None):
+def make_error(error_string='Unknown', error_data=dict(),
+               hit_id=None, task_id=None, allow_submit=False):
     """
-    Creates a 'error fetching task' page html.
+    Generic create-an-error page.
 
+    :param error_string: The string to provide the user.
+    :param error_data: A dictionary of values to provide the user.
     :param hit_id: The HIT ID, as a string.
     :param task_id: The task ID, as a string.
-    :return: The error page HTML.
+    :param allow_submit: Whether or not to allow them to submit.
+    :return: The error HTML page.
     """
     feedback_url = generate_contact_us_link(hit_id, task_id)
     template = templateEnv.get_template(ERROR_TEMPLATE)
-    html = template.render(jg=jg, feedback_url=feedback_url)
-    return html
-
-
-def make_error_submitting_task_html(hit_id=None, task_id=None):
-    """
-    Creates the HTML that indicates there was an error submitting the task.
-
-    :param hit_id: The HIT ID, as a string.
-    :param task_id: The task ID, as a string.
-    :return: The error page HTML.
-    """
-    feedback_url = generate_contact_us_link(hit_id, task_id)
-    template = templateEnv.get_template(ERROR_TEMPLATE)
-    html = template.render(jg=jg, feedback_url=feedback_url)
+    html = template.render(jg=jg, feedback_url=feedback_url,
+                           error=error_string, errordata=error_data,
+                           allow_submit=allow_submit)
     return html
 
 
@@ -590,8 +582,6 @@ def fetch_task(dbget, dbset, task_id, worker_id=None):
     """
     # check that the worker exists, else register them. We want to have their
     #  information in the database so we don't spawn errors down the road.
-    if not dbget.worker_exists(worker_id):
-        dbset.register_worker(worker_id)
     # check if we need demographics or not
     is_practice = dbget.task_is_practice(task_id)
     collect_demo = False
