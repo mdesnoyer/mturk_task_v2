@@ -50,50 +50,70 @@ def make_demographics():
     return demographics.render(jg=jg)
 
 
-def make_success():
+def make_success(hit_id=None, task_id=None):
     """
     Functions just like make_demographics, but returns a 'success page'
     indicating that the task was successfully submitted. It needs
     static_urls for the same reason.
 
+    :param hit_id: The HIT ID, as a string.
+    :param task_id: The task ID, as a string.
     :return: HTML for a page indicating the worker has successfully completed a
              task.
     """
+    feedback_url = generate_contact_us_link(hit_id, task_id)
+    search_page = generate_search_page()
     success = templateEnv.get_template(SUCCESS_TEMPLATE)
-    return success.render(jg=jg)
+    return success.render(jg=jg, feedback_url=feedback_url,
+                          search_page=search_page)
 
 
-def make_practice_passed():
+def make_practice_passed(hit_id=None, task_id=None):
     """
     Creates the practice passed success page (see make_success)
 
+    :param hit_id: The HIT ID, as a string.
+    :param task_id: The task ID, as a string.
     :return: HTML for a page indicating the worker has successfully completed a
              practice.
     """
+    feedback_url = generate_contact_us_link(hit_id, task_id)
+    search_page = generate_search_page()
     success = templateEnv.get_template(SUCCESS_PRACTICE_PASSED_TEMPLATE)
-    return success.render(jg=jg)
+    return success.render(jg=jg, feedback_url=feedback_url,
+                          search_page=search_page)
 
 
-def make_practice_failed():
+def make_practice_failed(hit_id=None, task_id=None):
     """
     Creates the practice failed page (see make_success)
 
+    :param hit_id: The HIT ID, as a string.
+    :param task_id: The task ID, as a string.
     :return: HTML for a page indicating the worker has failed a practice.
     """
+    feedback_url = generate_contact_us_link(hit_id, task_id)
+    search_page = generate_search_page()
     success = templateEnv.get_template(SUCCESS_PRACTICE_FAILED_TEMPLATE)
-    return success.render(jg=jg)
+    return success.render(jg=jg, feedback_url=feedback_url,
+                          search_page=search_page)
 
 
-def make_practice_already_passed():
+def make_practice_already_passed(hit_id=None, task_id=None):
     """
     Creates the HTML for the case when they are trying to submit a practice
     task but have already passed it.
 
+    :param hit_id: The HIT ID, as a string.
+    :param task_id: The task ID, as a string.
     :return: HTML page indicating that they cannot re-submit and should
     instead go on to the main task.
     """
+    feedback_url = generate_contact_us_link(hit_id, task_id)
+    search_page = generate_search_page()
     success = templateEnv.get_template(SUCCESS_PRACTICE_ALREADY_PASSED_TEMPLATE)
-    return success.render(jg=jg)
+    return success.render(jg=jg, feedback_url=feedback_url,
+                          search_page=search_page)
 
 
 def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
@@ -247,25 +267,31 @@ def make_practice_limit_html():
     return html
 
 
-def make_error_fetching_task_html():
+def make_error_fetching_task_html(hit_id=None, task_id=None):
     """
     Creates a 'error fetching task' page html.
 
+    :param hit_id: The HIT ID, as a string.
+    :param task_id: The task ID, as a string.
     :return: The error page HTML.
     """
+    feedback_url = generate_contact_us_link(hit_id, task_id)
     template = templateEnv.get_template(ERROR_TEMPLATE)
-    html = template.render(jg=jg)
+    html = template.render(jg=jg, feedback_url=feedback_url)
     return html
 
 
-def make_error_submitting_task_html():
+def make_error_submitting_task_html(hit_id=None, task_id=None):
     """
     Creates the HTML that indicates there was an error submitting the task.
 
+    :param hit_id: The HIT ID, as a string.
+    :param task_id: The task ID, as a string.
     :return: The error page HTML.
     """
+    feedback_url = generate_contact_us_link(hit_id, task_id)
     template = templateEnv.get_template(ERROR_TEMPLATE)
-    html = template.render(jg=jg)
+    html = template.render(jg=jg, feedback_url=feedback_url)
     return html
 
 
@@ -597,4 +623,32 @@ def fetch_task(dbget, dbset, task_id, worker_id=None):
         # dbset.set_task_html(task_id, html)
         pass
     return html
+
+
+def generate_contact_us_link(hit_id=None, task_id=None):
+    """
+    Returns the link for the "contact us" pages.
+
+    :param hit_id: The hit ID.
+    :param task_id: The Task ID.
+    :return: The URL for the contact page as a string.
+    """
+    link = 'https://www.mturk.com/mturk/contact?subject=%s&requesterId=%s'
+    subject = 'Feedback'
+    if hit_id is not None:
+        subject += ' (HID: %s)' % hit_id
+    if task_id is not None:
+        subject += ' (TID: %s)' % task_id
+    return link % (subject.replace(' ', '+'), KRYPTON_RID)
+
+
+def generate_search_page():
+    """
+    Gets the search page for our HITs.
+
+    :return: The search page URL.
+    """
+    link = 'https://www.mturk.com/mturk/searchbar?requesterId=%s'
+    return link % KRYPTON_RID
+
 

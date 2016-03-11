@@ -481,22 +481,26 @@ def submit():
         dbset.register_demographics(request.json, worker_ip)
         passed_practice = request.json[0]['passed_practice']
         if mt.get_worker_passed_practice(worker_id):
-            to_return = make_practice_already_passed()
+            to_return = make_practice_already_passed(hit_id=hit_id,
+                                                     task_id=task_id)
         elif passed_practice:
-            to_return = make_practice_passed()
+            to_return = make_practice_passed(hit_id=hit_id,
+                                             task_id=task_id)
             dbset.practice_pass(request.json)
             mt.grant_worker_practice_passed(worker_id)
             mon.increment("n_practices_passed")
             mon.decrement("n_tasks_in_progress")
         else:
-            to_return = make_practice_failed()
+            to_return = make_practice_failed(hit_id=hit_id,
+                                             task_id=task_id)
             mon.increment("n_practices_rejected")
             mon.decrement("n_tasks_in_progress")
         if CONTINUOUS_MODE:
             scheduler.add_job(create_practice,
                               args=[mt, dbget, dbset, hit_type_id])
     else:
-        to_return = make_success()
+        to_return = make_success(hit_id=hit_id,
+                                 task_id=task_id)
         try:
             mt.decrement_worker_daily_quota(worker_id)
         except:

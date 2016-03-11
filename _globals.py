@@ -59,11 +59,13 @@ BLOCK IDENTIFICATION
 KEEP_BLOCK = 'keep'
 REJECT_BLOCK = 'reject'
 
+
 """
 WEBSERVER INFORMATION
 """
 WEBSERVER_PORT = 8080
 WEBSERVER_URL = "mturk.kryto.me"
+
 
 """
 OTHER MTURK INFORMATION
@@ -79,7 +81,8 @@ MTURK_SANDBOX_HOST = 'mechanicalturk.sandbox.amazonaws.com'
 # the host for the vanilla sandbox
 MTURK_HOST = 'mechanicalturk.amazonaws.com'
 KRYPTON_WID = 'A1RPGGKICRYDKC'  # Krypton's worker ID
-KRYPTON_RID = None  # Krypton's requester ID
+KRYPTON_RID = 'A1RPGGKICRYDKC'  # Krypton's requester ID
+
 
 """
 TEMPLATES
