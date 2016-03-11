@@ -15,6 +15,7 @@ from _utils import *
 For debugging
 """
 TESTING = False
+NO_MTURK = True  # if True, will not make any calls to MTurk
 _MTURK_SANDBOX = True
 LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks

@@ -1612,6 +1612,7 @@ class Set(object):
         self.create_task_table(clobber=True)
         self.create_win_table(clobber=True)
         self.create_task_type_table(clobber=True)
+        self.create_statistics_table(clobber=True)
         # now, for any active image, we need to:
         #   - delete all but the metadata
         #   - set is_active to false
