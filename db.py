@@ -1768,7 +1768,7 @@ class Set(object):
             if not is_practice:
                 for img in image_list:
                     table.counter_inc(img, 'stats:num_times_seen')
-                stats_table.counter_inc(skey, 'statistcs:n_samples',
+                stats_table.counter_inc(skey, 'statistics:n_samples',
                                         len(image_list))
         # note: not in order of presentation!
         task_dict['metadata:images'] = dumps(images)

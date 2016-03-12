@@ -12,11 +12,13 @@ def _get_timestamp_string():
     return datetime.now().isoformat()
 
 
-def config_root_logger(logfile=None):
+def config_root_logger(logfile=None, return_webserver=False):
     """
     Sets up the root logger. Call this in the main() of the file.
 
     :param logfile: The filename to log to.
+    :param return_webserver: Whether or not to also create and return a
+           handler for the Flask webserver as well.
     """
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
@@ -41,6 +43,14 @@ def config_root_logger(logfile=None):
         handler_aps.addFilter(fltr2)
         handler_aps.setFormatter(formatter)
         logger.addHandler(handler_aps)
+        if return_webserver:
+            handler = logging.handlers.RotatingFileHandler(
+                logfile,
+                maxBytes=104857600L,  # 100 MB
+                backupCount=6)
+            handler.setFormatter(formatter)
+            handler.setLevel(logging.WARNING)
+            return handler
 
 
 def setup_logger(log_name):

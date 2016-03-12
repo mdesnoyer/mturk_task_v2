@@ -703,7 +703,8 @@ def submit():
 
 
 if __name__ == '__main__':
-    logger.config_root_logger(LOG_LOCATION)
+    webhand = logger.config_root_logger(LOG_LOCATION, return_webserver=True)
+    app.logger.addHandler(webhand)
     # start the monitoring agent
     _log.info('Starting scheduler')
     scheduler.start()
@@ -752,4 +753,4 @@ if __name__ == '__main__':
                 debug=True, ssl_context=context)
     else:
         app.run(host='0.0.0.0', port=WEBSERVER_PORT, threaded=True,
-                debug=False, use_reloader=False)
+                debug=True, use_reloader=False)
