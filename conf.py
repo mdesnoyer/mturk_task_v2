@@ -119,7 +119,7 @@ RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized
 # tuple) * (price per minute)
 _DEFAULT_TASK_PAYMENT = (DEF_NUM_IMAGES_PER_TASK / 3. *
                          DEF_NUM_IMAGE_APPEARANCE_PER_TASK) * 2 * \
-                        DEF_TRIAL_TIME / 1000 * (0.11 / 60)
+                        DEF_TRIAL_TIME / 1000 * (0.1 / 60)
 DEFAULT_TASK_PAYMENT = float(int(_DEFAULT_TASK_PAYMENT * 100))/100
 DEFAULT_TASK_NAME = 'Choosing %s images' % ATTRIBUTE  # The title for the
 # actual tasks.
