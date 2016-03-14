@@ -69,10 +69,8 @@ HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
                                        # is one month.
 AUTO_APPROVE_DELAY = 0      # How long until the task is auto-accepted, in
                             # seconds. Currently assignments are auto-approved.
-HIT_TYPE_DURATION = 60*60*24*365  # How long registered hit types last, in
-                                  # seconds. The current value is one year.
-ASSIGNMENT_DURATION = 60*60*2  # How long after accepting a task does a worker
-                               # have to complete it.
+HIT_TYPE_DURATION = 30*60  # How long the worker has to complete the hit (30
+# min)
 DEF_EXTENSION_TIME = 60*60*3  # The default time to extend a hit for during
                               # extension. The current value is 3 days.
 

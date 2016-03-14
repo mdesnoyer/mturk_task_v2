@@ -393,7 +393,6 @@ def shutdown_server():
     func()
 
 
-
 def dispatch_err(e, tb='', request=None):
     """
     Dispatches an error email.
@@ -426,7 +425,8 @@ def dispatch_err(e, tb='', request=None):
                  'User Agent: %s' % ua,
                  'JSON: %s' % str(req_json)]
     body = '\n\n----------------------------\n\n'.join(body_elem)
-    emconn.send_email('ops@kryto.me', subj, body, ['dufour@neon-lab.com'])
+    emconn.send_email('ops@kryto.me', subj, body,
+                      ['kryptonlabs99@gmail.com'])
 
 
 """
@@ -445,26 +445,6 @@ def internal_error(e):
         return make_error('Unknown internal server error.')
     except:
         return 'Error 500 Otherwise Unknown'
-
-
-@app.route('/errortest1', methods=['GET', 'POST'])
-def errortest1():
-    try:
-        print asdf
-    except Exception as e:
-        tb = traceback.format_exc()
-        dispatch_err(e, tb, request)
-        _log.error('Error has worked correctly.')
-        return make_error('Error test has functioned correctly.',
-                          error_data={'test1': 'worked', 'test2': True,
-                                      'test3': 1},
-                          hit_id='0000000000001',
-                          task_id='0000000000001', allow_submit=True)
-
-
-@app.route('/errortest2', methods=['GET', 'POST'])
-def errortest2():
-    print asdf
 
 
 @app.route('/shutdown', methods=['GET', 'POST'])
