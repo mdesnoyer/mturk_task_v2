@@ -2406,8 +2406,11 @@ class Set(object):
             # unfortunately, happybase does not support batch incrementation
             # (arg!)
             choices = loads(task_data.get('completion_data:choices', None))
-            for img in choices:
+            rts = loads(task_data.get('completion_data:reaction_times', None))
+            for img, rt in zip(choices, rts):
                 if img == -1:
+                    continue
+                if rt < MIN_TRIAL_RT:
                     continue
                 table.counter_inc(img, 'stats:num_wins')
             # update the win matrix table
@@ -2417,8 +2420,11 @@ class Set(object):
             # table -- as a batch this will store all the ids that we have to
             # increment (which cant be incremented in a batch)
             ids_to_inc = []
-            for ch, tup, tuptype in zip(choices, img_tuples, img_tuple_types):
+            for ch, rt, tup, tuptype in zip(choices, rts, img_tuples,
+                                           img_tuple_types):
                 if ch == -1:
+                    continue
+                if rt < MIN_TRIAL_RT:
                     continue
                 for img in tup:
                     if img != ch:

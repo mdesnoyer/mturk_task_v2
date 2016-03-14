@@ -74,6 +74,8 @@ statemon.define("n_tasks_served")
 statemon.define("n_tasks_in_progress")
 statemon.define("n_practices_rejected")
 statemon.define("n_practices_passed")
+statemon.define("n_errors_observed")
+statemon.define("n_unknown_errors")
 
 
 if not CONTINUOUS_MODE:
@@ -401,6 +403,10 @@ def dispatch_err(e, tb='', request=None):
     :param tb: The traceback.
     :param request: The Flask request.
     """
+    try:
+        mon.increment('n_errors_observed')
+    except:
+        _log.warn('Could not increment observed error count')
     if request is not None:
         if request.headers.getlist("X-Forwarded-For"):
            src = request.headers.getlist("X-Forwarded-For")[0]
@@ -436,6 +442,10 @@ FLASK FUNCTIONS
 
 @app.errorhandler(500)
 def internal_error(e):
+    try:
+        mon.increment('n_unknown_errors')
+    except:
+        _log.warn('Could not increment unknown error count')
     try:
         _log.warn('Internal server error.')
         dispatch_err(e)
@@ -487,8 +497,11 @@ def task():
        src = request.headers.getlist("X-Forwarded-For")[0]
     else:
        src = request.remote_addr
-    _log.debug('Task request from %s received' % str(src))
     is_preview = request.values.get('assignmentId', '') == PREVIEW_ASSIGN_ID
+    if is_preview:
+        _log.debug('Preview request from %s received' % str(src))
+    else:
+        _log.debug('Task request from %s received' % str(src))
     hit_id = request.values.get('hitId', None)
     if hit_id is None:
         _log.debug('Returning request to %s' % str(src))
@@ -519,7 +532,8 @@ def task():
     except Exception as e:
         tb = traceback.format_exc()
         dispatch_err(e, tb, request)
-        return make_error('Could not fetch HIT, please try again later.',
+        return make_error('Could not fetch HIT, this HIT has probably been '
+                          'removed.',
                           error_data={'HIT ID': hit_id, 'TASK ID': task_id,
                                       'WORKER ID': worker_id},
                           hit_id=hit_id, task_id=task_id)
