@@ -67,9 +67,16 @@ DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
 
 
 """
-GLOBAL ACROSS-TASK TIMING CONFIGURATION
+MTURK OPTIONS
 """
-HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
+NUM_PRACTICES = 5  # how many practices to post at once
+NUM_TASKS = 5  # how many tasks to maintain online
+NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
+                                      # practice?
+# HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
+#                                        # is one month.
+# TODO: This is for the pilot, which will last for 2 hours!
+HIT_LIFETIME_IN_SECONDS = 60*60*2  # How long a hit lasts. The current value
                                        # is one month.
 AUTO_APPROVE_DELAY = 0      # How long until the task is auto-accepted, in
                             # seconds. Currently assignments are auto-approved.
@@ -219,16 +226,6 @@ WEBSERVER CONFIGURATION
 NUM_THREADS = 1  # the number of threads to use on the webserver.
 ENABLE_BANNING = True  # whether or not to ban poor-performing workers.
 
-
-"""
-MTURK OPTIONS
-"""
-NUM_PRACTICES = 5  # how many practices to post at once
-NUM_TASKS = 5  # how many tasks to maintain online
-NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
-                                      # practice?
-PRACTICE_TASK_LIFETIME = 60*60*24*7   # the time a practice task exists for.
-                                      # default is 1 week.
 
 if LOCAL:
     # change a bunch of the '_global' parameters

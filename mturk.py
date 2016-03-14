@@ -808,7 +808,7 @@ class MTurk(object):
         opobj = dict()
         opobj['hit_type'] = hit_type_id
         opobj['question'] = question_object
-        opobj['lifetime'] = PRACTICE_TASK_LIFETIME
+        opobj['lifetime'] = HIT_LIFETIME_IN_SECONDS
         opobj['max_assignments'] = NUM_ASSIGNMENTS_PER_PRACTICE
         opobj['annotation'] = task_id
         opobj['approval_delay'] = AUTO_APPROVE_DELAY
