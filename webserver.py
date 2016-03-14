@@ -502,11 +502,11 @@ def task():
         err_dict = {'HIT ID': hit_id}
         return make_error('Could not fetch HIT information.',
                           error_data=err_dict, hit_id=hit_id)
+    is_practice = False
+    if len(task_id) >= len(PRACTICE_PREFIX):
+        if task_id[:len(PRACTICE_PREFIX)] == PRACTICE_PREFIX:
+            is_practice = True
     if is_preview:
-        is_practice = False
-        if len(task_id) >= len(PRACTICE_PREFIX):
-            if task_id[:len(PRACTICE_PREFIX)] == PRACTICE_PREFIX:
-                is_practice = True
         task_time = dbget.get_task_time(task_id)
         _log.debug('Returning request to %s' % str(src))
         return make_preview_page(is_practice, task_time)
