@@ -62,7 +62,7 @@ GLOBAL WITHIN-TASK TIMING CONFIGURATION
 TIMING_POST_TRIAL = 200  # Sets the time, in milliseconds, between the current
                          # trial and the next trial.
 DEF_FEEDBACK_TIME = 100  # the amount of time to display feedback
-DEF_TRIAL_TIME = 3000  # the maximum amount of time each trial is allowed to
+DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
                        # go for
 
 
@@ -123,7 +123,7 @@ RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized
 # tuple) * (price per minute)
 _DEFAULT_TASK_PAYMENT = (DEF_NUM_IMAGES_PER_TASK / 3. *
                          DEF_NUM_IMAGE_APPEARANCE_PER_TASK) * 2 * \
-                        DEF_TRIAL_TIME / 1000 * (0.1 / 60)
+                        DEF_TRIAL_TIME / 1000 * (0.11 / 60)
 DEFAULT_TASK_PAYMENT = float(int(_DEFAULT_TASK_PAYMENT * 100))/100
 DEFAULT_TASK_NAME = 'Choosing %s images' % ATTRIBUTE  # The title for the
 # actual tasks.
