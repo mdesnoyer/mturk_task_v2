@@ -15,7 +15,7 @@ from _utils import *
 For debugging
 """
 TESTING = False
-_MTURK_SANDBOX = True
+_MTURK_SANDBOX = False
 LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
@@ -27,11 +27,11 @@ CONTINUOUS_MODE = False  # whether or not to run the task continuously.
 AWS STUFF
 """
 # MTURK -- image.inference@gmail.com
-MTURK_ACCESS_ID = 'AKIAJPB4VQCDGOUQK2JA'
-MTURK_SECRET_KEY = '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'
+# MTURK_ACCESS_ID = 'AKIAJPB4VQCDGOUQK2JA'
+# MTURK_SECRET_KEY = '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'
 # MTRUK -- kryptonlabs99@gmail.com
-# MTURK_ACCESS_ID = 'AKIAI3D7J3K3MABR2FOQ'
-# MTURK_SECRET_KEY = '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'
+MTURK_ACCESS_ID = 'AKIAI3D7J3K3MABR2FOQ'
+MTURK_SECRET_KEY = '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'
 # AWS
 AWS_ACCESS_ID = None  # os.environ['AWS_ACCESS_ID']
 AWS_SECRET_KEY = None  # os.environ['AWS_SECRET_KEY']
@@ -50,10 +50,13 @@ HIT_SIZE = [600, 400]  # the hit box size, which is where the images will be
                        # constrained to occur in, [w, h]
 MARGIN_SIZE = 2  # the default margin size, for formatting.
 # Any announcements that need to be made.
-ANNOUNCEMENT = "Note: We are still testing these hits before large-scale " \
-               "deployment. Please be patient and report any bugs that occur!" \
-               " Also please be aware that your qualifications may be reset " \
-               "as the task is still changing."
+ANNOUNCEMENT = \
+    "IMPORTANT!! This is a 2-hour pilot test of this task! Later this week, " \
+    "the full task" \
+    " will be deployed, with thousands of HITs (you will have to re-take " \
+    "the practice for that). Right now, though, we are trying to make " \
+    "sure there are no serious bugs in our code.  If you encounter a bug, " \
+    "please let us know! You will still be paid for these HITs, of course."
 
 """
 GLOBAL WITHIN-TASK TIMING CONFIGURATION
@@ -68,8 +71,8 @@ DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
 """
 MTURK OPTIONS
 """
-NUM_PRACTICES = 5  # how many practices to post at once
-NUM_TASKS = 5  # how many tasks to maintain online
+NUM_PRACTICES = 20  # how many practices to post at once
+NUM_TASKS = 50  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
