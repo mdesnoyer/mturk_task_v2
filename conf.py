@@ -50,7 +50,11 @@ BOX_SIZE = [800, 500]  # The box size for serving images, [w, h]
 HIT_SIZE = [600, 400]  # the hit box size, which is where the images will be
                        # constrained to occur in, [w, h]
 MARGIN_SIZE = 2  # the default margin size, for formatting.
-
+# Any announcements that need to be made.
+ANNOUNCEMENT = "Note: We are still testing these hits before large-scale " \
+               "deployment. Please be patient and report any bugs that occur!" \
+               " Also please be aware that your qualifications may be reset " \
+               "as the task is still changing."
 
 """
 GLOBAL WITHIN-TASK TIMING CONFIGURATION
