@@ -561,7 +561,7 @@ def _make_preview_page_dep(mt, worker_id, is_practice=False):
     return template.render(jg=jg)
 
 
-def fetch_task(dbget, dbset, task_id, worker_id=None):
+def fetch_task(dbget, dbset, task_id, worker_id=None, is_practice=None):
     """
     Constructs a task after a request hits the webserver. In contrast to
     build_task, this is for requests that have a task ID encoded in
@@ -578,40 +578,39 @@ def fetch_task(dbget, dbset, task_id, worker_id=None):
     :param task_id: The task ID, as a string.
     :param worker_id: The worker ID, as a string. If this is a preview,
                       you cannot obtain the worker ID, thus supply None.
+    :param is_practice: Indicates whether or not the task is a practice.
     :return: The HTML for the requested task.
     """
     # check that the worker exists, else register them. We want to have their
     #  information in the database so we don't spawn errors down the road.
     # check if we need demographics or not
-    is_practice = dbget.task_is_practice(task_id)
-    collect_demo = False
+    if is_practice is None:
+        is_practice = False
+        if len(task_id) >= len(PRACTICE_PREFIX):
+            if task_id[:len(PRACTICE_PREFIX)] == PRACTICE_PREFIX:
+                is_practice = True
     if is_practice:
         intro_instructions = DEF_PRACTICE_INTO_INSTRUCTIONS
     else:
         intro_instructions = DEF_INTRO_INSTRUCTIONS
+    collect_demo = False
     if is_practice:
         if dbget.worker_need_demographics(worker_id):
             collect_demo = True
-        dbset.practice_served(task_id, worker_id)
+        _log.info('Serving practice %s to worker %s' % (task_id, worker_id))
     else:
-        dbset.task_served(task_id, worker_id)
+        _log.info('Serving task %s served to %s' % (task_id, worker_id))
     blocks = dbget.get_task_blocks(task_id)
-    _log.debug('Fetched task blocks for task %s' % task_id)
     if blocks is None:
         # display an error-fetching-task page.
-        _log.warn('Could not fetch blocks for task %s' % task_id)
-        return make_error_fetching_task_html()
-    _log.debug('Assembling HTML')
+        _log.error('Could not fetch blocks for task %s' % task_id)
+        raise Exception('Could not fetch task blocks')
     html = make_html(blocks,
                      practice=is_practice,
                      collect_demo=collect_demo,
                      intro_instructions=intro_instructions,
                      task_id=task_id)
     _log.debug('HTML assembly finished')
-    if not is_practice:
-        # this is now disabled
-        # dbset.set_task_html(task_id, html)
-        pass
     return html
 
 

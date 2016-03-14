@@ -377,20 +377,21 @@ def handle_finished_hit(mt, dbget, dbset, hit_id):
     # mt.disable_hit(hit_id)
 
 
+"""
+HELPER FUNCTIONS
+"""
+
+
 def shutdown_server():
     """
     Function to shutdown the server.
     """
-    scheduler.shutdown()
+    scheduler.shutdown(wait=False)
     func = request.environ.get('werkzeug.server.shutdown')
     if func is None:
         raise RuntimeError('Not running with the Werkzeug Server')
     func()
 
-
-"""
-HELPER FUNCTIONS
-"""
 
 
 def dispatch_err(e, tb='', request=None):
@@ -522,7 +523,10 @@ def task():
         return make_error('Could not fetch HIT information.',
                           error_data=err_dict, hit_id=hit_id)
     if is_preview:
-        is_practice = dbget.task_is_practice(task_id)
+        is_practice = False
+        if len(task_id) >= len(PRACTICE_PREFIX):
+            if task_id[:len(PRACTICE_PREFIX)] == PRACTICE_PREFIX:
+                is_practice = True
         task_time = dbget.get_task_time(task_id)
         _log.debug('Returning request to %s' % str(src))
         return make_preview_page(is_practice, task_time)
@@ -531,7 +535,7 @@ def task():
         _log.debug('Registering worker %s' % worker_id)
         dbset.register_worker(worker_id)
     try:
-        response = fetch_task(dbget, dbset, task_id, worker_id)
+        response = fetch_task(dbget, dbset, task_id, worker_id, is_practice)
     except Exception as e:
         tb = traceback.format_exc()
         dispatch_err(e, tb, request)
@@ -579,11 +583,12 @@ def submit():
         hit_type_id = ''
     is_practice = request.json[0]['is_practice']
     if is_practice:
+        # ---------- Handle submitted practice task ----------
         try:
             mt.decrement_worker_practice_weekly_quota(worker_id)
         except Exception as e:
             _log.warn('Problem decrementing worker weekly practice quota for '
-                      '%s', worker_id)
+                      '%s: %s', worker_id, e.message)
         try:
             dbset.register_demographics(request.json, worker_ip)
         except Exception as e:
@@ -603,12 +608,7 @@ def submit():
                 return make_error('Error creating practice passed page',
                                   error_data=err_dict, hit_id=hit_id,
                                   task_id=task_id, allow_submit=True)
-            try:
-                dbset.practice_pass(request.json)
-                mt.grant_worker_practice_passed(worker_id)
-            except Exception as e:
-                tb = traceback.format_exc()
-                dispatch_err(e, tb, request)
+            mt.grant_worker_practice_passed(worker_id)
             try:
                 mon.increment("n_practices_passed")
                 mon.decrement("n_tasks_in_progress")
@@ -633,6 +633,7 @@ def submit():
             scheduler.add_job(create_practice,
                               args=[mt, dbget, dbset, hit_type_id])
     else:
+        # ---------- Handle submitted task ----------
         try:
             to_return = make_success(hit_id=hit_id,
                                      task_id=task_id)
@@ -642,11 +643,7 @@ def submit():
             return make_error('Error creating submit page.',
                               error_data=err_dict, hit_id=hit_id,
                               task_id=task_id, allow_submit=True)
-        try:
-            mt.decrement_worker_daily_quota(worker_id)
-        except Exception as e:
-            _log.warn('Problem decrementing daily quota for %s: %s',
-                      worker_id, e.message)
+        mt.decrement_worker_daily_quota(worker_id)
         try:
             frac_contradictions, frac_unanswered, frac_too_fast, prob_random = \
                 dbset.task_finished_from_json(request.json,

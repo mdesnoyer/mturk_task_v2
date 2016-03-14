@@ -599,10 +599,7 @@ class Get(object):
                 table.row(task_id, columns=['blocks:c1']).get('blocks:c1', None)
             if pickled_blocks is None:
                 return None
-        blocks = loads(pickled_blocks)
-        _log.debug('Task blocks fetched')
-        _log.debug('Fetching image urls...')
-        with self.pool.connection() as conn:
+            blocks = loads(pickled_blocks)
             table = conn.table(IMAGE_TABLE)
             # convert the image IDs into URLs
             # fetching with the 'rows' operation so it's not as slow
@@ -1857,7 +1854,10 @@ class Set(object):
                                   'status:is_banned': FALSE,
                                   'status:random_seed': str(int((datetime.now(
                                   )-datetime(2016, 1, 1)).total_seconds()))})
+        try:
             mon.increment("n_workers_registered")
+        except Exception as e:
+            _log.warn('Could not increment statemon')
 
     def register_images(self, image_ids, image_urls, attributes=[]):
         """
@@ -2150,8 +2150,6 @@ class Set(object):
             except Exception as e:
                 _log.critical('COULD NOT STORE TASK DATA FOR %s: %s' % (task_id,
                                                                         e))
-                import ipdb
-                ipdb.set_trace()
             # acquire the task timing
             r = table.row(task_id,
                           columns=['status:pending_evaluation',
