@@ -219,8 +219,8 @@ ENABLE_BANNING = True  # whether or not to ban poor-performing workers.
 """
 MTURK OPTIONS
 """
-NUM_PRACTICES = 30  # how many practices to post at once
-NUM_TASKS = 50  # how many tasks to maintain online
+NUM_PRACTICES = 5  # how many practices to post at once
+NUM_TASKS = 5  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 PRACTICE_TASK_LIFETIME = 60*60*24*7   # the time a practice task exists for.
