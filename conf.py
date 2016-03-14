@@ -16,7 +16,7 @@ For debugging
 """
 TESTING = False
 NO_MTURK = True  # if True, will not make any calls to MTurk
-_MTURK_SANDBOX = True
+_MTURK_SANDBOX = False
 LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
@@ -28,11 +28,11 @@ CONTINUOUS_MODE = False  # whether or not to run the task continuously.
 AWS STUFF
 """
 # MTURK -- image.inference@gmail.com
-MTURK_ACCESS_ID = 'AKIAJPB4VQCDGOUQK2JA'
-MTURK_SECRET_KEY = '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'
+# MTURK_ACCESS_ID = 'AKIAJPB4VQCDGOUQK2JA'
+# MTURK_SECRET_KEY = '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'
 # MTRUK -- kryptonlabs99@gmail.com
-# MTURK_ACCESS_ID = 'AKIAI3D7J3K3MABR2FOQ'
-# MTURK_SECRET_KEY = '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'
+MTURK_ACCESS_ID = 'AKIAI3D7J3K3MABR2FOQ'
+MTURK_SECRET_KEY = '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'
 # AWS
 AWS_ACCESS_ID = None  # os.environ['AWS_ACCESS_ID']
 AWS_SECRET_KEY = None  # os.environ['AWS_SECRET_KEY']
@@ -123,7 +123,7 @@ RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized
 # tuple) * (price per minute)
 _DEFAULT_TASK_PAYMENT = (DEF_NUM_IMAGES_PER_TASK / 3. *
                          DEF_NUM_IMAGE_APPEARANCE_PER_TASK) * 2 * \
-                        DEF_TRIAL_TIME / 1000 * (0.11 / 60)
+                        DEF_TRIAL_TIME / 1000 * (0.10 / 60)
 DEFAULT_TASK_PAYMENT = float(int(_DEFAULT_TASK_PAYMENT * 100))/100
 DEFAULT_TASK_NAME = 'Choosing %s images' % ATTRIBUTE  # The title for the
 # actual tasks.
