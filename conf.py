@@ -147,7 +147,7 @@ KEYWORDS = []  # the keywords for the HIT / HIT Type
 """
 PRACTICE TASK CONFIGURATION
 """
-DEF_PRACTICE_NUM_IMAGES_PER_TASK = 30  # the default number of images
+DEF_PRACTICE_NUM_IMAGES_PER_TASK = 60  # the default number of images
                                        # per practice.
 DEF_PRACTICE_INTO_INSTRUCTIONS = \
     '/instructions/practice_template.html'  # the default practice introduction
@@ -158,7 +158,7 @@ DEF_PRACTICE_PROMPT = \
 DEF_PRACTICE_KEEP_BLOCKS = 1  # the default number of keep blocks for a
                               # practice task
 DEF_PRACTICE_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
-DEFAULT_PRACTICE_PAYMENT = 0.12  # the default payment for practices
+DEFAULT_PRACTICE_PAYMENT = 0.20  # the default payment for practices
 DEFAULT_PRACTICE_TASK_NAME = \
     DEFAULT_TASK_NAME + ' PRACTICE'  # The title for practice tasks.
 PRACTICE_DESCRIPTION = \
