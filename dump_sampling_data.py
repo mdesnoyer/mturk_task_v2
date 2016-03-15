@@ -28,6 +28,6 @@ for n in range(dbget.get_n_active_images_count()):
     print n
 
 with open('/tmp/datas', 'w') as f:
-    np.save(np.array(active_ids, samp_cnts, win_cnts, samp_surp))
+    np.save(f, np.array(active_ids, samp_cnts, win_cnts, samp_surp))
 
 
