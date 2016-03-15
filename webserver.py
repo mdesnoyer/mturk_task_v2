@@ -459,6 +459,11 @@ def internal_error(e):
 
 @app.route('/shutdown', methods=['GET', 'POST'])
 def shutdown():
+    """
+    Shuts down the server.
+
+    :return: None
+    """
     if request.headers.getlist("X-Forwarded-For"):
        src = request.headers.getlist("X-Forwarded-For")[0]
     else:
@@ -466,6 +471,17 @@ def shutdown():
     _log.error('Shutdown request recieved from %s' % str(src))
     shutdown_server()
     return 'Server shutting down...'
+
+
+@app.route('/stopaddition', methods=['GET', 'POST'])
+def stopaddition():
+    """
+    Halts the addition of new tasks and practices.
+
+    :return: None
+    """
+    global CONTINUOUS_MODE
+    CONTINUOUS_MODE = False
 
 
 @app.route('/healthcheck', methods=['GET'])

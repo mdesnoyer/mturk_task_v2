@@ -145,7 +145,7 @@ DATABASE_LOCATION = "10.0.36.202"
 # if True, will store all practice pairs as if they were in real trials.
 STORE_PRACTICE_PAIRS = False
 # The number of images to activate in a chunk.
-ACTIVATION_CHUNK_SIZE = 4000
+ACTIVATION_CHUNK_SIZE = 300
 # the default length of time for a ban
 DEFAULT_BAN_LENGTH = float(60*60*24*7)
 # the amount of time a task may be pending without being completed
