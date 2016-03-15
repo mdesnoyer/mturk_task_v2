@@ -772,7 +772,7 @@ class Get(object):
     def table_has_row(table, row_key):
         """
         Determines if a table has a defined row key or not.
-    
+
         :param table: A HappyBase table object.
         :param row_key: The desired row key, as a string.
         :return: True if key exists, false otherwise.
@@ -780,7 +780,9 @@ class Get(object):
         scan = table.scan(row_start=row_key,
                           filter='KeyOnlyFilter() AND FirstKeyOnlyFilter()',
                           limit=1)
-        return next(scan, None) is not None
+        item = next(scan, (None, None))
+        return item[0] == row_key
+
 
     @staticmethod
     def get_num_items(table):
@@ -1457,7 +1459,8 @@ class Set(object):
         scan = table.scan(row_start=row_key, filter='KeyOnlyFilter() AND '
                                                     'FirstKeyOnlyFilter()',
                           limit=1)
-        return next(scan, None) is not None
+        item = next(scan, (None, None))
+        return item[0] == row_key
 
     def _get_task_status(self, task_id):
         """
@@ -2118,7 +2121,8 @@ class Set(object):
         obs = [counts_by_index[key] for key in range(max_index)]
         chi_stat, p_value = stats.chisquare(obs)
         p_value = 1 - p_value
-        frac_contradictions = float(num_contradictions) / len(data)
+        # frac contradictions is the fraction of contradictory pairs.
+        frac_contradictions = float(num_contradictions) * 2. / len(data)
         frac_unanswered = float(num_unanswered) / len(data)
         if frac_unanswered < 1.0:
             def_rts = filter(lambda x: x > -1, rts)  # defined rts

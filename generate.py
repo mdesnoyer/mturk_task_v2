@@ -597,6 +597,9 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_practice=None):
     if is_practice:
         if dbget.worker_need_demographics(worker_id):
             collect_demo = True
+            # register the worker
+            _log.debug('Registering worker %s' % worker_id)
+            dbset.register_worker(worker_id)
         _log.info('Serving practice %s to worker %s' % (task_id, worker_id))
     else:
         _log.info('Serving task %s served to %s' % (task_id, worker_id))

@@ -71,8 +71,8 @@ DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
 """
 MTURK OPTIONS
 """
-NUM_PRACTICES = 20  # how many practices to post at once
-NUM_TASKS = 50  # how many tasks to maintain online
+NUM_PRACTICES = 5  # how many practices to post at once
+NUM_TASKS = 5  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
@@ -171,8 +171,8 @@ TASK_VALIDATION
 """
 MAX_MEAN_RT = np.inf
 MIN_TRIAL_RT = 400
-MAX_PROB_RANDOM = 0.95
-MAX_FRAC_CONTRADICTIONS = 0.11
+MAX_PROB_RANDOM = 0.995
+MAX_FRAC_CONTRADICTIONS = 0.25
 MAX_FRAC_UNANSWERED = 0.2
 MAX_FRAC_TOO_FAST = 0.2
 

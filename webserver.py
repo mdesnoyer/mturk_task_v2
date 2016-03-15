@@ -524,9 +524,6 @@ def task():
         _log.debug('Returning request to %s' % str(src))
         return make_preview_page(is_practice, task_time)
     worker_id = request.values.get('workerId', '')
-    if not dbget.worker_exists(worker_id):
-        _log.debug('Registering worker %s' % worker_id)
-        dbset.register_worker(worker_id)
     try:
         response = fetch_task(dbget, dbset, task_id, worker_id, is_practice)
     except Exception as e:
