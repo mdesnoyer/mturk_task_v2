@@ -1023,8 +1023,40 @@ class Get(object):
             mon.val_mean_image_seen = rval
             return rval
 
-    def get_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES,
-                     is_practice=False):
+    def get_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES):
+        """
+        Returns n images, randomly sampled from the set of images. This is
+        under the new regime where we sample from ALL images, irrespective of
+        whether or not they're active.
+
+        :param n: The number of images to fetch.
+        :param image_attributes: The image attributes.
+        :return: A list of image IDs
+        """
+        ret_set = []
+        fltr = attribute_image_filter(image_attributes)
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            while len(ret_set) < n:
+                # get a random ID. An 10-digit random ID is more than enough to
+                # to uniquely specify an image, as the probability of a
+                # collision is essentially zero.
+                rid = rand_id_gen(10)
+                if len(fltr):
+                    item = table.scan(
+                        row_start=rid,
+                        filter=attribute_image_filter(image_attributes),
+                        limit=1).next()
+                else:
+                    item = table.scan(
+                        row_start=rid,
+                        limit=1).next()
+                if item is None:
+                    continue
+                ret_set.add(item[0])
+
+    def get_n_images_seq(self, n, image_attributes=IMAGE_ATTRIBUTES,
+                         is_practice=False):
         """
         Randomly samples n active images from the database and returns their
         IDs in accordance with their sampling surplus (or not, if it's a

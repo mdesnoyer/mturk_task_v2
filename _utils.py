@@ -86,6 +86,10 @@ def _rand_id_gen(n):
                                  string.digits) for _ in range(n))
 
 
+def rand_id_gen(n):
+    return _rand_id_gen(n)
+
+
 def task_id_gen():
     """
     Generates task IDs
