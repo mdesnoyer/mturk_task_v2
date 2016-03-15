@@ -66,7 +66,8 @@ GLOBAL WITHIN-TASK TIMING CONFIGURATION
 TIMING_POST_TRIAL = 200  # Sets the time, in milliseconds, between the current
                          # trial and the next trial.
 DEF_FEEDBACK_TIME = 100  # the amount of time to display feedback
-DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
+DEF_TRIAL_TIME = 100 #2500  # the maximum amount of time each trial is
+# allowed to
                        # go for
 
 

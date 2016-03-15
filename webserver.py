@@ -280,7 +280,11 @@ def check_ban(mt, dbget, dbset, worker_id=None):
     if dbget.worker_autoban_check(worker_id):
         dbset.ban_worker(worker_id)
         mt.ban_worker(worker_id)
-        mon.increment('n_workers_banned')
+        dispatch_notification('Worker %s has been banned' % str(worker_id))
+        try:
+            mon.increment('n_workers_banned')
+        except:
+            _log.warn('Could not increment statemons')
 
 
 def unban_workers(mt, dbget, dbset):
@@ -299,7 +303,12 @@ def unban_workers(mt, dbget, dbset):
     for worker_id in dbget.get_all_workers():
         if not dbset.worker_ban_expires_in(worker_id):
             mt.unban_worker(worker_id)
-            mon.increment("n_workers_unbanned")
+            dispatch_notification('Worker %s has been unbanned' % str(
+                worker_id))
+            try:
+                mon.increment("n_workers_unbanned")
+            except:
+                _log.warn('Could not increment statemons')
 
 
 def reset_worker_quotas(mt, dbget):
@@ -432,6 +441,14 @@ def dispatch_err(e, tb='', request=None):
                  'JSON: %s' % str(req_json)]
     body = '\n\n----------------------------\n\n'.join(body_elem)
     emconn.send_email('ops@kryto.me', subj, body,
+                      ['kryptonlabs99@gmail.com'])
+
+
+def dispatch_notification(message):
+    """
+    Dispatches a message to kryptonlabs99@gmail.com
+    """
+    emconn.send_email('ops@kryto.me', 'Notification', message,
                       ['kryptonlabs99@gmail.com'])
 
 
