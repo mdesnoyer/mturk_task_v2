@@ -712,11 +712,11 @@ if __name__ == '__main__':
     # start the monitoring agent
     _log.info('Starting scheduler')
     scheduler.start()
-    _log.info('Checking that we have sufficient active images')
-    if not dbget.active_im_count_at_least(ACTIVATION_CHUNK_SIZE):
-        _log.info('Insufficient active images: Activating some')
-        dbset.activate_n_images(ACTIVATION_CHUNK_SIZE,
-                                image_attributes=IMAGE_ATTRIBUTES)
+    # _log.info('Checking that we have sufficient active images')
+    # if not dbget.active_im_count_at_least(ACTIVATION_CHUNK_SIZE):
+    #     _log.info('Insufficient active images: Activating some')
+    #     dbset.activate_n_images(ACTIVATION_CHUNK_SIZE,
+    #                             image_attributes=IMAGE_ATTRIBUTES)
     if not LOCAL:
         magent = monitor.MonitoringAgent()
         magent.start()
