@@ -1348,7 +1348,7 @@ class Get(object):
         # annoying expSeq expects image tuples...
         exp_seq = [[x['type'], [tuple(y) for y in x['images']]] for x in blocks]
         register_task_kwargs = {'blocks': blocks, 'is_practice': practice,
-                                'check_ims': True,
+                                'check_ims': False,
                                 'image_attributes': image_attributes}
         return task_id, exp_seq, attribute, register_task_kwargs
 
