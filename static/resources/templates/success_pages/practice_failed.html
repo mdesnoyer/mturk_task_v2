@@ -7,7 +7,14 @@
     <link rel="stylesheet" href="{{ jg['jspsych_css'] }}">
     <link rel="stylesheet" href="{{ jg['jquery_ui_css'] }}">
 </head>
+<style>
+    section {
+        width:70%;
+        margin:auto;
+    }
+</style>
 <body>
+<section>
     <center>
         <br><br>
         <img src="{{ jg['attention_png'] }}" alt="success" style="width:300px;height:300px;">
@@ -21,12 +28,10 @@
         <p>If you would like to send us feedback, our Requester ID is
             {{ jg['RID'] }}. You may also send feedback by clicking
             <a href="{{ feedback_url }}" target="_blank">here</a>
-            (make sure to open in a new window or tab).</p>
-
-        <p>To view our hits, click
+            (make sure to open in a new window or tab). To view our hits, click
             <a href="{{ search_page }}" target="_blank">here</a>
             (make sure to open in a new window or tab).</p>
-    </center>
+    </center></section>
 </body>
 <script>
     function sendData() {

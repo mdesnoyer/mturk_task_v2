@@ -10,21 +10,28 @@ The template version of the success page.
     <link rel="stylesheet" href="{{ jg['jspsych_css'] }}">
     <link rel="stylesheet" href="{{ jg['jquery_ui_css'] }}">
 </head>
+<style>
+    section {
+        width:70%;
+        margin:auto;
+    }
+</style>
 <body>
+<section>
     <center>
         <br><br>
         <img src="{{ jg['check_png'] }}" alt="success" style="width:300px;height:300px;">
-        <p>You have completed the task, and your data has been sent to the server! Click the button below to submit.</p>
+        <p>You have completed the task, and your data has been sent to the
+            server! Click the button below to submit.</p>
         <button onclick="sendData();">Submit HIT</button>
         <p>If you would like to send us feedback, our Requester ID is
             {{ jg['RID'] }}. You may also send feedback by clicking
             <a href="{{ feedback_url }}" target="_blank">here</a>
-            (make sure to open in a new window or tab).</p>
-
-        <p>To view our hits, click
+            (make sure to open in a new window or tab). To view our hits, click
             <a href="{{ search_page }}" target="_blank">here</a>
             (make sure to open in a new window or tab).</p>
     </center>
+    </section>
 </body>
 <script>
     function sendData() {
