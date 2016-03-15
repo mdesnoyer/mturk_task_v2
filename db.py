@@ -2155,14 +2155,14 @@ class Set(object):
                 _log.critical('COULD NOT STORE TASK DATA FOR %s: %s' % (task_id,
                                                                         e))
             # acquire the task timing
-            r = table.row(task_id,
-                          columns=['status:pending_evaluation',
-                                   'status:awaiting_serve'],
-                          include_timestamp=True)
-            start_time = r.get('status:awaiting_serve', (None, 0))[1]
-            end_time = r.get('status:pending_evaluation', (None, 0))[1]
-            seconds = end_time - start_time
-            table.put(task_id, {'status:total_time': str(seconds)})
+            # r = table.row(task_id,
+            #               columns=['status:pending_evaluation',
+            #                        'status:awaiting_serve'],
+            #               include_timestamp=True)
+            # start_time = r.get('status:awaiting_serve', (None, 0))[1]
+            # end_time = r.get('status:pending_evaluation', (None, 0))[1]
+            # seconds = end_time - start_time
+            # table.put(task_id, {'status:total_time': str(seconds)})
             if user_agent is not None:
                 table.put(task_id, _conv_dict_vals(
                                     {'user_agent:browser': user_agent.browser,
@@ -2170,8 +2170,8 @@ class Set(object):
                                      'user_agent:platform': user_agent.platform,
                                      'user_agent:version': user_agent.version,
                                      'user_agent:string': user_agent.string}))
-        _log.info('Stored task data for task %s, worker %s. Total time: %i '
-                  'seconds' % (task_id, worker_id, seconds / 1000))
+        _log.info('Stored task data for task %s, worker %s.', task_id,
+                  worker_id)
         return frac_contradictions, frac_unanswered, frac_too_fast, p_value
 
     def validate_task(self, task_id=None, frac_contradictions=None,
