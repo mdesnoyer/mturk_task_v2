@@ -206,9 +206,9 @@ DEFAULT_BAN_REASON = 'You have been banned for one week from completing our ' \
 # counts reset.
 TASK_SUBMISSION_RESET_VALUE = MAX_SUBMITS_PER_DAY * 7
 # the minimum number of rejections (in a week) to be eligible for a ban
-MIN_REJECT_AUTOBAN_ELIGIBLE = 8
+MIN_REJECT_AUTOBAN_ELIGIBLE = 4
 # the ratio of rejections / acceptances to be eligible for a ban
-AUTOBAN_REJECT_ACCEPT_RATIO = 0.33
+AUTOBAN_REJECT_ACCEPT_RATIO = 0.25
 # these are countries from which we accept workers
 LOCALES = [
     'GB',  # great britain, northern ireland
