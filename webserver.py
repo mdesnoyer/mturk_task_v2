@@ -710,6 +710,7 @@ if __name__ == '__main__':
     webhand = logger.config_root_logger(LOG_LOCATION, return_webserver=True)
     app.logger.addHandler(webhand)
     # start the monitoring agent
+    dbget.cache_im_keys()
     _log.info('Starting scheduler')
     scheduler.start()
     # _log.info('Checking that we have sufficient active images')

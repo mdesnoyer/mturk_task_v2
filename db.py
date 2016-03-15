@@ -383,6 +383,25 @@ class Get(object):
         """
         self.pool = pool
         self._last_active_im = None  # stores the last active image scanned
+        self._im_ids = None  # stores a list of all image keys in the database
+
+    def cache_im_keys(self):
+        """
+        Fetches *all* keys in the image database and stores them. When using
+        this, it will assume that all images are 'active.' It also means that
+        attributes cannot be used.
+
+        :return: None
+        """
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            _log.info('Fetching all images in database')
+            sc = table.scan(filter='FirstKeyOnlyFilter() AND KeyOnlyFilter()')
+            self._im_ids = [y[0] for y in sc]
+            stats_table = conn.table(STATISTICS_TABLE)
+            skey = _get_stats_key([])
+            stats_table.counter_set(skey, 'statistics:n_active',
+                                    len(self._im_ids))
     
     def worker_exists(self, worker_id):
         """
@@ -783,7 +802,6 @@ class Get(object):
         item = next(scan, (None, None))
         return item[0] == row_key
 
-
     @staticmethod
     def get_num_items(table):
         """
@@ -1037,19 +1055,36 @@ class Get(object):
         under the new regime where we sample from ALL images, irrespective of
         whether or not they're active.
 
+        Note that this doesn't sample uniformly in the 'true' sense,
+        since the lexical distance between keys isn't uniform. Instead,
+        it samples with respect to the size of the lexical gaps between keys.
+        However, since the keys are randomly assigned key names,
+        this shouldn't matter too much.
+
         :param n: The number of images to fetch.
         :param image_attributes: The image attributes.
         :return: A list of image IDs
         """
+        if self._im_ids is not None:
+            return list(np.random.choice(self._im_ids, n, replace=False))
         ret_set = set()
         fltr = attribute_image_filter(image_attributes)
         with self.pool.connection() as conn:
             table = conn.table(IMAGE_TABLE)
+            # because of an error in the flask documentation, I deleted
+            # something like 2000 of the initial images in the database,
+            # the first key is actually pretty large, starting with 25. I
+            #  mean large in the lexicographic sense. Therefore, we will
+            # reject candidate keys that are substantially less than the
+            # first key (messy, I know)
+            fkey = table.scan(limit=1).next()[0]  # get the first key
             while len(ret_set) < n:
                 # get a random ID. An 10-digit random ID is more than enough to
                 # to uniquely specify an image, as the probability of a
                 # collision is essentially zero.
                 rid = rand_id_gen(10)
+                if rid[:2] < fkey[:2]:
+                    continue  # i.e., reject this key
                 if len(fltr):
                     item = table.scan(
                         row_start=rid,
