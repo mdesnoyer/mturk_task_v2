@@ -158,15 +158,15 @@ def create_hit(mt, dbget, dbset, hit_type_id):
     """
     _log.info('JOB_STARTED create_hit')
     _log.info('Checking image statuses')
-    n_active = dbget.get_n_active_images_count(IMAGE_ATTRIBUTES)
-    mean_seen = dbget.image_get_mean_seen(IMAGE_ATTRIBUTES)
-    if mean_seen > MEAN_SAMPLES_REQ_PER_IMAGE(n_active):
-        _log.info('Images are sufficiently sampled, activating more')
-        dbset.activate_n_images(ACTIVATION_CHUNK_SIZE)
-    else:
-        _log.info('Mean %.2f < required %.2f' % (mean_seen,
-                                                 MEAN_SAMPLES_REQ_PER_IMAGE(
-                                                     n_active)))
+    # n_active = dbget.get_n_active_images_count(IMAGE_ATTRIBUTES)
+    # mean_seen = dbget.image_get_mean_seen(IMAGE_ATTRIBUTES)
+    # if mean_seen > MEAN_SAMPLES_REQ_PER_IMAGE(n_active):
+    #     _log.info('Images are sufficiently sampled, activating more')
+    #     dbset.activate_n_images(ACTIVATION_CHUNK_SIZE)
+    # else:
+    #     _log.info('Mean %.2f < required %.2f' % (mean_seen,
+    #                                              MEAN_SAMPLES_REQ_PER_IMAGE(
+    #                                                  n_active)))
     hit_cost = DEFAULT_TASK_PAYMENT
     bal = mt.get_account_balance()
     if hit_cost > bal:

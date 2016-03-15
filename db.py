@@ -851,6 +851,14 @@ class Get(object):
         new one is instantiated, it will pick up where the previous one left
         off.
 
+        NOTES:
+            This is the old version of the function; it samples sequentially
+            instead of selecting truly randomly (since we didn't have a good
+            idea of what a random selector function would look like).
+            Further, we were concerned about creating strongly-connected
+            components to the graph. However, with the new training regime,
+            this won't be necessary.
+
         :param image_attributes: The image attributes that the images
                                  considered must satisfy.
         :return: A generator over active images which match the attribute
@@ -1033,7 +1041,7 @@ class Get(object):
         :param image_attributes: The image attributes.
         :return: A list of image IDs
         """
-        ret_set = []
+        ret_set = set()
         fltr = attribute_image_filter(image_attributes)
         with self.pool.connection() as conn:
             table = conn.table(IMAGE_TABLE)
@@ -1054,6 +1062,7 @@ class Get(object):
                 if item is None:
                     continue
                 ret_set.add(item[0])
+        return list(ret_set)
 
     def get_n_images_seq(self, n, image_attributes=IMAGE_ATTRIBUTES,
                          is_practice=False):
