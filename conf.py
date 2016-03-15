@@ -66,8 +66,7 @@ GLOBAL WITHIN-TASK TIMING CONFIGURATION
 TIMING_POST_TRIAL = 200  # Sets the time, in milliseconds, between the current
                          # trial and the next trial.
 DEF_FEEDBACK_TIME = 100  # the amount of time to display feedback
-DEF_TRIAL_TIME = 100 #2500  # the maximum amount of time each trial is
-# allowed to
+DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
                        # go for
 
 
@@ -75,7 +74,7 @@ DEF_TRIAL_TIME = 100 #2500  # the maximum amount of time each trial is
 MTURK OPTIONS
 """
 NUM_PRACTICES = 5  # how many practices to post at once
-NUM_TASKS = 50  # how many tasks to maintain online
+NUM_TASKS = 5  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value

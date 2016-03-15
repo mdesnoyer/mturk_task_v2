@@ -27,7 +27,8 @@
     simply: you just click on the image, and you will go on to the next set
     of images. <b>This task will take NO LONGER THAN {{ task_time }} to complete, and probably much less.</b>
 What we mean by {% filter upper %}{{ jg['attribute'] }}{% endfilter %} will be explained in the instructions.
-All of our HITs are <b>automatically accepted</b> immediately, although there may be a delay because of MTurk.</p>
+All of our HITs are <b>automatically accepted</b> immediately, although there may be a delay because of MTurk.
+You may complete up to {{ jg['task_limit'] }} of these HITs per day.</p>
 
     {% if jg['announcement'] %}
         <p><i>{{ jg['announcement'] }}</i></p>

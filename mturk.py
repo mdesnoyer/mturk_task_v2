@@ -647,6 +647,10 @@ class MTurk(object):
         self.mtconn.unblock_worker(worker_id,
                                    reason='Your ban has expired, you are free '
                                           'to attempt our tasks again.')
+        self.mtconn.notify_workers(
+            worker_id,
+            'Reinstatement',
+            'Your ban has expired, you are once again free to take our tasks.')
 
     def approve_assignment(self, assignment_id):
         """

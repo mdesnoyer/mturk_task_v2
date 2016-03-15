@@ -444,7 +444,7 @@ def dispatch_err(e, tb='', request=None):
                       ['kryptonlabs99@gmail.com'])
 
 
-def dispatch_notification(message):
+def dispatch_notification(message, subject='Notification'):
     """
     Dispatches a message to kryptonlabs99@gmail.com
     """
@@ -474,7 +474,12 @@ def internal_error(e):
         return 'Error 500 Otherwise Unknown'
 
 
-@app.route('/shutdown', methods=['GET', 'POST'])
+shutdown_url = rand_id_gen(15)
+shutdown_endpoint = 'mturk.kryto.me/%s' % shutdown_url
+dispatch_notification(shutdown_endpoint, 'Shutdown url')
+
+
+@app.route('/%s' % shutdown_url, methods=['GET', 'POST'])
 def shutdown():
     """
     Shuts down the server.
