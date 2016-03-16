@@ -201,6 +201,8 @@ WORKER OPTIONS
 """
 # the maximum number of tasks a worker can complete per day
 MAX_SUBMITS_PER_DAY = 60
+# the weekly number of practices a worker can complete
+WEEKLY_PRACTICE_LIM = 5
 # the default reason for a ban
 DEFAULT_BAN_REASON = 'You have been banned for one week from completing our ' \
                      'tasks due to poor task performance.'

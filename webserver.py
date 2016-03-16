@@ -500,7 +500,12 @@ def shutdown():
     return 'Server shutting down...'
 
 
-@app.route('/stopaddition', methods=['GET', 'POST'])
+stopaddition_url = rand_id_gen(15)
+stopaddition_endpoint = 'mturk.kryto.me/%s' % stopaddition_url
+dispatch_notification(stopaddition_endpoint, subject='Stop addition url')
+
+
+@app.route('/%s' % stopaddition_url, methods=['GET', 'POST'])
 def stopaddition():
     """
     Halts the addition of new tasks and practices.
@@ -509,6 +514,25 @@ def stopaddition():
     """
     global CONTINUOUS_MODE
     CONTINUOUS_MODE = False
+    return 'Continuous mode disabled'
+
+
+halt_url = rand_id_gen(15)
+halt_endpoint = 'mturk.kryto.me/%s' % halt_url
+dispatch_notification(halt_endpoint, subject='Halt url')
+
+
+@app.route('/%s' % halt_url, methods=['GET', 'POST'])
+def halt():
+    """
+    Halts the production of new hits and deletes old ones.
+
+    :return: None
+    """
+    global CONTINUOUS_MODE
+    CONTINUOUS_MODE = False
+    mt.disable_all_hits_of_type()
+    return 'HITs disabled, continuous mode disabled'
 
 
 @app.route('/healthcheck', methods=['GET'])

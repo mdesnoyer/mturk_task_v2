@@ -536,7 +536,7 @@ class MTurk(object):
         """
         try:
             self.mtconn.update_qualification_score(
-                self.practice_quota_id, worker_id, value=NUM_PRACTICES)
+                self.practice_quota_id, worker_id, value=WEEKLY_PRACTICE_LIM)
             return
         except boto.mturk.connection.MTurkRequestError:
             _log.warn('No practice quota for worker %s, trying to grant it' %
