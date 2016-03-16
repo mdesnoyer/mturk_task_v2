@@ -494,6 +494,8 @@ def shutdown():
     else:
        src = request.remote_addr
     _log.error('Shutdown request recieved from %s' % str(src))
+    _log.info('Disposing of all HITs')
+    mt.disable_all_hits_of_type()
     shutdown_server()
     return 'Server shutting down...'
 
