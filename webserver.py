@@ -519,6 +519,7 @@ def stopaddition():
 
     :return: None
     """
+    _log.warn('Stopping addition')
     global CONTINUOUS_MODE
     CONTINUOUS_MODE = False
     return 'Continuous mode disabled'
@@ -536,6 +537,7 @@ def halt():
 
     :return: None
     """
+    _log.warn('Halting!')
     global CONTINUOUS_MODE
     CONTINUOUS_MODE = False
     mt.disable_all_hits_of_type()
