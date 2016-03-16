@@ -1230,10 +1230,11 @@ class Get(object):
             _log.error('Unable to fetch images to generate design!')
             return None
         np.random.shuffle(images)
-        with self.pool.connection() as conn:
-            obs = _get_preexisting_pairs(conn, images)
         design = [tuple(images[i:i+t]) for i in range(0, len(images), t)]
-        design = filter(lambda x: _tuple_permitted(x, obs), design)
+        if not ALLOW_MULTIPAIRS:
+            with self.pool.connection() as conn:
+                obs = _get_preexisting_pairs(conn, images)
+            design = filter(lambda x: _tuple_permitted(x, obs), design)
         _log.debug('Design generated, %i tuples requested, %i obtained' % (
             n/t, len(design)))
         return design
@@ -1270,8 +1271,8 @@ class Get(object):
         # shuffle the images (remember its in-place! >.<)
         np.random.shuffle(images)
         # the set of observed tuples
-        with self.pool.connection() as conn:
-            if not ALLOW_MULTIPAIRS:
+        if not ALLOW_MULTIPAIRS:
+            with self.pool.connection() as conn:
                 obs = _get_preexisting_pairs(conn, images)
         for iocc in range(0, t + j):
             # maximize the efficiency of the design, and also ensure that the
