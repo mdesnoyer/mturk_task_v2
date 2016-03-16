@@ -86,7 +86,7 @@ AUTO_APPROVE_DELAY = 0      # How long until the task is auto-accepted, in
                             # seconds. Currently assignments are auto-approved.
 HIT_TYPE_DURATION = 30*60  # How long the worker has to complete the hit (30
 # min)
-DEF_EXTENSION_TIME = 60*60*3  # The default time to extend a hit for during
+DEF_EXTENSION_TIME = 60*60*24*3  # The default time to extend a hit for during
                               # extension. The current value is 3 days.
 
 
