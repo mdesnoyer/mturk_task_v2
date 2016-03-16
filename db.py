@@ -417,19 +417,20 @@ class Get(object):
                 self._n_active = min(self._n_active ** 2, len(self._im_ids))
                 to_activate = self._im_ids[prev_active:self._n_active]
             else:
+                _log.info('Current mean samples: %.2f', (float(
+                    n_samples)/self._n_active))
                 return
             stats_table.counter_set(skey, 'statistics:n_active', self._n_active)
             table = conn.table(IMAGE_TABLE)
             b = table.batch()
-            for iid in self._im_ids[prev_active:self._n_active]:
+            for iid in to_activate:
                 b.put(iid, {'metadata:is_active': TRUE})
             b.send()
             try:
-                mon.increment("n_images_activated", diff=(self._n_active -
-                                                          prev_active))
+                mon.increment("n_images_activated", diff=len(to_activate))
             except:
                 _log.warn('Problem incrementing statemons')
-            _log.info('Activated %i images.' % (self._n_active - prev_active))
+            _log.info('Activated %i images.' % len(to_activate))
 
     def cache_im_keys(self):
         """
