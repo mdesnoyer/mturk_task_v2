@@ -85,7 +85,7 @@ NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
 #                                        # is one month.
 # TODO: This is for the pilot, which will last for 2 hours!
-HIT_LIFETIME_IN_SECONDS = 60*60*3 # 60*60*24*364  # How long the HIT type last
+HIT_LIFETIME_IN_SECONDS = 60*60*1.5 # 60*60*24*364  # How long the HIT type last
 # for.
 AUTO_APPROVE_DELAY = 0      # How long until the task is auto-accepted, in
                             # seconds. Currently assignments are auto-approved.
