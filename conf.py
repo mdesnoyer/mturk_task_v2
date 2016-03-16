@@ -52,13 +52,14 @@ HIT_SIZE = [600, 400]  # the hit box size, which is where the images will be
                        # constrained to occur in, [w, h]
 MARGIN_SIZE = 2  # the default margin size, for formatting.
 # Any announcements that need to be made.
-ANNOUNCEMENT = \
-    "IMPORTANT!! This is a 2-hour pilot test of this task! Later this week, " \
-    "the full task" \
-    " will be deployed, with thousands of HITs (you will have to re-take " \
-    "the practice for that). Right now, though, we are trying to make " \
-    "sure there are no serious bugs in our code.  If you encounter a bug, " \
-    "please let us know! You will still be paid for these HITs, of course."
+# ANNOUNCEMENT = \
+#     "IMPORTANT!! This is a 2-hour pilot test of this task! Later this week, " \
+#     "the full task" \
+#     " will be deployed, with thousands of HITs (you will have to re-take " \
+#     "the practice for that). Right now, though, we are trying to make " \
+#     "sure there are no serious bugs in our code.  If you encounter a bug, " \
+#     "please let us know! You will still be paid for these HITs, of course."
+ANNOUNCEMENT = ""
 
 """
 GLOBAL WITHIN-TASK TIMING CONFIGURATION
@@ -80,7 +81,7 @@ NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
 #                                        # is one month.
 # TODO: This is for the pilot, which will last for 2 hours!
-HIT_LIFETIME_IN_SECONDS = 60*60*2  # How long the HIT type last for.
+HIT_LIFETIME_IN_SECONDS = 60*60*24*364  # How long the HIT type last for.
 AUTO_APPROVE_DELAY = 0      # How long until the task is auto-accepted, in
                             # seconds. Currently assignments are auto-approved.
 HIT_TYPE_DURATION = 30*60  # How long the worker has to complete the hit (30
