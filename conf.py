@@ -20,7 +20,8 @@ LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
 # tunnel opened! (see intro notes in webserver.py)
-CONTINUOUS_MODE = True  # whether or not to run the task continuously.
+CONTINUOUS_MODE = False  # whether or not to run the task continuously.
+AUTO_RESAMPLE = False  # if true, will activate more images dynamically.
 
 
 """
@@ -74,9 +75,9 @@ DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
 """
 MTURK OPTIONS
 """
-LOW_FUNDS_WARNING = 100  # if the funds drop below this amount
+LOW_FUNDS_WARNING = 300  # if the funds drop below this amount
 NUM_PRACTICES = 20  # how many practices to post at once
-NUM_TASKS = 200  # how many tasks to maintain online
+NUM_TASKS = 50  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
@@ -85,7 +86,7 @@ NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
 HIT_LIFETIME_IN_SECONDS = 60*60*24*364  # How long the HIT type last for.
 AUTO_APPROVE_DELAY = 0      # How long until the task is auto-accepted, in
                             # seconds. Currently assignments are auto-approved.
-HIT_TYPE_DURATION = 30*60  # How long the worker has to complete the hit (30
+HIT_TYPE_DURATION = 15*60  # How long the worker has to complete the hit (30
 # min)
 DEF_EXTENSION_TIME = 60*60*24*3  # The default time to extend a hit for during
                               # extension. The current value is 3 days.

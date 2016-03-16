@@ -411,6 +411,10 @@ class Get(object):
                 prev_active = self._n_active
                 self._n_active = min(INIT_BATCH_SIZE, len(self._im_ids))
                 to_activate = self._im_ids[prev_active:self._n_active]
+            elif not AUTO_RESAMPLE:
+                _log.info('Current mean samples: %.2f', (float(
+                    n_samples)/self._n_active))
+                return
             elif float(n_samples / self._n_active) > np.log(self._n_active):
                 _log.info('Images are sufficiently sampled, activating more')
                 prev_active = self._n_active
