@@ -445,10 +445,6 @@ class Get(object):
             _log.info('Fetching all images in database')
             sc = table.scan(filter='FirstKeyOnlyFilter() AND KeyOnlyFilter()')
             self._im_ids = [y[0] for y in sc]
-            stats_table = conn.table(STATISTICS_TABLE)
-            skey = _get_stats_key([])
-            stats_table.counter_set(skey, 'statistics:n_active',
-                                    len(self._im_ids))
     
     def worker_exists(self, worker_id):
         """
