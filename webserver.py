@@ -158,6 +158,7 @@ def create_hit(mt, dbget, dbset, hit_type_id):
     """
     _log.info('JOB_STARTED create_hit')
     _log.info('Checking image statuses')
+    dbget.check_active_ims()
     # n_active = dbget.get_n_active_images_count(IMAGE_ATTRIBUTES)
     # mean_seen = dbget.image_get_mean_seen(IMAGE_ATTRIBUTES)
     # if mean_seen > MEAN_SAMPLES_REQ_PER_IMAGE(n_active):
@@ -777,7 +778,7 @@ if __name__ == '__main__':
     webhand = logger.config_root_logger(LOG_LOCATION, return_webserver=True)
     app.logger.addHandler(webhand)
     # start the monitoring agent
-    dbget.cache_im_keys()
+    dbget.check_active_ims()
     _log.info('Calculating payment')
     _task_payment = ((1./60) * dbget.task_time) * PAYMENT_PER_MIN
     task_payment = float(int(_task_payment * 100))/100
