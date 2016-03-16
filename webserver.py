@@ -775,7 +775,7 @@ if __name__ == '__main__':
     scheduler.add_job(reset_worker_quotas, 'cron', hour='0',
                       args=[mt, dbget], id='task quota reset')
     scheduler.add_job(reset_weekly_practices, 'cron', day_of_week='sun',
-                      hour='0', args=[mt, dbget], id='practice quota reset')
+                      hour='1', args=[mt, dbget], id='practice quota reset')
     _log.info('Tasks being served on %s' % EXTERNAL_QUESTION_ENDPOINT)
     _log.info('Starting webserver')
     if LOCAL:
