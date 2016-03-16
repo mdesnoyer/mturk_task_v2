@@ -15,7 +15,7 @@ from _utils import *
 For debugging
 """
 TESTING = False
-_MTURK_SANDBOX = True
+_MTURK_SANDBOX = False
 LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
@@ -60,7 +60,9 @@ MARGIN_SIZE = 2  # the default margin size, for formatting.
 #     "the practice for that). Right now, though, we are trying to make " \
 #     "sure there are no serious bugs in our code.  If you encounter a bug, " \
 #     "please let us know! You will still be paid for these HITs, of course."
-ANNOUNCEMENT = ""
+ANNOUNCEMENT = "This is the final pilot test, please excuse and report any " \
+               "bugs you observe. You will be paid. Large-scale deployment " \
+               "will begin later today."
 
 """
 GLOBAL WITHIN-TASK TIMING CONFIGURATION
@@ -83,7 +85,8 @@ NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
 #                                        # is one month.
 # TODO: This is for the pilot, which will last for 2 hours!
-HIT_LIFETIME_IN_SECONDS = 60*60*24*364  # How long the HIT type last for.
+HIT_LIFETIME_IN_SECONDS = 60*60*3 # 60*60*24*364  # How long the HIT type last
+# for.
 AUTO_APPROVE_DELAY = 0      # How long until the task is auto-accepted, in
                             # seconds. Currently assignments are auto-approved.
 HIT_TYPE_DURATION = 15*60  # How long the worker has to complete the hit (30
@@ -134,7 +137,7 @@ RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized
 # we are computing the default task payment as:
 # (number of tuples to rate per segment) * (number of segments) * (secs per
 # tuple) * (price per minute)
-PAYMENT_PER_MIN = 0.10
+PAYMENT_PER_MIN = 0.13
 _DEFAULT_TASK_PAYMENT = (DEF_NUM_IMAGES_PER_TASK / 3. *
                          DEF_NUM_IMAGE_APPEARANCE_PER_TASK) * 2 * \
                         DEF_TRIAL_TIME / 1000 * (PAYMENT_PER_MIN / 60)
