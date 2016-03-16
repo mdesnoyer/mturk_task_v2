@@ -521,7 +521,7 @@ class MTurk(object):
                                              value=MAX_SUBMITS_PER_DAY,
                                              send_notification=False)
         except boto.mturk.connection.MTurkRequestError as e:
-            _log.error('Error resetting daily quota for worker: ' + e.message)
+            _log.error('Error resetting daily quota for worker: %s', e.message)
 
     def reset_worker_weekly_practice_quota(self, worker_id):
         """
@@ -546,7 +546,7 @@ class MTurk(object):
                                              value=NUM_PRACTICES,
                                              send_notification=False)
         except boto.mturk.connection.MTurkRequestError as e:
-            _log.error('Error resetting weekly practice quota for worker: %s' +
+            _log.error('Error resetting weekly practice quota for worker: %s',
                        e.message)
 
     def get_qualification_score(self, qualification_id, worker_id):

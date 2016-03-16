@@ -73,15 +73,14 @@ DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
 """
 MTURK OPTIONS
 """
-NUM_PRACTICES = 5  # how many practices to post at once
-NUM_TASKS = 5  # how many tasks to maintain online
+NUM_PRACTICES = 20  # how many practices to post at once
+NUM_TASKS = 60  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
 #                                        # is one month.
 # TODO: This is for the pilot, which will last for 2 hours!
-HIT_LIFETIME_IN_SECONDS = 60*60*2  # How long a hit lasts. The current value
-                                       # is one month.
+HIT_LIFETIME_IN_SECONDS = 60*60*2  # How long the HIT type last for.
 AUTO_APPROVE_DELAY = 0      # How long until the task is auto-accepted, in
                             # seconds. Currently assignments are auto-approved.
 HIT_TYPE_DURATION = 30*60  # How long the worker has to complete the hit (30
@@ -200,7 +199,7 @@ BAD_DATA_TOO_MANY_UNANSWERED = 'You are responding too slowly or choosing ' \
 WORKER OPTIONS
 """
 # the maximum number of tasks a worker can complete per day
-MAX_SUBMITS_PER_DAY = 100
+MAX_SUBMITS_PER_DAY = 60
 # the default reason for a ban
 DEFAULT_BAN_REASON = 'You have been banned for one week from completing our ' \
                      'tasks due to poor task performance.'

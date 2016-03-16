@@ -447,8 +447,11 @@ def dispatch_err(e, tb='', request=None):
 def dispatch_notification(message, subject='Notification'):
     """
     Dispatches a message to kryptonlabs99@gmail.com
+
+    :param message: The body of the message.
+    :param subject: The subject of the message.
     """
-    emconn.send_email('ops@kryto.me', 'Notification', message,
+    emconn.send_email('ops@kryto.me', subject, message,
                       ['kryptonlabs99@gmail.com'])
 
 
@@ -476,7 +479,7 @@ def internal_error(e):
 
 shutdown_url = rand_id_gen(15)
 shutdown_endpoint = 'mturk.kryto.me/%s' % shutdown_url
-dispatch_notification(shutdown_endpoint, 'Shutdown url')
+dispatch_notification(shutdown_endpoint, subject='Shutdown url')
 
 
 @app.route('/%s' % shutdown_url, methods=['GET', 'POST'])
@@ -618,6 +621,8 @@ def submit():
         except Exception as e:
             _log.warn('Problem decrementing worker weekly practice quota for '
                       '%s: %s', worker_id, e.message)
+            tb = traceback.format_exc()
+            dispatch_err(e, tb, request)
         try:
             dbset.register_demographics(request.json, worker_ip)
         except Exception as e:
@@ -672,7 +677,12 @@ def submit():
             return make_error('Error creating submit page.',
                               error_data=err_dict, hit_id=hit_id,
                               task_id=task_id, allow_submit=True)
-        mt.decrement_worker_daily_quota(worker_id)
+        try:
+            mt.decrement_worker_daily_quota(worker_id)
+        except Exception as e:
+            _log.error('Problem decrementing daily quota: %s' % e.message)
+            tb = traceback.format_exc()
+            dispatch_err(e, tb, request)
         try:
             frac_contradictions, frac_unanswered, frac_too_fast, prob_random = \
                 dbset.task_finished_from_json(request.json,
@@ -735,11 +745,6 @@ if __name__ == '__main__':
     dbget.cache_im_keys()
     _log.info('Starting scheduler')
     scheduler.start()
-    # _log.info('Checking that we have sufficient active images')
-    # if not dbget.active_im_count_at_least(ACTIVATION_CHUNK_SIZE):
-    #     _log.info('Insufficient active images: Activating some')
-    #     dbset.activate_n_images(ACTIVATION_CHUNK_SIZE,
-    #                             image_attributes=IMAGE_ATTRIBUTES)
     if not LOCAL:
         magent = monitor.MonitoringAgent()
         magent.start()
@@ -765,10 +770,10 @@ if __name__ == '__main__':
     # is the tasks that actually activate new images.
     scheduler.add_job(unban_workers, 'interval', hours=24,
                       args=[mt, dbget, dbset], id='unban workers')
-    scheduler.add_job(reset_worker_quotas, 'interval', hours=24,
+    scheduler.add_job(reset_worker_quotas, 'cron', hour='0',
                       args=[mt, dbget], id='task quota reset')
-    scheduler.add_job(reset_weekly_practices, 'interval', days=7,
-                      args=[mt, dbget], id='practice quota reset')
+    scheduler.add_job(reset_weekly_practices, 'cron', day_of_week='sun',
+                      hour='0', args=[mt, dbget], id='practice quota reset')
     _log.info('Tasks being served on %s' % EXTERNAL_QUESTION_ENDPOINT)
     _log.info('Starting webserver')
     if LOCAL:
