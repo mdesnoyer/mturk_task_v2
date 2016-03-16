@@ -1271,7 +1271,8 @@ class Get(object):
         np.random.shuffle(images)
         # the set of observed tuples
         with self.pool.connection() as conn:
-            obs = _get_preexisting_pairs(conn, images)
+            if not ALLOW_MULTIPAIRS:
+                obs = _get_preexisting_pairs(conn, images)
         for iocc in range(0, t + j):
             # maximize the efficiency of the design, and also ensure that the
             #  number of j-violations (the number of times an image is shown
@@ -1281,11 +1282,12 @@ class Get(object):
                     return design  # you're done
                 # check the candidate tuple
                 cur_tuple = tuple([images[x] for x in c])
-                if not _tuple_permitted(cur_tuple, obs):
-                    continue
+                if not ALLOW_MULTIPAIRS:
+                    if not _tuple_permitted(cur_tuple, obs):
+                        continue
                 occ_arr = occ[list(c)]
                 if max(occ_arr) > iocc:
-                    # check that the image hasn't occured too many times for
+                    # check that the image hasn't occurred too many times for
                     # this iteration.
                     continue
                 if min(occ_arr) >= j:
@@ -1909,13 +1911,15 @@ class Set(object):
         # Input the data for the pair table.
         if is_practice and not STORE_PRACTICE_PAIRS:
             return
-        with self.pool.connection() as conn:
-            table = conn.table(PAIR_TABLE)
-            b = table.batch()
-            for pair in pair_list:
-                pid = _get_pair_key(pair[0], pair[1])
-                b.put(pid, _get_pair_dict(pair[0], pair[1], task_id, attribute))
-            b.send()
+        if not ALLOW_MULTIPAIRS:
+                with self.pool.connection() as conn:
+                    table = conn.table(PAIR_TABLE)
+                    b = table.batch()
+                    for pair in pair_list:
+                        pid = _get_pair_key(pair[0], pair[1])
+                        b.put(pid, _get_pair_dict(pair[0], pair[1], task_id,
+                                                  attribute))
+                    b.send()
 
     def deactivate_hit_type(self, hit_type_id):
         """
@@ -2555,26 +2559,31 @@ class Set(object):
                             # compute the id for this win element
                             cid = ch + ',' + img
                             ids_to_inc.append(cid)
-                            b.put(cid,
-                                  _conv_dict_vals({'data:winner_id': ch,
-                                                   'data:loser_id': img,
-                                                   'data:task_id': task_id,
-                                                   'data:worker_id': worker_id,
-                                                   'data:attribute':
-                                                       attribute}))
+                            if ALLOW_MULTIPAIRS:
+                                dct = {'data:winner_id': ch,
+                                       'data:loser_id': img}
+                            else:
+                                dct = {'data:winner_id': ch,
+                                       'data:loser_id': img,
+                                       'data:task_id': task_id,
+                                       'data:worker_id': worker_id,
+                                       'data:attribute': attribute}
+                            b.put(cid, _conv_dict_vals(dct))
                         else:
                             cid = img + ',' + ch
                             ids_to_inc.append(cid)
-                            b.put(cid,
-                                  _conv_dict_vals({'data:winner_id': img,
-                                                   'data:loser_id': ch,
-                                                   'data:task_id': task_id,
-                                                   'data:worker_id': worker_id,
-                                                   'data:attribute':
-                                                       attribute}))
+                            if ALLOW_MULTIPAIRS:
+                                dct = {'data:winner_id': img,
+                                       'data:loser_id': ch}
+                            else:
+                                dct = {'data:winner_id': img,
+                                       'data:loser_id': ch,
+                                       'data:task_id': task_id,
+                                       'data:worker_id': worker_id,
+                                       'data:attribute': attribute}
+                            b.put(cid, _conv_dict_vals(dct))
             b.send()
             for cid in ids_to_inc:
-                # this increment accounts for legacy shit (uggg)
                 table.counter_inc(cid, 'data:win_count')
 
     def reject_task(self, task_id, reason=None):

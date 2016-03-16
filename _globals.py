@@ -68,6 +68,13 @@ WEBSERVER_URL = "mturk.kryto.me"
 
 
 """
+TASK GENERATION OPTIONS
+"""
+# ALLOW_MULTIPAIRS determines if task generation will reject candidate triplets
+# that contain pairs we've already seen before.
+ALLOW_MULTIPAIRS = True
+
+"""
 OTHER MTURK INFORMATION
 """
 # what the assignment ID is when they're just previewing
