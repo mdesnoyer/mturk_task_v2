@@ -16,9 +16,9 @@ import os
 import boto
 
 reset_database = True  # whether to rebuild the databases
-reset_quals = False  # remove qualifications from MTurk
+reset_quals = True  # remove qualifications from MTurk
 reset_hits = True  # whether or not to remove all extant hits
-autopass_practice = True  # whether or not to automatically pass krypton
+autopass_practice = False  # whether or not to automatically pass krypton
 
 wid = 'A1RPGGKICRYDKC'  # the krypton worker id
 
