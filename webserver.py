@@ -173,6 +173,9 @@ def create_hit(mt, dbget, dbset, hit_type_id):
         _log.warn('Insufficient funds to generate new tasks: %.2f cost vs. '
                   '%.2f balance', hit_cost, bal)
         return
+    if bal < LOW_FUNDS_WARNING:
+        dispatch_notification('Low funds: %s' % str(bal),
+                              subject="LOW BALANCE WARING")
     _log.info('Generating a new HIT')
     task_id, exp_seq, attribute, register_task_kwargs = \
         dbget.gen_task(DEF_NUM_IMAGES_PER_TASK, 3,
@@ -212,6 +215,9 @@ def check_practices(mt, dbget, dbset, hit_type_id):
         _log.warn('Insufficient funds to generate practicse: %.2f cost vs. '
                   '%.2f balance', tot_cost, bal)
         return
+    if bal < LOW_FUNDS_WARNING:
+        dispatch_notification('Low funds: %s' % str(bal),
+                              subject="LOW BALANCE WARING")
     for hit in practice_hits:
         if mt.get_practice_status(hit=hit) == PRACTICE_EXPIRED:
             _log.info('Practice %s expired' % hit.HITId)
@@ -587,7 +593,10 @@ def task():
         if task_id[:len(PRACTICE_PREFIX)] == PRACTICE_PREFIX:
             is_practice = True
     if is_preview:
-        task_time = dbget.get_task_time(task_id)
+        if is_practice:
+            task_time = dbget.practice_time
+        else:
+            task_time = dbget.task_time
         _log.debug('Returning request to %s' % str(src))
         return make_preview_page(is_practice, task_time)
     worker_id = request.values.get('workerId', '')

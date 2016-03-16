@@ -74,6 +74,7 @@ DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
 """
 MTURK OPTIONS
 """
+LOW_FUNDS_WARNING = 100  # if the funds drop below this amount
 NUM_PRACTICES = 20  # how many practices to post at once
 NUM_TASKS = 60  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
@@ -174,9 +175,9 @@ TASK_VALIDATION
 MAX_MEAN_RT = np.inf
 MIN_TRIAL_RT = 400
 MAX_PROB_RANDOM = 0.995
-MAX_FRAC_CONTRADICTIONS = 0.25
-MAX_FRAC_UNANSWERED = 0.2
-MAX_FRAC_TOO_FAST = 0.2
+MAX_FRAC_CONTRADICTIONS = 0.145
+MAX_FRAC_UNANSWERED = 0.15
+MAX_FRAC_TOO_FAST = 0.1
 
 
 """
