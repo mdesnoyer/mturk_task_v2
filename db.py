@@ -596,6 +596,10 @@ class Get(object):
                     continue
                 jsn = json.loads(jsn_str)
                 times.append(float(jsn[-1]['time_elapsed']) / 1000)
+        if not len(times):
+            _log.info('No task time information found! Calculating it by rote')
+            return DEF_NUM_IMAGES_PER_TASK / 3. * \
+                   DEF_NUM_IMAGE_APPEARANCE_PER_TASK * 2 * DEF_TRIAL_TIME / 1000
         return np.mean(times)
 
     def _get_task_time(self, task_id):

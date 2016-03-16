@@ -778,6 +778,12 @@ if __name__ == '__main__':
     app.logger.addHandler(webhand)
     # start the monitoring agent
     dbget.cache_im_keys()
+    _log.info('Calculating payment')
+    _task_payment = ((1./60) * dbget.task_time) * PAYMENT_PER_MIN
+    task_payment = float(int(_task_payment * 100)/100)
+    mins, secs = divmod(dbget.task_time, 60)
+    _log.info('Average task time is %i min, %i sec. Payment is %.2f',
+              int(mins), int(secs), task_payment)
     _log.info('Starting scheduler')
     scheduler.start()
     if not LOCAL:
@@ -795,8 +801,9 @@ if __name__ == '__main__':
             dbset.deactivate_hit_type(PRACTICE_HIT_TYPE_ID)
         if TASK_HIT_TYPE_ID:
             dbset.deactivate_hit_type(TASK_HIT_TYPE_ID)
-        TASK_HIT_TYPE_ID, PRACTICE_HIT_TYPE_ID = mt.register_hit_type_mturk()
-        dbset.register_hit_type(TASK_HIT_TYPE_ID)
+        TASK_HIT_TYPE_ID, PRACTICE_HIT_TYPE_ID = \
+            mt.register_hit_type_mturk(reward=task_payment)
+        dbset.register_hit_type(TASK_HIT_TYPE_ID, reward=task_payment)
         dbset.register_hit_type(PRACTICE_HIT_TYPE_ID, is_practice=True)
     scheduler.add_job(check_practices,
                       args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID])
