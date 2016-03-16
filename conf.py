@@ -79,7 +79,7 @@ MTURK OPTIONS
 """
 LOW_FUNDS_WARNING = 300  # if the funds drop below this amount
 NUM_PRACTICES = 20  # how many practices to post at once
-NUM_TASKS = 50  # how many tasks to maintain online
+NUM_TASKS = 40  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
