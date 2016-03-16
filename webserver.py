@@ -780,7 +780,7 @@ if __name__ == '__main__':
     dbget.cache_im_keys()
     _log.info('Calculating payment')
     _task_payment = ((1./60) * dbget.task_time) * PAYMENT_PER_MIN
-    task_payment = float(int(_task_payment * 100)/100)
+    task_payment = float(int(_task_payment * 100))/100
     mins, secs = divmod(dbget.task_time, 60)
     _log.info('Average task time is %i min, %i sec. Payment is %.2f',
               int(mins), int(secs), task_payment)

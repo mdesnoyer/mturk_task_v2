@@ -15,7 +15,7 @@ from _utils import *
 For debugging
 """
 TESTING = False
-_MTURK_SANDBOX = False
+_MTURK_SANDBOX = True
 LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
@@ -202,7 +202,7 @@ BAD_DATA_TOO_MANY_UNANSWERED = 'You are responding too slowly or choosing ' \
 WORKER OPTIONS
 """
 # the maximum number of tasks a worker can complete per day
-MAX_SUBMITS_PER_DAY = 60
+MAX_SUBMITS_PER_DAY = 75
 # the weekly number of practices a worker can complete
 WEEKLY_PRACTICE_LIM = 5
 # the default reason for a ban

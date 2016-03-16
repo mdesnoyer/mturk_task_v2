@@ -16,7 +16,7 @@ import os
 import boto
 
 reset_database = True  # whether to rebuild the databases
-reset_quals = True  # remove qualifications from MTurk
+reset_quals = False  # remove qualifications from MTurk
 reset_hits = True  # whether or not to remove all extant hits
 autopass_practice = False  # whether or not to automatically pass krypton
 
@@ -68,7 +68,7 @@ if reset_quals:
     cleanup_mturk(mtconn)
 
 if reset_database:
-    dbset.wipe_database_except_images()
+    dbset.wipe_database_except_images(save_workers=True)
 
 _log.info('Instantiating mturk object')
 mt = mturk.MTurk(mtconn)

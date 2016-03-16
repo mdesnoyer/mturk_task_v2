@@ -9,6 +9,8 @@ Note:
     The above is no longer strictly true; Get() methods for obtaining images
     do modify the database, but only counters that are not surfaced to the user.
 
+    This is especially not true now, as dbget can now also manage active images.
+
 For workers, interval counts are the most recent 'buckets' of results. These
 data are used for bans, etc. They are reset once the number of tasks that are
 in the bucket exceeds a value set in conf.py, or once a worker is unbanned.
@@ -384,8 +386,50 @@ class Get(object):
         self.pool = pool
         self._last_active_im = None  # stores the last active image scanned
         self._im_ids = None  # stores a list of all image keys in the database
+        self._n_active = 0
         self._task_time = None
         self._practice_time = None
+        self._all_ims_act = False
+
+    def check_active_ims(self):
+        if self._all_ims_act:
+            return
+        if self._im_ids is None:
+            self.cache_im_keys()
+        if self._n_active >= len(self._im_ids):
+            _log.info('All images are already activated.')
+            return
+        with self.pool.connection() as conn:
+            stats_table = conn.table(STATISTICS_TABLE)
+            skey = _get_stats_key([])
+            self._n_active = \
+                stats_table.counter_get(skey, 'statistics:n_active')
+            n_samples = \
+                stats_table.counter_get(skey, 'statistics:n_samples')
+            if self._n_active < INIT_BATCH_SIZE:
+                _log.info('Number of active images too small')
+                prev_active = self._n_active
+                self._n_active = min(INIT_BATCH_SIZE, len(self._im_ids))
+                to_activate = self._im_ids[prev_active:self._n_active]
+            elif float(n_samples / self._n_active) > np.log(self._n_active):
+                _log.info('Images are sufficiently sampled, activating more')
+                prev_active = self._n_active
+                self._n_active = min(self._n_active ** 2, len(self._im_ids))
+                to_activate = self._im_ids[prev_active:self._n_active]
+            else:
+                return
+            stats_table.counter_set(skey, 'statistics:n_active', self._n_active)
+            table = conn.table(IMAGE_TABLE)
+            b = table.batch()
+            for iid in self._im_ids[prev_active:self._n_active]:
+                b.put(iid, {'metadata:is_active': TRUE})
+            b.send()
+            try:
+                mon.increment("n_images_activated", diff=(self._n_active -
+                                                          prev_active))
+            except:
+                _log.warn('Problem incrementing statemons')
+            _log.info('Activated %i images.' % (self._n_active - prev_active))
 
     def cache_im_keys(self):
         """
@@ -571,7 +615,8 @@ class Get(object):
     def practice_time(self):
         return DEF_PRACTICE_NUM_IMAGES_PER_TASK / 3. * \
                DEF_NUM_IMAGE_APPEARANCE_PER_TASK * 2 * \
-               float(DEF_TRIAL_TIME) / 1000.
+               float(2014) / 1000.
+        # using the average tuple time of 2.01356 secs
 
     def _get_mean_task_time(self):
         """
@@ -599,7 +644,7 @@ class Get(object):
         if not len(times):
             _log.info('No task time information found! Calculating it by rote')
             return DEF_NUM_IMAGES_PER_TASK / 3. * \
-                   DEF_NUM_IMAGE_APPEARANCE_PER_TASK * 2 * DEF_TRIAL_TIME / 1000
+                   DEF_NUM_IMAGE_APPEARANCE_PER_TASK * 2 * 2014. / 1000
         return np.mean(times)
 
     def _get_task_time(self, task_id):
@@ -1129,7 +1174,8 @@ class Get(object):
         :return: A list of image IDs
         """
         if self._im_ids is not None:
-            return list(np.random.choice(self._im_ids, n, replace=False))
+            return list(np.random.choice(self._im_ids[:self._n_active],
+                                         n, replace=False))
         ret_set = set()
         fltr = attribute_image_filter(image_attributes)
         with self.pool.connection() as conn:
@@ -1722,23 +1768,50 @@ class Set(object):
         succ = succ and self.create_statistics_table(clobber=True)
         return succ
 
-    def wipe_database_except_images(self):
+    def wipe_database_except_images(self, save_workers=False,
+                                    save_pairs=False, save_tasks=False,
+                                    save_wins=False, save_task_types=False,
+                                    save_stats=False):
         """
         Wipes all data from the database, except for persistent image data.
         Note that all information that pertains to image usage is wiped as
         well; the only information that persists is the data about the images
         themselves, such as url, aspect ratio, etc.
 
+        :param save_workers: Don't change the worker table.
+        :param save_pairs: Don't change the pairs table.
+        :param save_tasks: Don't change the tasks table.
+        :param save_wins: Don't change the wins table.
+        :param save_task_types: Don't change the task_types table.
+        :param save_stats: Don't change the statistics table.
         :return: None
         """
         _log.warn('Wiping all tables but images')
         # Wipe all the tables except the image table.
-        self.create_worker_table(clobber=True)
-        self.create_pair_table(clobber=True)
-        self.create_task_table(clobber=True)
-        self.create_win_table(clobber=True)
-        self.create_task_type_table(clobber=True)
-        self.create_statistics_table(clobber=True)
+        if not save_workers:
+            self.create_worker_table(clobber=True)
+        else:
+            _log.info('Preserving worker table')
+        if not save_pairs:
+            self.create_pair_table(clobber=True)
+        else:
+            _log.info('Preserving pairs table')
+        if not save_tasks:
+            self.create_task_table(clobber=True)
+        else:
+            _log.info('Preserving tasks table')
+        if not save_wins:
+            self.create_win_table(clobber=True)
+        else:
+            _log.info('Preserving wins table')
+        if not save_task_types:
+            self.create_task_type_table(clobber=True)
+        else:
+            _log.info('Preserving task type table')
+        if not save_stats:
+            self.create_statistics_table(clobber=True)
+        else:
+            _log.info('Preserving statistics table')
         # now, for any active image, we need to:
         #   - delete all but the metadata
         #   - set is_active to false
@@ -2085,12 +2158,8 @@ class Set(object):
             table = conn.table(IMAGE_TABLE)
             b = table.batch()
             for iid in image_ids:
-                if not self._table_has_row(table, iid):
-                    _log.warning('No data for image %s'%(iid))
-                    continue
                 b.put(iid, {'metadata:is_active': TRUE})
             b.send()
-            self._reset_sampling_counts()
             mon.increment("n_images_activated", diff=len(image_ids))
 
     def activate_n_images(self, n, image_attributes=IMAGE_ATTRIBUTES):
