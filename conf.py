@@ -15,7 +15,7 @@ from _utils import *
 For debugging
 """
 TESTING = False
-_MTURK_SANDBOX = False
+_MTURK_SANDBOX = True
 LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
