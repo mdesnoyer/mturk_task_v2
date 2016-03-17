@@ -22,8 +22,8 @@ s = table.scan()
 
 obs_imgs = set()
 win_dict = ddict(lambda: Counter())
-win_cnts = []
-for n,(uid, data) in enumerate(s):
+win_cnts = Counter()
+for n, (uid, data) in enumerate(s):
     print n
     win = data.get('data:winner_id')
     los = data.get('data:loser_id')
@@ -31,5 +31,6 @@ for n,(uid, data) in enumerate(s):
     obs_imgs.add(los)
     wc =  table.counter_get(uid, 'data:win_count')
     win_dict[win][los] += wc
-    win_cnts.append(wc)
+    win_cnts[win] += wc
 
+# shockingly this all worked

@@ -695,8 +695,10 @@ class MTurk(object):
         for specific_reason in reason:
             feedback += specific_reason + '\n'
         feedback += '\n'
-        feedback += 'If we continue to find problems in your HITs, you will ' \
-                    'be temporarily banned.'
+        feedback += 'Don\'t worry if you get these emails once in a while, ' \
+                    'and you may get them even if you\'ve been performing ' \
+                    'well. However if we repeatedly find problems with your ' \
+                    'HITs, you will be temporarily banned.'
         subject = 'Feedback on assignment %s' % assignment_id
         self.mtconn.notify_workers(worker_id, subject, feedback)
 

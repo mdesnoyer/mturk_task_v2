@@ -20,8 +20,8 @@ LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
 # tunnel opened! (see intro notes in webserver.py)
-CONTINUOUS_MODE = False  # whether or not to run the task continuously.
-AUTO_RESAMPLE = False  # if true, will activate more images dynamically.
+CONTINUOUS_MODE = True  # whether or not to run the task continuously.
+AUTO_RESAMPLE = True  # if true, will activate more images dynamically.
 
 
 """
@@ -60,9 +60,9 @@ MARGIN_SIZE = 2  # the default margin size, for formatting.
 #     "the practice for that). Right now, though, we are trying to make " \
 #     "sure there are no serious bugs in our code.  If you encounter a bug, " \
 #     "please let us know! You will still be paid for these HITs, of course."
-ANNOUNCEMENT = "This is the final pilot test, please excuse and report any " \
-               "bugs you observe. You will be paid. Large-scale deployment " \
-               "will begin later today."
+ANNOUNCEMENT = "While we have tested the software managing this experiment " \
+               "extensively, bugs may still occur. Please report any bugs " \
+               "that occur as soon as possible. You will still be paid."
 
 """
 GLOBAL WITHIN-TASK TIMING CONFIGURATION
@@ -79,14 +79,13 @@ MTURK OPTIONS
 """
 LOW_FUNDS_WARNING = 300  # if the funds drop below this amount
 NUM_PRACTICES = 20  # how many practices to post at once
-NUM_TASKS = 40  # how many tasks to maintain online
+NUM_TASKS = 50  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
 #                                        # is one month.
 # TODO: This is for the pilot, which will last for 2 hours!
-HIT_LIFETIME_IN_SECONDS = 60*60*1.5 # 60*60*24*364  # How long the HIT type last
-# for.
+HIT_LIFETIME_IN_SECONDS = 60*60*24*364  # How long the HIT type last for.
 AUTO_APPROVE_DELAY = 0      # How long until the task is auto-accepted, in
                             # seconds. Currently assignments are auto-approved.
 HIT_TYPE_DURATION = 15*60  # How long the worker has to complete the hit (30
@@ -133,14 +132,10 @@ DEF_KEEP_BLOCKS = 1  # the default number of keep blocks for a task
 DEF_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
 RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized
                                  # within task.
-#DEFAULT_TASK_PAYMENT = 0.45  # the default payment for tasks
-# we are computing the default task payment as:
-# (number of tuples to rate per segment) * (number of segments) * (secs per
-# tuple) * (price per minute)
-PAYMENT_PER_MIN = 0.13
+PAYMENT_PER_MIN = 0.10  # 10 and a half cents per minute
 _DEFAULT_TASK_PAYMENT = (DEF_NUM_IMAGES_PER_TASK / 3. *
                          DEF_NUM_IMAGE_APPEARANCE_PER_TASK) * 2 * \
-                        DEF_TRIAL_TIME / 1000 * (PAYMENT_PER_MIN / 60)
+                        2015. / 1000 * (PAYMENT_PER_MIN / 60)
 DEFAULT_TASK_PAYMENT = float(int(_DEFAULT_TASK_PAYMENT * 100))/100
 DEFAULT_TASK_NAME = 'Choosing %s images' % ATTRIBUTE  # The title for the
 # actual tasks.
@@ -164,7 +159,7 @@ DEF_PRACTICE_PROMPT = \
 DEF_PRACTICE_KEEP_BLOCKS = 1  # the default number of keep blocks for a
                               # practice task
 DEF_PRACTICE_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
-DEFAULT_PRACTICE_PAYMENT = 0.20  # the default payment for practices
+DEFAULT_PRACTICE_PAYMENT = 0.12  # the default payment for practices
 DEFAULT_PRACTICE_TASK_NAME = \
     DEFAULT_TASK_NAME + ' PRACTICE'  # The title for practice tasks.
 PRACTICE_DESCRIPTION = \
