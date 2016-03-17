@@ -502,9 +502,9 @@ def shutdown():
         src = request.remote_addr
     dispatch_notification(str(src), subject='Mturk task shutdown')
     _log.error('Shutdown request recieved from %s' % str(src))
-    _log.info('Disposing of all HITs')
+    # _log.info('Disposing of all HITs')
     shutdown_server()
-    mt.disable_all_hits_of_type()
+    # mt.disable_all_hits_of_type()
     return 'Server shutting down...'
 
 

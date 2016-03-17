@@ -423,6 +423,10 @@ class Get(object):
             else:
                 _log.info('Current mean samples: %.2f', (float(
                     n_samples)/self._n_active))
+                try:
+                    mon.val_mean_image_seen = float(n_samples)/self._n_active
+                except:
+                    _log.warn('Could not set statemons')
                 return
             stats_table.counter_set(skey, 'statistics:n_active', self._n_active)
             table = conn.table(IMAGE_TABLE)

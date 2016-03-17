@@ -132,7 +132,7 @@ DEF_KEEP_BLOCKS = 1  # the default number of keep blocks for a task
 DEF_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
 RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized
                                  # within task.
-PAYMENT_PER_MIN = 0.10  # 10 and a half cents per minute
+PAYMENT_PER_MIN = 0.08  # 10 and a half cents per minute
 _DEFAULT_TASK_PAYMENT = (DEF_NUM_IMAGES_PER_TASK / 3. *
                          DEF_NUM_IMAGE_APPEARANCE_PER_TASK) * 2 * \
                         2015. / 1000 * (PAYMENT_PER_MIN / 60)
@@ -201,7 +201,7 @@ BAD_DATA_TOO_MANY_UNANSWERED = 'You are responding too slowly or choosing ' \
 WORKER OPTIONS
 """
 # the maximum number of tasks a worker can complete per day
-MAX_SUBMITS_PER_DAY = 75
+MAX_SUBMITS_PER_DAY = 50
 # the weekly number of practices a worker can complete
 WEEKLY_PRACTICE_LIM = 5
 # the default reason for a ban
