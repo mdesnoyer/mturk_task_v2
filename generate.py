@@ -613,7 +613,6 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_practice=None):
                      collect_demo=collect_demo,
                      intro_instructions=intro_instructions,
                      task_id=task_id)
-    _log.debug('HTML assembly finished')
     return html
 
 

@@ -574,10 +574,6 @@ def task():
     else:
        src = request.remote_addr
     is_preview = request.values.get('assignmentId', '') == PREVIEW_ASSIGN_ID
-    if is_preview:
-        _log.debug('Preview request from %s received' % str(src))
-    else:
-        _log.debug('Task request from %s received' % str(src))
     hit_id = request.values.get('hitId', None)
     if hit_id is None:
         _log.debug('Returning request to %s' % str(src))
@@ -600,7 +596,7 @@ def task():
             task_time = dbget.practice_time
         else:
             task_time = dbget.task_time
-        _log.debug('Returning request to %s' % str(src))
+        _log.debug('Returning preview request from %s' % str(src))
         return make_preview_page(is_practice, task_time)
     worker_id = request.values.get('workerId', '')
     try:
@@ -618,7 +614,6 @@ def task():
         mon.increment("n_tasks_in_progress")
     except Exception as e:
         _log.warn('Could not increment statemons: %s' % e.message)
-    _log.debug('Returning request to %s' % str(src))
     return response
 
 

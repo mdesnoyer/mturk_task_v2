@@ -722,7 +722,6 @@ class Get(object):
         """
         with self.pool.connection() as conn:
             table = conn.table(TASK_TABLE)
-            _log.debug('Fetching task blocks...')
             pickled_blocks = \
                 table.row(task_id, columns=['blocks:c1']).get('blocks:c1', None)
             if pickled_blocks is None:
@@ -750,7 +749,6 @@ class Get(object):
             width = im_dat.get('metadata:width', None)
             if width is not None:
                 width_map[im_key] = int(width)
-        _log.debug('Image urls fetched')
         for block in blocks:
             block['ims_width'] = [None for _ in block['images']]
             block['ims_height'] = [None for _ in block['images']]
