@@ -497,9 +497,10 @@ def shutdown():
     :return: None
     """
     if request.headers.getlist("X-Forwarded-For"):
-       src = request.headers.getlist("X-Forwarded-For")[0]
+        src = request.headers.getlist("X-Forwarded-For")[0]
     else:
-       src = request.remote_addr
+        src = request.remote_addr
+    dispatch_notification(str(src), subject='Mturk task shutdown')
     _log.error('Shutdown request recieved from %s' % str(src))
     _log.info('Disposing of all HITs')
     shutdown_server()
@@ -519,6 +520,11 @@ def stopaddition():
 
     :return: None
     """
+    if request.headers.getlist("X-Forwarded-For"):
+        src = request.headers.getlist("X-Forwarded-For")[0]
+    else:
+        src = request.remote_addr
+    dispatch_notification(str(src), subject='Mturk task addition stopped')
     _log.warn('Stopping addition')
     global CONTINUOUS_MODE
     CONTINUOUS_MODE = False
@@ -537,6 +543,11 @@ def halt():
 
     :return: None
     """
+    if request.headers.getlist("X-Forwarded-For"):
+        src = request.headers.getlist("X-Forwarded-For")[0]
+    else:
+        src = request.remote_addr
+    dispatch_notification(str(src), subject='Mturk task halted')
     _log.warn('Halting!')
     global CONTINUOUS_MODE
     CONTINUOUS_MODE = False
@@ -570,9 +581,9 @@ def task():
     :return: The Task / Practice / Error page / etc HTML.
     """
     if request.headers.getlist("X-Forwarded-For"):
-       src = request.headers.getlist("X-Forwarded-For")[0]
+        src = request.headers.getlist("X-Forwarded-For")[0]
     else:
-       src = request.remote_addr
+        src = request.remote_addr
     is_preview = request.values.get('assignmentId', '') == PREVIEW_ASSIGN_ID
     hit_id = request.values.get('hitId', None)
     if hit_id is None:
@@ -627,9 +638,9 @@ def submit():
     """
     try:
         if request.headers.getlist("X-Forwarded-For"):
-           worker_ip = request.headers.getlist("X-Forwarded-For")[0]
+            worker_ip = request.headers.getlist("X-Forwarded-For")[0]
         else:
-           worker_ip = request.remote_addr
+            worker_ip = request.remote_addr
         hit_id = request.json[0]['hitId']
         worker_id = request.json[0]['workerId']
         task_id = request.json[0]['taskId']
