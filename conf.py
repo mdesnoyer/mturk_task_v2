@@ -132,7 +132,7 @@ DEF_KEEP_BLOCKS = 1  # the default number of keep blocks for a task
 DEF_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
 RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized
                                  # within task.
-PAYMENT_PER_MIN = 0.08  # 10 and a half cents per minute
+PAYMENT_PER_MIN = 0.09  # 10 and a half cents per minute
 _DEFAULT_TASK_PAYMENT = (DEF_NUM_IMAGES_PER_TASK / 3. *
                          DEF_NUM_IMAGE_APPEARANCE_PER_TASK) * 2 * \
                         2015. / 1000 * (PAYMENT_PER_MIN / 60)
@@ -174,8 +174,8 @@ TASK_VALIDATION
 """
 MAX_MEAN_RT = np.inf
 MIN_TRIAL_RT = 400
-MAX_PROB_RANDOM = 0.994
-MAX_FRAC_CONTRADICTIONS = 0.145
+MAX_PROB_RANDOM = 0.999
+MAX_FRAC_CONTRADICTIONS = 0.12
 MAX_FRAC_UNANSWERED = 0.15
 MAX_FRAC_TOO_FAST = 0.1
 

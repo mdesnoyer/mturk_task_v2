@@ -2605,6 +2605,7 @@ class Set(object):
             table.counter_dec(worker_id, 'stats:num_pending_eval')
             # increment accepted count
             table.counter_inc(worker_id, 'stats:num_accepted')
+            table.counter_inc(worker_id, 'stats:num_accepted_interval')
             # update images table
             table = conn.table(IMAGE_TABLE)
             # unfortunately, happybase does not support batch incrementation
@@ -2706,16 +2707,10 @@ class Set(object):
         with self.pool.connection() as conn:
             table = conn.table(WORKER_TABLE)
             table.counter_set(worker_id,
-                              'stats:num_practices_attempted_interval',
-                              value=0)
-            table.counter_set(worker_id,
-                              'stats:num_attempted_interval',
+                              'stats:num_accepted_interval',
                               value=0)
             table.counter_set(worker_id,
                               'stats:num_rejected_interval',
-                              value=0)
-            table.counter_set(worker_id,
-                              'stats:interval_completed_count',
                               value=0)
 
     def ban_worker(self, worker_id,
@@ -2736,6 +2731,12 @@ class Set(object):
                       _conv_dict_vals({'status:is_banned': TRUE,
                                        'status:ban_duration': duration,
                                        'status:ban_reason': reason}))
+            table.counter_set(worker_id,
+                              'stats:num_accepted_interval',
+                              value=0)
+            table.counter_set(worker_id,
+                              'stats:num_rejected_interval',
+                              value=0)
 
     def worker_ban_expires_in(self, worker_id):
         """

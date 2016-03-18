@@ -144,6 +144,11 @@ class MTurk(object):
             self._gen_practice_quota_qualification()
         else:
             self.practice_quota_id = qid
+        qid = self._get_qualification_id_from_name(BAN_QUALIFICATION_NAME)
+        if qid is None:
+            self._get_ban_qualification()
+        else:
+            self.ban_id = qid
 
     def _get_qualification_id_from_name(self, qualification_name):
         """
@@ -207,6 +212,22 @@ class MTurk(object):
         except boto.mturk.connection.MTurkRequestError as e:
             _log.error('Error creating quota qualification: ' + e.message)
 
+    def _get_ban_qualification(self):
+        """
+        Creates the ban qualification, sets the ID internally.
+
+        :return: None
+        """
+        _log.info('Generating ban qualification')
+        try:
+            resp = self.mtconn.create_qualification_type(
+                name=BAN_QUALIFICATION_NAME,
+                description=BAN_QUALIFICATION_DESCRIPTION,
+                status='Active', is_requestable=False)
+            self.ban_id = resp[0].QualificationTypeId
+        except boto.mturk.connection.MTurkRequestError as e:
+            _log.error('Error creating ban qualification: ' + e.message)
+
     def _gen_requirement(self):
         """
         Obtains a required qualification object for the 'true' task, and sets
@@ -218,11 +239,14 @@ class MTurk(object):
             [boto.mturk.qualification.Requirement(self.qualification_id,
                                                   'Exists',
                                                   required_to_preview=False),
-            boto.mturk.qualification.Requirement(self.quota_id,
-                                                 'GreaterThan',
-                                                 0,
-                                                 required_to_preview=False),
-            _LocaleRequirement('In', LOCALES)]
+             boto.mturk.qualification.Requirement(self.ban_id,
+                                                  'DoesNotExist',
+                                                  required_to_preview=True),
+             boto.mturk.qualification.Requirement(self.quota_id,
+                                                  'GreaterThan',
+                                                  0,
+                                                  required_to_preview=False),
+             _LocaleRequirement('In', LOCALES)]
         self.qualification_requirement =  \
             boto.mturk.qualification.Qualifications(requirements=requirements)
 
@@ -236,6 +260,9 @@ class MTurk(object):
         requirements = \
             [boto.mturk.qualification.Requirement(self.qualification_id,
                                                   'DoesNotExist'),
+             boto.mturk.qualification.Requirement(self.ban_id,
+                                                  'DoesNotExist',
+                                                  required_to_preview=True),
              _LocaleRequirement('In', LOCALES),
              boto.mturk.qualification.Requirement(self.practice_quota_id,
                                                   'GreaterThan',
@@ -610,6 +637,9 @@ class MTurk(object):
         """
         Bans a worker. Also revokes their qualification.
 
+        WARNING:
+            If this does not work, it will error out!
+
         :param worker_id: The MTurk worker ID.
         :param reason: The reason for the ban.
         :return: None
@@ -617,8 +647,11 @@ class MTurk(object):
         # revoke the workers qualifications
         self.revoke_worker_practice_passed(worker_id, reason=reason)
         # TODO: Change reason to the date, since it's only surfaced internally
-        self.mtconn.block_worker(worker_id,
-                                 reason=datetime.datetime.now().isoformat())
+        self.mtconn.assign_qualification(self.ban_id, worker_id)
+        self.mtconn.notify_workers(worker_id, 'Temporary ban',
+                                   'You have been issued the temporary ban '
+                                   'qualification which will prevent you from'
+                                   ' completing our HITs for one week.')
 
     @staticmethod
     def _get_ban_time(worker_block):
@@ -636,6 +669,7 @@ class MTurk(object):
 
     def get_unbannable_workers(self):
         banned = self.mtconn.get_blocked_workers()
+        return banned
 
     def unban_worker(self, worker_id):
         """
@@ -644,9 +678,12 @@ class MTurk(object):
         :param worker_id: The MTurk worker ID.
         :return: None
         """
-        self.mtconn.unblock_worker(worker_id,
-                                   reason='Your ban has expired, you are free '
-                                          'to attempt our tasks again.')
+        try:
+            self.mtconn.revoke_qualification(worker_id, self.ban_id,
+                                             send_notification=False)
+        except:
+            _log.warn('Could not unban worker %s' % worker_id)
+            return
         self.mtconn.notify_workers(
             worker_id,
             'Reinstatement',

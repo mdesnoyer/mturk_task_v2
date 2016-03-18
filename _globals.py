@@ -53,6 +53,12 @@ PRACTICE_QUOTA_DESCRIPTION = 'This is the number of practices you can ' \
                              ' rejected, we have to limit how many times ' \
                              'people can attempt to pass them.'
 
+# This is the ban qualification, it's how we ban people.
+BAN_QUALIFICATION_NAME = 'Temporary ban'
+BAN_QUALIFICATION_DESCRIPTION = 'You have been temporarily banned for poor ' \
+                                'performance. If you have any questions, ' \
+                                'do not hesitate to contact us.'
+
 """
 BLOCK IDENTIFICATION
 """

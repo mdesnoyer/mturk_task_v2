@@ -71,7 +71,6 @@ statemon.define("n_workers_unbanned")
 statemon.define("n_tasks_accepted")
 statemon.define("n_tasks_rejected")
 statemon.define("n_tasks_served")
-statemon.define("n_tasks_in_progress")
 statemon.define("n_practices_rejected")
 statemon.define("n_practices_passed")
 statemon.define("n_errors_observed")
@@ -286,7 +285,12 @@ def check_ban(mt, dbget, dbset, worker_id=None):
     _log.info('JOB STARTED check_ban')
     if dbget.worker_autoban_check(worker_id):
         dbset.ban_worker(worker_id)
-        mt.ban_worker(worker_id)
+        try:
+            mt.ban_worker(worker_id)
+        except Exception as e:
+            tb = traceback.format_exc()
+            dispatch_err(e, tb, None)
+            return
         dispatch_notification('Worker %s has been banned' % str(worker_id))
         try:
             mon.increment('n_workers_banned')
@@ -501,7 +505,7 @@ def shutdown():
     else:
         src = request.remote_addr
     dispatch_notification(str(src), subject='Mturk task shutdown')
-    _log.error('Shutdown request recieved from %s' % str(src))
+    _log.error('Shutdown request received from %s' % str(src))
     # _log.info('Disposing of all HITs')
     shutdown_server()
     # mt.disable_all_hits_of_type()
@@ -605,9 +609,10 @@ def task():
     if is_preview:
         if is_practice:
             task_time = dbget.practice_time
+            _log.debug('Returning practice preview request from %s' % str(src))
         else:
             task_time = dbget.task_time
-        _log.debug('Returning preview request from %s' % str(src))
+            _log.debug('Returning task preview request from %s' % str(src))
         return make_preview_page(is_practice, task_time)
     worker_id = request.values.get('workerId', '')
     try:
@@ -622,7 +627,6 @@ def task():
                           hit_id=hit_id, task_id=task_id)
     try:
         mon.increment("n_tasks_served")
-        mon.increment("n_tasks_in_progress")
     except Exception as e:
         _log.warn('Could not increment statemons: %s' % e.message)
     return response
