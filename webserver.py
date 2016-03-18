@@ -394,9 +394,8 @@ def handle_finished_hit(mt, dbget, dbset, hit_id):
     :param hit_id: The reason for the rejection
     :return: None
     """
-    _log.info('Currently not disabling completed hits due to the workers being'
-              ' too slow to hit submit')
     # mt.disable_hit(hit_id)
+    pass
 
 
 """
@@ -693,7 +692,6 @@ def submit():
             mt.grant_worker_practice_passed(worker_id)
             try:
                 mon.increment("n_practices_passed")
-                mon.decrement("n_tasks_in_progress")
             except Exception as e:
                 _log.warn('Could not increment statemons: %s' % e.message)
         else:
@@ -708,7 +706,6 @@ def submit():
                                   task_id=task_id, allow_submit=True)
             try:
                 mon.increment("n_practices_rejected")
-                mon.decrement("n_tasks_in_progress")
             except Exception as e:
                 _log.warn('Could not increment statemons: %s' % e.message)
         if CONTINUOUS_MODE:
@@ -769,7 +766,6 @@ def submit():
                               args=[mt, dbget, dbset, worker_id])
             try:
                 mon.increment("n_tasks_rejected")
-                mon.decrement("n_tasks_in_progress")
             except Exception as e:
                 _log.warn('Could not increment statemons: %s' % e.message)
         else:
@@ -777,7 +773,6 @@ def submit():
                               args=[dbset, task_id])
             try:
                 mon.increment("n_tasks_accepted")
-                mon.decrement("n_tasks_in_progress")
             except Exception as e:
                 _log.warn('Could not increment statemons: %s' % e.message)
         if CONTINUOUS_MODE:
