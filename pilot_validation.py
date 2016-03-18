@@ -24,7 +24,7 @@ obs_imgs = set()
 win_dict = ddict(lambda: Counter())
 win_cnts = Counter()
 for n, (uid, data) in enumerate(s):
-    print n
+    print n, len(obs_imgs)
     win = data.get('data:winner_id')
     los = data.get('data:loser_id')
     obs_imgs.add(win)

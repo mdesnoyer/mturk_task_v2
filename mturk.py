@@ -680,7 +680,7 @@ class MTurk(object):
         """
         try:
             self.mtconn.revoke_qualification(worker_id, self.ban_id,
-                                             send_notification=False)
+                                             reason="The ban has expired.")
         except:
             _log.warn('Could not unban worker %s' % worker_id)
             return
