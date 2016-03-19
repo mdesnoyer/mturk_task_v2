@@ -2585,8 +2585,9 @@ class Set(object):
             _log.error('No such task exists!')
             return
         if task_status != EVALUATION_PENDING:
-            _log.warning('Task status indicates it is not ready to be '
-                         'accepted, but proceeding anyway')
+            # _log.warning('Task status indicates it is not ready to be '
+            #              'accepted, but proceeding anyway')
+            pass
         with self.pool.connection() as conn:
             table = conn.table(TASK_TABLE)
             task_data = table.row(task_id)
