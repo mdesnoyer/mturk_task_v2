@@ -392,7 +392,7 @@ class Get(object):
         self._all_ims_act = False
         try:
             _log.info('Fetching active workers')
-            mon.n_workers_registered = len(self.get_all_workers())
+            mon.n_workers_registered = len([x for x in self.get_all_workers()])
         except:
             _log.warn('Problem incrementing statemons')
 
@@ -614,8 +614,8 @@ class Get(object):
                                               'stats:num_rejected_interval'))
         _log.info('Worker %s has had %i accepted, %i rejected [total: %i, '
                   'rej ratio: %.2f]', worker_id, int(num_acc), int(num_rej),
-                  int(num_acc+num_rej), num_rej/(num_acc + num_rej))
-        return num_rej / (num_acc + num_rej)
+                  int(num_acc+num_rej), num_rej/(1 + num_acc + num_rej))
+        return num_rej / (1 + num_acc + num_rej)
 
     # TASK
     @property
