@@ -291,7 +291,8 @@ def check_ban(mt, dbget, dbset, worker_id=None):
             tb = traceback.format_exc()
             dispatch_err(e, tb, None)
             return
-        dispatch_notification('Worker %s has been banned' % str(worker_id))
+        dispatch_notification('Worker %s has been banned' % str(worker_id),
+                              subject="Ban notification")
         try:
             mon.increment('n_workers_banned')
         except:
@@ -315,7 +316,7 @@ def unban_workers(mt, dbget, dbset):
             if not dbset.worker_ban_expires_in(worker_id):
                 mt.unban_worker(worker_id)
                 dispatch_notification('Worker %s has been unbanned' % str(
-                    worker_id))
+                    worker_id), subject="Unban notification")
                 try:
                     mon.increment("n_workers_unbanned")
                 except:
