@@ -605,6 +605,7 @@ class MTurk(object):
             else:
                 _log.warn('Worker %s quota already at or below zero.' %
                           worker_id)
+            _log.info('Worker %s has quota value %i', worker_id, int(quota_val))
         except boto.mturk.connection.MTurkRequestError:
             _log.warn('Could not obtain quota for worker %s' % worker_id)
             quota_val = 0
