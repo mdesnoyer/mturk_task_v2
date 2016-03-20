@@ -174,8 +174,8 @@ TASK_VALIDATION
 """
 MAX_MEAN_RT = np.inf
 MIN_TRIAL_RT = 400
-MAX_PROB_RANDOM = 0.999
-MAX_FRAC_CONTRADICTIONS = 0.11
+MAX_PROB_RANDOM = 0.997
+MAX_FRAC_CONTRADICTIONS = 0.10
 MAX_FRAC_UNANSWERED = 0.1
 MAX_FRAC_TOO_FAST = 0.1
 
@@ -211,7 +211,7 @@ DEFAULT_BAN_REASON = 'You have been banned for one week from completing our ' \
 # counts reset.
 TASK_SUBMISSION_RESET_VALUE = MAX_SUBMITS_PER_DAY * 7
 # the minimum number of rejections (in a week) to be eligible for a ban
-MIN_REJECT_AUTOBAN_ELIGIBLE = 4
+MIN_REJECT_AUTOBAN_ELIGIBLE = 3
 # the ratio of rejections / acceptances to be eligible for a ban
 AUTOBAN_REJECT_ACCEPT_RATIO = 0.25
 # these are countries from which we accept workers
