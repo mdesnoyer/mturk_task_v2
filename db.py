@@ -390,6 +390,11 @@ class Get(object):
         self._task_time = None
         self._practice_time = None
         self._all_ims_act = False
+        try:
+            _log.info('Fetching active workers')
+            mon.n_workers_registered = len(self.get_all_workers())
+        except:
+            _log.warn('Problem incrementing statemons')
 
     def check_active_ims(self):
         if self._all_ims_act:
@@ -404,6 +409,10 @@ class Get(object):
             skey = _get_stats_key([])
             self._n_active = \
                 stats_table.counter_get(skey, 'statistics:n_active')
+            try:
+                mon.n_images_activated = self._n_active
+            except:
+                _log.warn('Problem incrementing statemons')
             n_samples = \
                 stats_table.counter_get(skey, 'statistics:n_samples')
             if self._n_active < INIT_BATCH_SIZE:
@@ -434,10 +443,6 @@ class Get(object):
             for iid in to_activate:
                 b.put(iid, {'metadata:is_active': TRUE})
             b.send()
-            try:
-                mon.increment("n_images_activated", diff=len(to_activate))
-            except:
-                _log.warn('Problem incrementing statemons')
             _log.info('Activated %i images.' % len(to_activate))
 
     def cache_im_keys(self):
@@ -607,6 +612,9 @@ class Get(object):
                                               'stats:num_accepted_interval'))
             num_rej = float(table.counter_get(worker_id,
                                               'stats:num_rejected_interval'))
+        _log.info('Worker %s has had %i accepted, %i rejected [total: %i, '
+                  'rej ratio: %.2f]', worker_id, int(num_acc), int(num_rej),
+                  int(num_acc+num_rej), num_rej/(num_acc + num_rej))
         return num_rej / (num_acc + num_rej)
 
     # TASK

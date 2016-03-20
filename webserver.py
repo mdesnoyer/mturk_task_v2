@@ -310,16 +310,16 @@ def unban_workers(mt, dbget, dbset):
     """
     _log.info('JOB STARTED unban_workers')
     _log.info('Checking if any bans can be lifted...')
-    # TODO: Get this for workers that are obtained from mturk, not the database
     for worker_id in dbget.get_all_workers():
-        if not dbset.worker_ban_expires_in(worker_id):
-            mt.unban_worker(worker_id)
-            dispatch_notification('Worker %s has been unbanned' % str(
-                worker_id))
-            try:
-                mon.increment("n_workers_unbanned")
-            except:
-                _log.warn('Could not increment statemons')
+        if dbget.worker_is_banned(worker_id):
+            if not dbset.worker_ban_expires_in(worker_id):
+                mt.unban_worker(worker_id)
+                dispatch_notification('Worker %s has been unbanned' % str(
+                    worker_id))
+                try:
+                    mon.increment("n_workers_unbanned")
+                except:
+                    _log.warn('Could not increment statemons')
 
 
 def reset_worker_quotas(mt, dbget):
