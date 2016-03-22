@@ -610,7 +610,7 @@ class MTurk(object):
                           worker_id)
             _log.info('Worker %s has quota value %i', worker_id, int(quota_val))
             self._tasks_avail.append(quota_val)
-            self._tasks_avail = self._tasks_avail[-20:]
+            self._tasks_avail = self._tasks_avail[-100:]
         except boto.mturk.connection.MTurkRequestError:
             _log.warn('Could not obtain quota for worker %s' % worker_id)
             quota_val = 0
