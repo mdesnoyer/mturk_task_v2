@@ -2772,7 +2772,7 @@ class Set(object):
                                       'status:ban_duration': '0'})
                 return 0
             else:
-                return (cur_date - ban_date) - ban_dur
+                return ban_dur - (cur_date - ban_date)
 
     def reset_timed_out_tasks(self):
         """
