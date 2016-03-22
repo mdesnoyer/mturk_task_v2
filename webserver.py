@@ -787,12 +787,6 @@ if __name__ == '__main__':
     app.logger.addHandler(webhand)
     # start the monitoring agent
     dbget.check_active_ims()
-    _log.info('Calculating payment')
-    _task_payment = ((1./60) * dbget.task_time) * PAYMENT_PER_MIN
-    task_payment = float(int(_task_payment * 100))/100
-    mins, secs = divmod(dbget.task_time, 60)
-    _log.info('Average task time is %i min, %i sec. Payment is %.2f',
-              int(mins), int(secs), task_payment)
     _log.info('Starting scheduler')
     scheduler.start()
     if not LOCAL:
@@ -806,6 +800,12 @@ if __name__ == '__main__':
         task_attribute=ATTRIBUTE,
         image_attributes=IMAGE_ATTRIBUTES)
     if not PRACTICE_HIT_TYPE_ID or not TASK_HIT_TYPE_ID:
+        _log.info('Calculating payment')
+        _task_payment = ((1./60) * dbget.task_time) * PAYMENT_PER_MIN
+        task_payment = float(int(_task_payment * 100))/100
+        mins, secs = divmod(dbget.task_time, 60)
+        _log.info('Average task time is %i min, %i sec. Payment is %.2f',
+                  int(mins), int(secs), task_payment)
         if PRACTICE_HIT_TYPE_ID:
             dbset.deactivate_hit_type(PRACTICE_HIT_TYPE_ID)
         if TASK_HIT_TYPE_ID:
