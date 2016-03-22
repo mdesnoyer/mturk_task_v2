@@ -2765,10 +2765,11 @@ class Set(object):
                 return 0
             ban_date = time.mktime(time.localtime(float(ban_data[1])/1000))
             cur_date = time.mktime(time.localtime())
-            ban_dur = float(data.get('status:ban_length', ('0', 0))[0])
+            ban_dur = float(data.get('status:ban_duration', ('0', 0))[0])
             if (cur_date - ban_date) > ban_dur:
                 table.put(worker_id, {'status:is_banned': FALSE,
-                                      'status:ban_length': '0'})
+                                      'status:ban_length': '0',
+                                      'status:ban_duration': '0'})
                 return 0
             else:
                 return (cur_date - ban_date) - ban_dur
