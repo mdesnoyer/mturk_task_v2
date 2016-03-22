@@ -32,6 +32,7 @@ import boto.mturk.price
 import boto.mturk.question
 import datetime
 import statemon
+import numpy as np
 
 _log = logger.setup_logger(__name__)
 
@@ -40,6 +41,7 @@ mon = statemon.state
 statemon.define("val_account_balance", float)
 statemon.define("n_hits_disposed", float)
 statemon.define("n_hits_disabled", float)
+statemon.define("val_hits_avail_to_workers", float)
 
 
 class _LocaleRequirement(boto.mturk.qualification.Requirement):
@@ -85,6 +87,7 @@ class MTurk(object):
         self.mtconn = mtconn
         self.current_balance = 0
         self.get_account_balance()  # get the current account balance
+        self._tasks_avail = []
         _log.info('Current account funds: $%.2f' % self.current_balance)
 
     def setup_quals(self):
@@ -606,9 +609,15 @@ class MTurk(object):
                 _log.warn('Worker %s quota already at or below zero.' %
                           worker_id)
             _log.info('Worker %s has quota value %i', worker_id, int(quota_val))
+            self._tasks_avail.append(quota_val)
+            self._tasks_avail = self._tasks_avail[-20:]
         except boto.mturk.connection.MTurkRequestError:
             _log.warn('Could not obtain quota for worker %s' % worker_id)
             quota_val = 0
+        try:
+            mon.val_hits_avail_to_workers = np.mean(self._tasks_avail)
+        except Exception as e:
+            _log.warn('Error adjusting statemons: %s', e.message)
         self.mtconn.update_qualification_score(
             self.quota_id, worker_id, value=quota_val)
 
