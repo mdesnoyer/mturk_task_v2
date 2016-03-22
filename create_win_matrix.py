@@ -17,8 +17,8 @@ ims = []
 imss = set()
 
 for n, (cid, i) in enumerate(t.scan()):
-    A = i['data:winner_id']
-    B = i['data:loser_id']
-    C = t.counter_get(cid, 'data:win_count')
+    A.append(i['data:winner_id'])
+    B.append(i['data:loser_id'])
+    C.append(t.counter_get(cid, 'data:win_count'))
     if not (n % 10000):
         print n
