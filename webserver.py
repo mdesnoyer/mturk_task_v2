@@ -787,6 +787,7 @@ if __name__ == '__main__':
     app.logger.addHandler(webhand)
     # start the monitoring agent
     dbget.check_active_ims()
+    mins, secs = divmod(dbget.task_time, 60)  # prefetch the task time
     _log.info('Starting scheduler')
     scheduler.start()
     if not LOCAL:
