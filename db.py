@@ -425,11 +425,12 @@ class Get(object):
                     n_samples)/self._n_active))
                 return
             elif (float(n_samples) / self._n_active) > np.log(self._n_active):
-                pass
-                _log.info('Images are sufficiently sampled, activating more')
-                prev_active = self._n_active
-                self._n_active = min(self._n_active * 2, len(self._im_ids))
-                to_activate = self._im_ids[prev_active:self._n_active]
+                _log.info('Images are sufficiently sampled, but activation of'
+                          ' new images has been disabled')
+                # _log.info('Images are sufficiently sampled, activating more')
+                # prev_active = self._n_active
+                # self._n_active = min(self._n_active * 2, len(self._im_ids))
+                # to_activate = self._im_ids[prev_active:self._n_active]
             else:
                 _log.info('Current mean samples: %.2f', (float(
                     n_samples)/self._n_active))
@@ -655,6 +656,8 @@ class Get(object):
                     continue
                 jsn = json.loads(jsn_str)
                 times.append(float(jsn[-1]['time_elapsed']) / 1000)
+                if len(times) > 2000:
+                    break  # limit it to 2000 tasks to save time.
         if not len(times):
             _log.info('No task time information found! Calculating it by rote')
             return DEF_NUM_IMAGES_PER_TASK / 3. * \
