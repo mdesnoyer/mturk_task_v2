@@ -9,6 +9,7 @@ import boto
 
 pool = happybase.ConnectionPool(size=2, host=DATABASE_LOCATION)
 
+dbset = Set(pool)
 dbget = Get(pool)
 
 mtconn = boto.mturk.connection.MTurkConnection(aws_access_key_id=MTURK_ACCESS_ID,

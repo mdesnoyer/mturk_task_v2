@@ -425,6 +425,7 @@ class Get(object):
                     n_samples)/self._n_active))
                 return
             elif (float(n_samples) / self._n_active) > np.log(self._n_active):
+                pass
                 _log.info('Images are sufficiently sampled, activating more')
                 prev_active = self._n_active
                 self._n_active = min(self._n_active * 2, len(self._im_ids))

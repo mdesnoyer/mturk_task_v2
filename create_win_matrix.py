@@ -26,3 +26,21 @@ for n, (cid, i) in enumerate(t.scan()):
     C.append(t.counter_get(cid, 'data:win_count'))
     if not (n % 1000):
         print n
+
+L = list(set(A + B))
+N = len(L)
+
+bA = {a:L.index(a) for a in set(A)}
+bB = {b:L.index(b) for b in set(B)}
+M = sp.sparse.lil_matrix((N, N), np.uint32)
+for n, (a, b, c) in enumerate(zip(A, B, C)):
+    print n
+    M[bA[a], bB[b]] = c
+
+n, labels = sp.sparse.csgraph.connected_components(M, directed=True,
+                                               connection='strong')
+print 'Obtained %i components' % n
+
+ccount = np.zeros(n)
+for l in labels:
+    ccount[l] += 1
