@@ -661,7 +661,8 @@ class MTurk(object):
         self.mtconn.notify_workers(worker_id, 'Temporary ban',
                                    'You have been issued the temporary ban '
                                    'qualification which will prevent you from'
-                                   ' completing our HITs for one week.')
+                                   ' completing our HITs for one week. This '
+                                   'will not affect your MTurk account.')
 
     @staticmethod
     def _get_ban_time(worker_block):
