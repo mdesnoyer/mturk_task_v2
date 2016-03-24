@@ -79,8 +79,8 @@ DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
 MTURK OPTIONS
 """
 LOW_FUNDS_WARNING = 300  # if the funds drop below this amount
-NUM_PRACTICES = 20  # how many practices to post at once
-NUM_TASKS = 60  # how many tasks to maintain online
+NUM_PRACTICES = 10  # how many practices to post at once
+NUM_TASKS = 40  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
@@ -132,7 +132,7 @@ DEF_KEEP_BLOCKS = 1  # the default number of keep blocks for a task
 DEF_REJECT_BLOCKS = 1  # the default number of reject blocks for a task
 RANDOMIZE_SEGMENT_ORDER = False  # whether or not segments are randomized
                                  # within task.
-PAYMENT_PER_MIN = 0.085  # 10 and a half cents per minute
+PAYMENT_PER_MIN = 0.1  # 10 cents per minute
 _DEFAULT_TASK_PAYMENT = (DEF_NUM_IMAGES_PER_TASK / 3. *
                          DEF_NUM_IMAGE_APPEARANCE_PER_TASK) * 2 * \
                         2015. / 1000 * (PAYMENT_PER_MIN / 60)
@@ -201,7 +201,7 @@ BAD_DATA_TOO_MANY_UNANSWERED = 'You are responding too slowly or choosing ' \
 WORKER OPTIONS
 """
 # the maximum number of tasks a worker can complete per day
-MAX_SUBMITS_PER_DAY = 60
+MAX_SUBMITS_PER_DAY = 50
 # the weekly number of practices a worker can complete
 WEEKLY_PRACTICE_LIM = 5
 # the default reason for a ban
