@@ -37,7 +37,11 @@ x += ["Additionally, when a user is issued a block " \
     "practices will be posted, these blocks have become, in effect, " \
     "permanent. Thus you may contact us directly to appeal any blocks as you " \
     "have recieved."]
-x += '\n\n'.join(x)
+x += ["Because this will mean modifying our code, please excuse any bugs that"
+      "may occur and contact us immediately if you notice any. Thank you "
+      "again for participating in our experiment and for your continued "
+      "support."]
+print '\n\n'.join(x)
 
 err_workers = []
 for i in range((len(workers)/c_size)+1):

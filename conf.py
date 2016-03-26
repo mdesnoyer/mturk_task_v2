@@ -63,7 +63,8 @@ MARGIN_SIZE = 2  # the default margin size, for formatting.
 ANNOUNCEMENT = "Please only accept one HIT at a time; new ones are posted " \
                "automatically, but only a fixed amount are allowed to be up " \
                "at once so if you accept too many you will prevent others " \
-               "from participating"
+               "from participating. Also please be aware that we are no " \
+               "longer accepting new workers due to exploitation."
 
 """
 GLOBAL WITHIN-TASK TIMING CONFIGURATION
