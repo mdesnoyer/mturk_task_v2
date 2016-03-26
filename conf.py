@@ -79,7 +79,7 @@ DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
 MTURK OPTIONS
 """
 LOW_FUNDS_WARNING = 300  # if the funds drop below this amount
-NUM_PRACTICES = 10  # how many practices to post at once
+NUM_PRACTICES = 0  # 10  # how many practices to post at once
 NUM_TASKS = 40  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
