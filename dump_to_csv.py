@@ -12,7 +12,8 @@ s = t.scan()
 
 with open('/tmp/data', 'w') as f:
     for n, (k, data) in enumerate(s):
-        print n
+        if not n % 1000:
+            print n
         winner = data['data:winner_id']
         loser = data['data:loser_id']
         win_cnt = t.counter_get(k, 'data:win_count')
