@@ -596,6 +596,9 @@ def task():
     try:
         hit_info = mt.get_hit(hit_id)
         task_id = hit_info.RequesterAnnotation
+        if task_id == 't_0war2CzcROl7UtfS':
+            _log.info("Attempted to fetch task id %s" % task_id)
+            return 'You are blocked for exploitation.'
     except Exception as e:
         tb = traceback.format_exc()
         dispatch_err(e, tb, request)
@@ -615,6 +618,9 @@ def task():
             _log.debug('Returning task preview request from %s' % str(src))
         return make_preview_page(is_practice, task_time)
     worker_id = request.values.get('workerId', '')
+    if worker_id in ['A32J0WKL5KD8Y4', 'A32J0WKL5KD8T5']:
+        _log.warn("Worker %s tried to submit" % worker_id)
+        return "You are prevented from completing HITs due to exploitation."
     try:
         response = fetch_task(dbget, dbset, task_id, worker_id, is_practice)
     except Exception as e:
