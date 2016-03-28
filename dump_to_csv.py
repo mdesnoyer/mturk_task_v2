@@ -16,4 +16,4 @@ with open('/tmp/data', 'w') as f:
         winner = data['data:winner_id']
         loser = data['data:loser_id']
         win_cnt = t.counter_get(k, 'data:win_count')
-        f.write('%s,%s,%i\n' % winner, loser, win_cnt)
+        f.write('%s,%s,%i\n' % (winner, loser, win_cnt))
