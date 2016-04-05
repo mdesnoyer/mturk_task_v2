@@ -404,6 +404,17 @@ HELPER FUNCTIONS
 """
 
 
+def validate_request(worker_id, hit_id):
+    """
+    Checks a requests' worker ID and task ID.
+
+    :param worker_id: The worker ID, as a string.
+    :param hit_id: The HIT ID, as a string.
+    :return: True if the HIT and Worker ID exists on MTurk, false otherwise.
+    """
+    # TODO: Implement this.
+
+
 def shutdown_server():
     """
     Function to shutdown the server.
