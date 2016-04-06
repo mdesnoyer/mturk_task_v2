@@ -404,17 +404,6 @@ HELPER FUNCTIONS
 """
 
 
-def validate_request(worker_id, hit_id):
-    """
-    Checks a requests' worker ID and task ID.
-
-    :param worker_id: The worker ID, as a string.
-    :param hit_id: The HIT ID, as a string.
-    :return: True if the HIT and Worker ID exists on MTurk, false otherwise.
-    """
-    # TODO: Implement this.
-
-
 def shutdown_server():
     """
     Function to shutdown the server.
@@ -629,6 +618,20 @@ def task():
             _log.debug('Returning task preview request from %s' % str(src))
         return make_preview_page(is_practice, task_time)
     worker_id = request.values.get('workerId', '')
+    if is_practice:
+        # check if they have the practice quota qualification
+        pq_id = mt.practice_quota_id
+        try:
+            mtconn.get_qualification_score(pq_id, worker_id)
+        except:  # ahh this isn't a real worker! KILL THEM!
+            return ''
+    else:
+        # check that they have the daily quota qualification
+        pt_id = mt.quota_id
+        try:
+            mtconn.get_qualification_score(pt_id, worker_id)
+        except:  # ahh this isn't a real worker! KILL THEM!
+            return ''
     if worker_id in ['A32J0WKL5KD8Y4', 'A32J0WKL5KD8T5']:
         _log.warn("Worker %s tried to submit" % worker_id)
         return "You are prevented from completing HITs due to exploitation."

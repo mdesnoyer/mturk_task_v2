@@ -202,7 +202,7 @@ BAD_DATA_TOO_MANY_UNANSWERED = 'You are responding too slowly or choosing ' \
 WORKER OPTIONS
 """
 # the maximum number of tasks a worker can complete per day
-MAX_SUBMITS_PER_DAY = 50
+MAX_SUBMITS_PER_DAY = 5
 # the weekly number of practices a worker can complete
 WEEKLY_PRACTICE_LIM = 5
 # the default reason for a ban
