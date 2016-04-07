@@ -604,11 +604,11 @@ def task():
     try:
         assert val_hit_info.HITStatus == 'Unassignable'
     except:
-        body = 'HIT %s requested but is unassignable. status: %s'
+        body = 'HIT %s accepted but is not unassignable. status: %s'
         body  = body % (str(hit_id), str(val_hit_info.HITStatus))
         subject = body
         dispatch_notification(body, subject)
-        return 'Could not confirm request with MTurk'
+        return 'Apologies, this HIT is %s' % str(val_hit_info.HITStatus)
     try:
         hit_info = mt.get_hit(hit_id)
         task_id = hit_info.RequesterAnnotation
