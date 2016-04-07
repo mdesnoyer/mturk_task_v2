@@ -602,7 +602,7 @@ def task():
         dispatch_notification(body, subject)
         return 'Could not confirm request with MTurk'
     try:
-        assert val_hit_info.HITStatus == 'Assignable'
+        assert val_hit_info.HITStatus == 'Unassignable'
     except:
         body = 'HIT %s requested but is unassignable. status: %s'
         body  = body % (str(hit_id), str(val_hit_info.HITStatus))
