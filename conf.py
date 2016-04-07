@@ -72,7 +72,7 @@ GLOBAL WITHIN-TASK TIMING CONFIGURATION
 TIMING_POST_TRIAL = 200  # Sets the time, in milliseconds, between the current
                          # trial and the next trial.
 DEF_FEEDBACK_TIME = 100  # the amount of time to display feedback
-DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
+DEF_TRIAL_TIME = 3500  # the maximum amount of time each trial is allowed to
                        # go for
 
 
@@ -80,7 +80,7 @@ DEF_TRIAL_TIME = 2500  # the maximum amount of time each trial is allowed to
 MTURK OPTIONS
 """
 LOW_FUNDS_WARNING = 300  # if the funds drop below this amount
-NUM_PRACTICES = 0  # 10  # how many practices to post at once
+NUM_PRACTICES = 5  # 10  # how many practices to post at once
 NUM_TASKS = 40  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
@@ -207,14 +207,16 @@ MAX_SUBMITS_PER_DAY = 5
 WEEKLY_PRACTICE_LIM = 5
 # the default reason for a ban
 DEFAULT_BAN_REASON = 'You have been banned for one week from completing our ' \
-                     'tasks due to poor task performance.'
+                     'tasks due to poor task performance. This will not ' \
+                     'affect your standing with Amazon Mechanical Turk as ' \
+                     'it is only a qualification, NOT an actual block.'
 # The number of submitted tasks that will result in the worker having their
 # counts reset.
 TASK_SUBMISSION_RESET_VALUE = MAX_SUBMITS_PER_DAY * 7
 # the minimum number of rejections (in a week) to be eligible for a ban
 MIN_REJECT_AUTOBAN_ELIGIBLE = 2
 # the ratio of rejections / acceptances to be eligible for a ban
-AUTOBAN_REJECT_ACCEPT_RATIO = 0.20
+AUTOBAN_REJECT_ACCEPT_RATIO = 0.18
 # these are countries from which we accept workers
 LOCALES = [
     'GB',  # great britain, northern ireland
