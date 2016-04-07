@@ -596,9 +596,6 @@ def task():
     try:
         hit_info = mt.get_hit(hit_id)
         task_id = hit_info.RequesterAnnotation
-        if task_id == 't_0war2CzcROl7UtfS':
-            _log.info("Attempted to fetch task id %s" % task_id)
-            return 'You are blocked for exploitation.'
     except Exception as e:
         tb = traceback.format_exc()
         dispatch_err(e, tb, request)
@@ -624,17 +621,22 @@ def task():
         try:
             mtconn.get_qualification_score(pq_id, worker_id)
         except:  # ahh this isn't a real worker! KILL THEM!
-            return ''
+            body = 'Unknown worker %s tried to request a practice.'
+            body = body % worker_id
+            subject = body
+            dispatch_notification(body, subject)
+            return 'Could not confirm request with MTurk.'
     else:
         # check that they have the daily quota qualification
         pt_id = mt.quota_id
         try:
             mtconn.get_qualification_score(pt_id, worker_id)
         except:  # ahh this isn't a real worker! KILL THEM!
-            return ''
-    if worker_id in ['A32J0WKL5KD8Y4', 'A32J0WKL5KD8T5']:
-        _log.warn("Worker %s tried to submit" % worker_id)
-        return "You are prevented from completing HITs due to exploitation."
+            body = 'Unknown worker %s tried to request a task.'
+            body = body % worker_id
+            subject = body
+            dispatch_notification(body, subject)
+            return 'Could not confirm request with MTurk.'
     try:
         response = fetch_task(dbget, dbset, task_id, worker_id, is_practice)
     except Exception as e:
