@@ -594,6 +594,22 @@ def task():
         _log.debug('Returning request to %s' % str(src))
         return make_error('Could not fetch HIT ID.')
     try:
+        val_hit_info = mtconn.get_hit(hit_id)[0]
+    except:
+        body = 'Unassignable HIT requested: %s'
+        body = body % str(hit_id)
+        subject = body
+        dispatch_notification(body, subject)
+        return 'Could not confirm request with MTurk'
+    try:
+        assert val_hit_info.HITStatus == 'Assignable'
+    except:
+        body = 'HIT %s requested but is unassignable. status: %s'
+        body  = body % (str(hit_id), str(val_hit_info.HITStatus))
+        subject = body
+        dispatch_notification(body, subject)
+        return 'Could not confirm request with MTurk'
+    try:
         hit_info = mt.get_hit(hit_id)
         task_id = hit_info.RequesterAnnotation
     except Exception as e:
