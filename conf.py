@@ -20,7 +20,7 @@ LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
 # tunnel opened! (see intro notes in webserver.py)
-CONTINUOUS_MODE = False  # whether or not to run the task continuously.
+CONTINUOUS_MODE = True  # whether or not to run the task continuously.
 AUTO_RESAMPLE = True  # if true, will activate more images dynamically.
 
 
@@ -80,8 +80,8 @@ DEF_TRIAL_TIME = 3500  # the maximum amount of time each trial is allowed to
 MTURK OPTIONS
 """
 LOW_FUNDS_WARNING = 300  # if the funds drop below this amount
-NUM_PRACTICES = 0  # 10  # how many practices to post at once
-NUM_TASKS = 5  # 40 # how many tasks to maintain online
+NUM_PRACTICES = 5  # 10  # how many practices to post at once
+NUM_TASKS = 40 # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
