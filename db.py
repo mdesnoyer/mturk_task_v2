@@ -1980,8 +1980,15 @@ class Set(object):
             if not is_practice:
                 for img in image_list:
                     table.counter_inc(img, 'stats:num_times_seen')
-                stats_table.counter_inc(skey, 'statistics:n_samples',
-                                        len(image_list))
+                # stats_table.counter_inc(skey, 'statistics:n_samples',
+                #                         len(image_list))
+                # the old computation for the number of samples was
+                # INCORRECT! (gasp!)
+                # we, in fact, get 2 edges per tuple, not 3.
+                # so if we have N images:
+                # N / 3 * (num segments) * (num edges obtained)
+                # regardless, we're moving this incrementation to the
+                # accept function.
         # note: not in order of presentation!
         task_dict['metadata:images'] = dumps(images)
         task_dict['metadata:tuples'] = dumps(im_tuples)
@@ -2600,6 +2607,7 @@ class Set(object):
             pass
         with self.pool.connection() as conn:
             table = conn.table(TASK_TABLE)
+            stats_table = conn.table(STATISTICS_TABLE)
             task_data = table.row(task_id)
             table.put(task_id, {'status:pending_evaluation': FALSE,
                                 'status:accepted': TRUE})
@@ -2607,6 +2615,7 @@ class Set(object):
             img_tuple_types = loads(task_data.get('metadata:tuple_types', None))
             worker_id = task_data.get('metadata:worker_id', None)
             attribute = task_data.get('metadata:attribute', None)
+            image_attributes = loads(task_data.get('metadata:attributes', None))
             # update worker table
             worker_id = task_data.get('metadata:worker_id', None)
             if worker_id is None:
@@ -2674,6 +2683,10 @@ class Set(object):
             b.send()
             for cid in ids_to_inc:
                 table.counter_inc(cid, 'data:win_count')
+            # we increment the global number of samples count here.
+            skey = _get_stats_key(image_attributes)
+            stats_table.counter_inc(skey, 'statistics:n_samples',
+                                    len(ids_to_inc))
 
     def reject_task(self, task_id, reason=None):
         """
