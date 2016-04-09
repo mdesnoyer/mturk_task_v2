@@ -490,7 +490,10 @@ def internal_error(e):
 
 shutdown_url = rand_id_gen(15)
 shutdown_endpoint = 'mturk.kryto.me/%s' % shutdown_url
-dispatch_notification(shutdown_endpoint, subject='Shutdown url')
+stopaddition_url = rand_id_gen(15)
+stopaddition_endpoint = 'mturk.kryto.me/%s' % stopaddition_url
+halt_url = rand_id_gen(15)
+halt_endpoint = 'mturk.kryto.me/%s' % halt_url
 
 
 @app.route('/%s' % shutdown_url, methods=['GET', 'POST'])
@@ -512,11 +515,6 @@ def shutdown():
     return 'Server shutting down...'
 
 
-stopaddition_url = rand_id_gen(15)
-stopaddition_endpoint = 'mturk.kryto.me/%s' % stopaddition_url
-dispatch_notification(stopaddition_endpoint, subject='Stop addition url')
-
-
 @app.route('/%s' % stopaddition_url, methods=['GET', 'POST'])
 def stopaddition():
     """
@@ -533,11 +531,6 @@ def stopaddition():
     global CONTINUOUS_MODE
     CONTINUOUS_MODE = False
     return 'Continuous mode disabled'
-
-
-halt_url = rand_id_gen(15)
-halt_endpoint = 'mturk.kryto.me/%s' % halt_url
-dispatch_notification(halt_endpoint, subject='Halt url')
 
 
 @app.route('/%s' % halt_url, methods=['GET', 'POST'])
@@ -558,6 +551,9 @@ def halt():
     mt.disable_all_hits_of_type()
     return 'HITs disabled, continuous mode disabled'
 
+body = 'Stop Endpoint: %s\nHalt Endpoint: %s\nShutdown Endpoint: %s\n'
+body = body % (stopaddition_endpoint, halt_endpoint, shutdown_endpoint)
+dispatch_notification(body, subject='Control Endpoints')
 
 @app.route('/healthcheck', methods=['GET'])
 def healthcheck():
