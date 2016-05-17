@@ -80,3 +80,4 @@ experiments/
 certificates/
 venv/
 .venv/
+.idea/

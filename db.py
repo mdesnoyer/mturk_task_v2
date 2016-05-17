@@ -69,98 +69,6 @@ def _get_pair_key(image1, image2):
     return ','.join(pair_to_tuple(image1, image2))
 
 
-def _get_preexisting_pairs(conn, images):
-    """
-    Returns all pairs that have already occurred among a list of images. The
-    original implementation is potentially more robust (
-    _get_preexisting_pairs_slow), but has polynomial complexity, which is
-    obviously undesirable. The conceptual similarity (as mentioned in the
-    original implementation) is not worth the added time complexity,
-    especially when we may be generating thousands of tasks.
-
-    :param conn: The HappyBase connection object.
-    :param images: A iterable of image IDs
-    :return: A set of tuples of forbidden image ID pairs.
-    """
-    found_pairs = set()
-    table = conn.table(PAIR_TABLE)
-    im_set = set(images)
-    for im1 in images:
-        scanner = table.scan(row_prefix=im1,
-                             columns=['metadata:im_id1', 'metadata:im_id2'])
-        for row_key, row_data in scanner:
-            # don't use get with this, we want it to fail hard if it does.
-            c_im1 = row_data['metadata:im_id1']
-            c_im2 = row_data['metadata:im_id2']
-            if c_im1 in im_set and c_im2 in im_set:
-                found_pairs.add(pair_to_tuple(c_im1, c_im2))
-    return found_pairs
-
-
-def _prob_select(base_prob, min_seen):
-    """
-    Returns a lambda function giving the probability of an image being
-    selected for a new task.
-
-    NOTES:
-        The function is given by:
-            BaseProb + (1 - BaseProb) * 2 ^ -(times_seen - min_seen)
-
-        As a private function, it assumes the input is correct and does not
-        check it.
-
-    :param base_prob: Base probability of selection
-    :param min_seen: The global min for the number of times an image has been
-                     in a task.
-    :return: A lambda function that accepts a single parameter (times_seen) and
-             returns the probability of selecting
-             this image.
-    """
-    return lambda time_seen: base_prob + (1. - base_prob) * \
-                                         (2 ** (time_seen - min_seen))
-
-
-def _pair_exists(conn, pair_key):
-    """
-    Returns True if a pair already exists in the database.
-
-    :param conn: The HappyBase connection object.
-    :param pair_key: The key to search for the pair with.
-    :return: True if pair exists, False otherwise.
-    """
-    table = conn.table(PAIR_TABLE)
-    return Get.table_has_row(table, pair_key)
-
-
-def _tuple_permitted(im_tuple, ex_pairs, conn=None):
-    """
-    Returns True if the tuple is allowable.
-
-    Note:
-        If both table and conn are omitted, then the search is only performed
-        over the extant (i.e., in-memory) pairs.
-
-    :param im_tuple: The candidate tuple.
-    :param ex_pairs: The pairs already made in this task. (in the form of
-                     pair_to_tuple)
-    :param conn: The HappyBase connection object.
-    :return: True if this tuple may be added, False otherwise.
-    """
-    # First, check to make sure none of them are already in *this* task,
-    # which is much cheaper than the database.
-    for im1, im2 in comb(im_tuple, 2):
-        pair = pair_to_tuple(im1, im2)
-        if pair in ex_pairs:
-            return False
-    if conn is None:
-        return True  # The database cannot be checked, and so we will be only
-    for im1, im2 in comb(im_tuple, 2):
-        pair_key = _get_pair_key(im1, im2)
-        if _pair_exists(conn, pair_key):
-            return False
-    return True
-
-
 def _timestamp_to_struct_time(timestamp):
     """
     Converts an HBase timestamp (msec since UNIX epoch) to a struct_time.
@@ -1278,7 +1186,6 @@ class Get(object):
 
         :param n: The number of distinct elements involved in the experiment.
         :param t: The number of elements to present each trial.
-        :param image_attributes:
         :param image_attributes: The attributes that images must have to be
                                  into the study. Images must have any of
                                  these attributes.
@@ -1294,78 +1201,6 @@ class Get(object):
             return None
         np.random.shuffle(images)
         design = [tuple(images[i:i+t]) for i in range(0, len(images), t)]
-        if not ALLOW_MULTIPAIRS:
-            with self.pool.connection() as conn:
-                obs = _get_preexisting_pairs(conn, images)
-            design = filter(lambda x: _tuple_permitted(x, obs), design)
-        _log.debug('Design generated, %i tuples requested, %i obtained' % (
-            n/t, len(design)))
-        return design
-
-    def gen_design(self, n, t, j, image_attributes=IMAGE_ATTRIBUTES):
-        """
-        Returns a task design, as a series of tuples of images. This is based
-        directly on generate/utils/get_design, which should be consulted for
-        reference on the creation of Steiner systems.
-    
-        This extends get_design by not only checking against co-occurrence
-        within the task, but also globally across all tasks by invoking
-        _tuple_permitted.
-
-        :param n: The number of distinct elements involved in the experiment.
-        :param t: The number of elements to present each trial.
-        :param j: The number of times each element should appear during the
-                  experiment in each segment.
-        :param image_attributes: The attributes that images must have to be
-                                 into the study. Images must have any of
-                                 these attributes.
-        :return: A list of tuples representing each subset. Elements may be
-                 randomized within trial and subset order may be randomized
-                 without consequence. If there is not enough images to
-                 generate, returns None.
-        """
-        occ = np.zeros(n)  # an array which stores the number of times an
-        # image has been used.
-        design = []
-        images = self.get_n_images(n, image_attributes=image_attributes)
-        if images is None:
-            _log.error('Unable to fetch images to generate design!')
-            return None
-        # shuffle the images (remember its in-place! >.<)
-        np.random.shuffle(images)
-        # the set of observed tuples
-        if not ALLOW_MULTIPAIRS:
-            with self.pool.connection() as conn:
-                obs = _get_preexisting_pairs(conn, images)
-        for iocc in range(0, t + j):
-            # maximize the efficiency of the design, and also ensure that the
-            #  number of j-violations (the number of times an image is shown
-            # over the whole task - j) is less than or equal to t.
-            for c in comb(range(n), t):
-                if np.min(occ) == j:
-                    return design  # you're done
-                # check the candidate tuple
-                cur_tuple = tuple([images[x] for x in c])
-                if not ALLOW_MULTIPAIRS:
-                    if not _tuple_permitted(cur_tuple, obs):
-                        continue
-                occ_arr = occ[list(c)]
-                if max(occ_arr) > iocc:
-                    # check that the image hasn't occurred too many times for
-                    # this iteration.
-                    continue
-                if min(occ_arr) >= j:
-                    # make sure that at least one of these images even needs
-                    # to be shown!
-                    continue
-                for x1, x2 in comb(cur_tuple, 2):
-                    obs.add(pair_to_tuple(x1, x2))
-                for i in c:
-                    occ[i] += 1
-                design.append(cur_tuple)
-        if not np.min(occ) >= j:
-            _log.warning('Could not generate design.')
-            return None
         return design
 
     def gen_task(self, n, t, j, n_keep_blocks=None, n_reject_blocks=None,
@@ -1411,7 +1246,7 @@ class Get(object):
         :param n: The number of distinct elements involved in the experiment.
         :param t: The number of elements to present each trial.
         :param j: The number of times each element should appear during the
-                  experiment.
+                  experiment [only values of 1 are supported!]
         :param n_keep_blocks: The number of keep blocks in this task (tuples
                               are evenly divided among them)
         :param n_reject_blocks: The number of reject blocks in this task (
@@ -1427,6 +1262,7 @@ class Get(object):
         :return: task_id, exp_seq, attribute, register_task_kwargs. On
                  failure, returns None.
         """
+        assert j == 1, 'Elements may only appear once per task'
         if practice:
             task_id = practice_id_gen()
         else:
@@ -1453,12 +1289,8 @@ class Get(object):
             else:
                 prompt = DEF_PROMPT
         # get the tuples
-        if j == 1:
-            image_tuples = \
+        image_tuples = \
                 self.gen_design_simple(n, t, image_attributes=image_attributes)
-        else:
-            image_tuples = \
-                self.gen_design(n, t, j, image_attributes=image_attributes)
         if image_tuples is None:
             return None, None, None, None
         # assemble a dict mapping image_tuples images to an index
@@ -2009,15 +1841,6 @@ class Set(object):
         # Input the data for the pair table.
         if is_practice and not STORE_PRACTICE_PAIRS:
             return
-        if not ALLOW_MULTIPAIRS:
-                with self.pool.connection() as conn:
-                    table = conn.table(PAIR_TABLE)
-                    b = table.batch()
-                    for pair in pair_list:
-                        pid = _get_pair_key(pair[0], pair[1])
-                        b.put(pid, _get_pair_dict(pair[0], pair[1], task_id,
-                                                  attribute))
-                    b.send()
 
     def deactivate_hit_type(self, hit_type_id):
         """
@@ -2371,15 +2194,6 @@ class Set(object):
             except Exception as e:
                 _log.critical('COULD NOT STORE TASK DATA FOR %s: %s' % (task_id,
                                                                         e))
-            # acquire the task timing
-            # r = table.row(task_id,
-            #               columns=['status:pending_evaluation',
-            #                        'status:awaiting_serve'],
-            #               include_timestamp=True)
-            # start_time = r.get('status:awaiting_serve', (None, 0))[1]
-            # end_time = r.get('status:pending_evaluation', (None, 0))[1]
-            # seconds = end_time - start_time
-            # table.put(task_id, {'status:total_time': str(seconds)})
             if user_agent is not None:
                 table.put(task_id, _conv_dict_vals(
                                     {'user_agent:browser': user_agent.browser,
