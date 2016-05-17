@@ -57,15 +57,23 @@ def update(dbset, dbget, dry_run=False):
                           filter_func=_yt_filt_func)]
     to_add_ids = []
     to_add_urls = []
+    # holy shit! checking to see if keys are in a table is very inefficient.
+    # so let's actually just cache them?
+
     with dbget.pool.connection() as conn:
         # just use dbget's connection, fuck it.
         table = conn.table(IMAGE_TABLE)
+        print 'Fetching known images'
+        known_ims = dbget.get_items(table)
+        print 'Searching for new images.'
         for n, source in enumerate(sources):
             for m, (imid, imurl) in enumerate(source):
                 if not m % 1000:
                     print '%i - %i' % (n, m)
-                if not dbget.table_has_row(table, imid):
-                    to_add_ids.append(imid)
-                    to_add_urls.append(imurl)
+                if imid in known_ims:
+                    known_ims.remove(imid)
+                    continue
+                to_add_ids.append(imid)
+                to_add_urls.append(imurl)
     if not dry_run:
         dbset.register_images(to_add_ids, to_add_urls)

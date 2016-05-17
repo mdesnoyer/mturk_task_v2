@@ -3,7 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="d0de2e37-ce94-44f4-aabc-2af8c660f07c" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/add_new_images.py" afterPath="$PROJECT_DIR$/add_new_images.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/testing/test_img_update.py" afterPath="$PROJECT_DIR$/testing/test_img_update.py" />
     </list>
     <ignored path="mturk_task_v2.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -26,8 +25,8 @@
             <file leaf-file-name="db.py" pinned="false" current-in-tab="true">
               <entry file="file://$PROJECT_DIR$/db.py">
                 <provider selected="true" editor-type-id="text-editor">
-                  <state relative-caret-position="347">
-                    <caret line="1921" column="23" selection-start-line="1921" selection-start-column="23" selection-end-line="1921" selection-end-column="23" />
+                  <state relative-caret-position="365">
+                    <caret line="850" column="17" selection-start-line="850" selection-start-column="8" selection-end-line="850" selection-end-column="17" />
                     <folding>
                       <element signature="e#0#798#1" expanded="false" />
                       <element signature="e#800#818#0" expanded="true" />
@@ -56,7 +55,6 @@
                       <element signature="e#5230#5337#0" expanded="false" />
                       <element signature="e#5402#5660#0" expanded="false" />
                       <element signature="e#5402#5597#1" expanded="false" />
-                      <element signature="e#5699#6305#0" expanded="false" />
                       <element signature="e#5699#5942#1" expanded="false" />
                       <element signature="e#6092#6269#0" expanded="false" />
                       <element signature="e#6368#7062#0" expanded="false" />
@@ -175,7 +173,6 @@
                       <element signature="e#31269#31505#1" expanded="false" />
                       <element signature="e#31794#32195#0" expanded="false" />
                       <element signature="e#31794#32032#1" expanded="false" />
-                      <element signature="e#32249#32588#0" expanded="false" />
                       <element signature="e#32249#32409#1" expanded="false" />
                       <element signature="e#32694#33844#0" expanded="false" />
                       <element signature="e#32694#33014#1" expanded="false" />
@@ -524,8 +521,8 @@
       <file leaf-file-name="add_new_images.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/add_new_images.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="645">
-              <caret line="66" column="42" selection-start-line="66" selection-start-column="42" selection-end-line="66" selection-end-column="42" />
+            <state relative-caret-position="540">
+              <caret line="67" column="41" selection-start-line="67" selection-start-column="41" selection-end-line="67" selection-end-column="41" />
               <folding>
                 <element signature="e#191#203#0" expanded="true" />
               </folding>
@@ -537,7 +534,7 @@
         <entry file="file://$PROJECT_DIR$/testing/test_img_update.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="165">
-              <caret line="11" column="34" selection-start-line="11" selection-start-column="34" selection-end-line="11" selection-end-column="34" />
+              <caret line="11" column="26" selection-start-line="11" selection-start-column="26" selection-end-line="11" selection-end-column="26" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -1224,10 +1221,40 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/testing/testing_flask.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding>
+            <element signature="e#0#68#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/testing/rank_test_harness.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="60">
+          <caret line="4" column="0" selection-start-line="4" selection-start-column="0" selection-end-line="4" selection-end-column="0" />
+          <folding>
+            <element signature="e#109#127#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/testing/test_img_update.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="165">
+          <caret line="11" column="26" selection-start-line="11" selection-start-column="26" selection-end-line="11" selection-end-column="26" />
+          <folding>
+            <element signature="e#0#18#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/db.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="347">
-          <caret line="1921" column="23" selection-start-line="1921" selection-start-column="23" selection-end-line="1921" selection-end-column="23" />
+        <state relative-caret-position="365">
+          <caret line="850" column="17" selection-start-line="850" selection-start-column="8" selection-end-line="850" selection-end-column="17" />
           <folding>
             <element signature="e#0#798#1" expanded="false" />
             <element signature="e#800#818#0" expanded="true" />
@@ -1256,7 +1283,6 @@
             <element signature="e#5230#5337#0" expanded="false" />
             <element signature="e#5402#5660#0" expanded="false" />
             <element signature="e#5402#5597#1" expanded="false" />
-            <element signature="e#5699#6305#0" expanded="false" />
             <element signature="e#5699#5942#1" expanded="false" />
             <element signature="e#6092#6269#0" expanded="false" />
             <element signature="e#6368#7062#0" expanded="false" />
@@ -1375,7 +1401,6 @@
             <element signature="e#31269#31505#1" expanded="false" />
             <element signature="e#31794#32195#0" expanded="false" />
             <element signature="e#31794#32032#1" expanded="false" />
-            <element signature="e#32249#32588#0" expanded="false" />
             <element signature="e#32249#32409#1" expanded="false" />
             <element signature="e#32694#33844#0" expanded="false" />
             <element signature="e#32694#33014#1" expanded="false" />
@@ -1675,40 +1700,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/testing/testing_flask.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding>
-            <element signature="e#0#68#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/testing/rank_test_harness.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="60">
-          <caret line="4" column="0" selection-start-line="4" selection-start-column="0" selection-end-line="4" selection-end-column="0" />
-          <folding>
-            <element signature="e#109#127#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/testing/test_img_update.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="165">
-          <caret line="11" column="34" selection-start-line="11" selection-start-column="34" selection-end-line="11" selection-end-column="34" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/add_new_images.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="645">
-          <caret line="66" column="42" selection-start-line="66" selection-start-column="42" selection-end-line="66" selection-end-column="42" />
+        <state relative-caret-position="540">
+          <caret line="67" column="41" selection-start-line="67" selection-start-column="41" selection-end-line="67" selection-end-column="41" />
           <folding>
             <element signature="e#191#203#0" expanded="true" />
           </folding>
