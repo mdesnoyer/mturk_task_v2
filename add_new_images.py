@@ -64,7 +64,7 @@ def update(dbset, dbget, dry_run=False):
         # just use dbget's connection, fuck it.
         table = conn.table(IMAGE_TABLE)
         print 'Fetching known images'
-        known_ims = dbget.get_items(table)
+        known_ims = set(dbget.get_items(table))
         print 'Searching for new images.'
         for n, source in enumerate(sources):
             for m, (imid, imurl) in enumerate(source):
