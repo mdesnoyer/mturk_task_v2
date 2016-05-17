@@ -10,6 +10,9 @@ NOTE:
 
 import boto3
 from conf import *
+import locale
+
+locale.setlocale(locale.LC_ALL, 'en_US.utf8')
 
 def _parse_key(key):
     vals = key.split('.')[0].split('_')
@@ -71,7 +74,9 @@ def update(dbset, dbget, dry_run=False):
         for n, source in enumerate(sources):
             for m, (imid, imurl) in enumerate(source):
                 if not m % 1000:
-                    print '%i - %i - %i' % (n, m, len(to_add_ids))
+                    v1 = locale.format("%d", m, grouping=True)
+                    v2 = locale.format("%d", len(to_add_ids), grouping=True)
+                    print '%i - %s - %s' % (n, v1, v2)
                 if imid in known_ims:
                     known_ims.remove(imid)
                     continue
