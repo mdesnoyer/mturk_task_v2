@@ -64,7 +64,7 @@ def update(dbset, dbget, dry_run=False):
             for m, (imid, imurl) in enumerate(source):
                 if not m % 1000:
                     print '%i - %i' % (n, m)
-                if not dbget.table_has_key(table, imid):
+                if not dbget.table_has_row(table, imid):
                     to_add_ids.append(imid)
                     to_add_urls.append(imurl)
     if not dry_run:
