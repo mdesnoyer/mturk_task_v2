@@ -82,8 +82,9 @@ def update(dbset, dbget, dry_run=False):
                     continue
                 to_add_ids.append(imid)
                 to_add_urls.append(imurl)
+    num_to_add = locale.format("%d", len(to_add_ids), grouping=True)
     if not dry_run:
-        print 'Adding %i new images' % (len(to_add_ids))
+        print 'Adding %i new images' % (num_to_add)
         dbset.register_images(to_add_ids, to_add_urls)
     else:
-        print 'Would add %i images, but this is a dry run.' % (len(to_add_ids))
+        print 'Would add %i images, but this is a dry run.' % (num_to_add)

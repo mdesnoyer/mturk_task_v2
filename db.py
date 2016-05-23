@@ -276,6 +276,20 @@ def _shuffle_tuples(image_tuples):
     return n_tuples, list(tup_indices)
 
 
+def counter_str_to_int(cstring):
+    """
+    Converts the string representation of a counter to an integer value.
+
+    :param cstring: The string representing the value of a counter,
+    for instance the value of a table.row(...) call under the field
+    representing a counter.
+    :return: An integer, the value of the counter.
+    """
+    tot = 0
+    for i in cstring:
+        tot = (tot << 8) + ord(i)
+    return tot
+
 """
 Main Classes - GET
 """
@@ -368,6 +382,29 @@ class Get(object):
             _log.info('Fetching all images in database')
             sc = table.scan(filter='FirstKeyOnlyFilter() AND KeyOnlyFilter()')
             self._im_ids = [y[0] for y in sc]
+
+    def compute_sample_counts(self):
+        """
+        Computes the number of times every image has been sampled,
+        and returns it as a dict.
+
+        NOTE:
+            Because of how the sampler works, this actually returns the
+            number of tasks an image has participated in (i.e., the "keep" and
+            the "reject" segments count collectively as one sample).
+
+        :return: The sample counts as an {id: samples} dict.
+        """
+
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            _log.info('Fetching all image sample counts in database')
+            sc = table.scan(columns=['stats:num_times_seen'])
+            sample_counts = dict()
+            for key, data in sc:
+                sample_counts[key] = \
+                    counter_str_to_int(data.get('stats:num_times_seen', ''))
+            return sample_counts
     
     def worker_exists(self, worker_id):
         """

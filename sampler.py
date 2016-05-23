@@ -4,10 +4,11 @@ Exports classes that are useful for sampling from the set of possible images.
 
 from collections import defaultdict as ddict
 import numpy as np
+import sys
 
 
 class OrderedSampler():
-    def __init__(self, items):
+    def __init__(self, items, limit=sys.maxint, inc=1):
         """
         Creates an ordered sampler, which samples in a semi-random way such
         that the sampling order is fixed with respect to the number of times
@@ -21,11 +22,18 @@ class OrderedSampler():
 
         :param items: A dictionary indicating, for every item, the number of
         times it has already been sampled.
+        :param limit: Items that have been sampled `limit` or more times are
+        no longer considered. If All items have been sampled `limit` or more
+        times, OrderedSampler sets the `lim_reached` boolean. Once this has
+        been set, subsequent calls to `sample` will sample uniformly.
         """
         self._N = len(items)
         self._bins = ddict(lambda: [])
+        self._lim = limit
+        self._inc = inc
+        self.lim_reached = False
         for k, v in items.iteritems():
-            self._bins[v].append(k)
+            self._bins[min(v, self._lim)].append(k)
         for v in self._bins.values():
             np.random.shuffle(v)
 
@@ -57,12 +65,16 @@ class OrderedSampler():
         :return: None
         """
         for item, cbin in sampled:
+            if cbin == self._lim:
+                continue  # don't bother updating.
             ritem = self._bins[cbin].pop(0)
             assert ritem == item, '%i != %i ahh' % (item, ritem)
             if not len(self._bins[cbin]):
                 self._bins.pop(cbin, None)
         for item, cbin in sampled:
-            self._bins[cbin+1].insert(
+            if cbin == self._lim:
+                continue  # don't bother updating.
+            self._bins[min(cbin+self._inc, self._lim)].insert(
                 np.random.randint(len(self._bins[cbin])+1), item)
 
     def sample(self, N):
@@ -77,6 +89,11 @@ class OrderedSampler():
         sampled = []
         bins = self._bins.keys()
         bins.sort()
+        if bins[0] == self._lim:
+            self.lim_reached = True
+        if bins[0] == self._lim:
+            # then just return a random sample
+            return np.random.choice(self._bins[bins[0]], N)
         for cbin in bins:
             if len(self._bins[cbin]) > (N - len(cur_samp)):
                 chosen = self._bins[cbin][:(N-len(cur_samp))]
