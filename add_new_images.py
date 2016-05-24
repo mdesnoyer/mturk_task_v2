@@ -69,14 +69,13 @@ def is_public_read(obj):
                     return True
     return False
 
-
 def update(dbset, dbget, dry_run=False):
     sources = [_s3sourcer('neon-image-library'),
                _s3sourcer('mturk-youtube-thumbs',
                           filter_func=_yt_filt_func)]
     to_add_ids = []
     to_add_urls = []
-
+    tot = 0
     with dbget.pool.connection() as conn:
         # just use dbget's connection, fuck it.
         table = conn.table(IMAGE_TABLE)
@@ -91,18 +90,24 @@ def update(dbset, dbget, dry_run=False):
             for m, (imid, imurl, obj) in enumerate(source):
                 if not m % 1000:
                     v1 = locale.format("%d", m, grouping=True)
-                    v2 = locale.format("%d", len(to_add_ids), grouping=True)
+                    v2 = locale.format("%d", tot, grouping=True)
                     print '%i - %s - %s' % (n, v1, v2)
                 if imid in known_ims:
                     known_ims.remove(imid)
                     continue
                 if not dry_run:
                     obj.Acl().put(ACL='public-read')
+                tot += 1
                 to_add_ids.append(imid)
                 to_add_urls.append(imurl)
-    num_to_add = locale.format("%d", len(to_add_ids), grouping=True)
-    if not dry_run:
-        print 'Adding %s new images' % (num_to_add)
-        dbset.register_images(to_add_ids, to_add_urls)
-    else:
+                if to_add_urls >= 1000:
+                    if not dry_run:
+                        print 'Registering %i images' % len(to_add_urls)
+                        dbset.register_images(to_add_ids, to_add_urls)
+                        to_add_ids = []
+                        to_add_urls = []
+    num_to_add = locale.format("%d", tot, grouping=True)
+    if dry_run:
         print 'Would add %s images, but this is a dry run.' % (num_to_add)
+    else:
+        print 'Added %s new images' % (num_to_add)
