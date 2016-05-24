@@ -100,7 +100,7 @@ def update(dbset, dbget, dry_run=False):
                 tot += 1
                 to_add_ids.append(imid)
                 to_add_urls.append(imurl)
-                if to_add_urls >= 1000:
+                if len(to_add_urls) >= 1000:
                     if not dry_run:
                         print 'Registering %i images' % len(to_add_urls)
                         dbset.register_images(to_add_ids, to_add_urls)
