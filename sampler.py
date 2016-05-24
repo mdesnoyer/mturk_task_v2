@@ -5,10 +5,11 @@ Exports classes that are useful for sampling from the set of possible images.
 from collections import defaultdict as ddict
 import numpy as np
 import sys
+from conf import *
 
 
 class OrderedSampler():
-    def __init__(self, items, limit=sys.maxint, inc=1):
+    def __init__(self, items, limit=SAMPLING_LIMIT, inc=1):
         """
         Creates an ordered sampler, which samples in a semi-random way such
         that the sampling order is fixed with respect to the number of times
@@ -31,6 +32,7 @@ class OrderedSampler():
         self._bins = ddict(lambda: [])
         self._lim = limit
         self._inc = inc
+        self.samps = 0
         self.lim_reached = False
         for k, v in items.iteritems():
             self._bins[min(v, self._lim)].append(k)
@@ -108,4 +110,5 @@ class OrderedSampler():
                 raise Exception('Sample too full, d\'oh!')
         self._update(sampled)
         np.random.shuffle(cur_samp)
+        self.samps += len(cur_samp)
         return cur_samp

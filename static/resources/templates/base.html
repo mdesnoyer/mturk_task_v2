@@ -22,6 +22,7 @@
 
   var practice = {{ practice }};
   var collect_demo = {{ collect_demo }};
+  var collect_validating_demo = {{ collect_validating_demo }};
   var task_id = "{{ taskId }}";
 
   var debrief = {
@@ -55,6 +56,11 @@
     pages: [{url: "static/html/demographics.html", cont_btn: "start", check_fn: check_demographics}]
   }
 
+  var validdemo = {
+    type: 'html',
+    pages = [{url: "static/html/validate_demographics.html", cont_btn: "start", check_fn: check_demographics}]
+  }
+
   {{ preload }}
 
   function clearBox(elementID){
@@ -69,6 +75,10 @@ var experiment_structure = [
 
 if (collect_demo) {
     experiment_structure.splice(0, 0, demo);
+}
+
+if (collect_validating_demo) {
+    experiment_structure.split(0, 0, validdemo);
 }
 
 if (practice) {

@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+  <link rel="stylesheet" href="{{ jg['jspsych_css'] }}">
+  <link rel="stylesheet" href="{{ jg['jquery_ui_css'] }}">
+</head>
+<body>
+    <div id="demographics">
+        <p>Welcome back. We are requesting you re-input your demographic data for validation purposes.</p>
+        <p>
+            What is your gender? <br>
+            <input type="radio" name="gender" id="gender" value="male">Male<br>
+            <input type="radio" name="gender" value="female">Female
+        </p>
+
+        <p>
+            Please enter your year of birth as YYYY <br>
+            <input type="number" name="birthyear" id="birthyear"
+                   min="1901" max="2015"><br>
+        </p>
+
+        <button type="button" id="start">Continue</button>
+    </div>
+</body>

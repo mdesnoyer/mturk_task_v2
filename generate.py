@@ -118,7 +118,7 @@ def make_practice_already_passed(hit_id=None, task_id=None):
 
 def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
               pos_type=POS_TYPE, attribute=ATTRIBUTE, practice=False,
-              collect_demo=False,
+              collect_demo=False, collect_demo_valid=False,
               intro_instructions=DEF_INTRO_INSTRUCTIONS):
     """
     Produces an experimental HTML document. By assembling blocks of html code
@@ -189,6 +189,8 @@ def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
                       'interesting'
     :param practice: Boolean. If True, will display the debrief pages.
     :param collect_demo: Boolean. If True, will collect demographic information.
+    :param collect_demo_valid: Boolean. Re-collects the demographic data for
+                               validation purposes.
     :param intro_instructions: A </sep>-separated html file containing the
                                instruction templates.
     :return The appropriate HTML for this experiment.
@@ -197,6 +199,8 @@ def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
     counts = {KEEP_BLOCK: 0, REJECT_BLOCK: 0}
     rblocks = []
     blocknames = []
+    assert not (collect_demo and collect_demo_valid), 'You may not collect ' \
+                                                      'demographic data twice!'
     if practice:
         p_val = 'true'
     else:
@@ -205,6 +209,10 @@ def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
         d_val = 'true'
     else:
         d_val = 'false'
+    if collect_demo_valid:
+        dv_val = 'true'
+    else:
+        dv_val = 'false'
     if intro_instructions:
         block, start_inst_name = _make_start_block(intro_instructions,
                                                    attribute)
@@ -249,6 +257,7 @@ def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
     arg_dict['blocknames'] = blocknames
     arg_dict['practice'] = p_val
     arg_dict['collect_demo'] = d_val
+    arg_dict['collect_demo_valid'] = dv_val
     arg_dict['taskId'] = str(task_id)
     return base.render(jg=jg, **arg_dict)
 
@@ -594,6 +603,7 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_practice=None):
     else:
         intro_instructions = DEF_INTRO_INSTRUCTIONS
     collect_demo = False
+    collect_demo_val = False
     if is_practice:
         if dbget.worker_need_demographics(worker_id):
             collect_demo = True
@@ -602,6 +612,8 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_practice=None):
             dbset.register_worker(worker_id)
         _log.info('Serving practice %s to worker %s' % (task_id, worker_id))
     else:
+        if dbget.worker_demo_needs_validation(worker_id):
+            collect_demo_val = True
         _log.info('Serving task %s served to %s' % (task_id, worker_id))
     blocks = dbget.get_task_blocks(task_id)
     if blocks is None:
@@ -611,6 +623,7 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_practice=None):
     html = make_html(blocks,
                      practice=is_practice,
                      collect_demo=collect_demo,
+                     collect_demo_valid=collect_demo_val,
                      intro_instructions=intro_instructions,
                      task_id=task_id)
     return html

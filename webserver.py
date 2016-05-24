@@ -30,7 +30,7 @@ locally you may wish to use an SSH Tunnel:
 
 ssh -i ~/.ssh/mturk_stack_access.pem -L 9000:localhost:9090 ubuntu@<ip_addr>
 
-where <ip_addr> is the location of the instance, i.e., 10.0.49.46
+where <ip_addr> is the location of the instance, i.e., 10.0.36.202
 
 then:
     happybase.Connection(host="localhost", port=9000)
@@ -157,7 +157,9 @@ def create_hit(mt, dbget, dbset, hit_type_id):
     """
     _log.info('JOB_STARTED create_hit')
     _log.info('Checking image statuses')
-    dbget.check_active_ims()
+    dbget.update_sampling()
+    if dbget.should_halt():
+        return
     # n_active = dbget.get_n_active_images_count(IMAGE_ATTRIBUTES)
     # mean_seen = dbget.image_get_mean_seen(IMAGE_ATTRIBUTES)
     # if mean_seen > MEAN_SAMPLES_REQ_PER_IMAGE(n_active):
@@ -255,6 +257,8 @@ def create_practice(mt, dbget, dbset, hit_type_id):
     :return: None.
     """
     _log.info('JOB_STARTED create_practice')
+    if dbget.should_halt():
+        return
     hit_cost = DEFAULT_PRACTICE_PAYMENT
     bal = mt.get_account_balance()
     if hit_cost > bal:
@@ -555,6 +559,7 @@ body = 'Stop Endpoint: %s\nHalt Endpoint: %s\nShutdown Endpoint: %s\n'
 body = body % (stopaddition_endpoint, halt_endpoint, shutdown_endpoint)
 dispatch_notification(body, subject='Control Endpoints')
 
+
 @app.route('/healthcheck', methods=['GET'])
 def healthcheck():
     """
@@ -747,7 +752,12 @@ def submit():
             scheduler.add_job(create_practice,
                               args=[mt, dbget, dbset, hit_type_id])
     else:
-        # ---------- Handle submitted task ----------
+        # ---------- Handle submitted task ---------- #
+        try:
+            dbset.validate_demographics(request.json)
+        except Exception as e:
+            tb = traceback.format_exc()
+            dispatch_err(e, tb, request)
         try:
             to_return = make_success(hit_id=hit_id,
                                      task_id=task_id)

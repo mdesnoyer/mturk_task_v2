@@ -27,6 +27,7 @@ import scipy.stats as stats
 import json
 from geoip import geolite2
 import statemon
+from sampler import OrderedSampler
 
 """
 LOGGING
@@ -312,13 +313,71 @@ class Get(object):
         self._task_time = None
         self._practice_time = None
         self._all_ims_act = False
+        self._refresh_rate = SAMPLE_COUNT_REFRESH_RATE
+        self._sampl_obj = None
         try:
             _log.info('Fetching active workers')
             mon.n_workers_registered = len([x for x in self.get_all_workers()])
         except:
             _log.warn('Problem incrementing statemons')
 
+    def should_halt(self):
+        """
+        Wraps the sampling object and determines if the images
+        as they currently stand are sufficiently sampled.
+
+        :return: Boolean.
+        """
+        if self._sampl_obj:
+            if self._sampl_obj.lim_reached:
+                _log.info_n('Sampling limit reached.', 1)
+                return True
+        return False
+
+    def update_sampling(self):
+        """
+        Fetches the list of all images along with their view counts and creates
+        a new sampling object for drawing from that distribution.
+
+        :return: None
+        """
+        if self._sampl_obj is not None:
+            if self._sampl_obj.samps < self._refresh_rate:
+                return
+            else:
+                _log.info('Sampling refresh limit reached, re-building '
+                          'sampler to account for drift.')
+            self._sampl_obj = None
+        else:
+            _log.info('No sampler found, constructing one.')
+            self._sampl_obj = None
+        samp_cnt_dict = self._build_samp_counts()
+        self._sampl_obj = OrderedSampler(samp_cnt_dict)
+
+    def _buld_samp_counts(self):
+        """
+        Constructs a sample count.
+
+        :return: A dictionary {k:v, ...} where k is the image key and v is
+        the number of times it's been sampled.
+        """
+        with self.pool.connection() as conn:
+            table = conn.table(IMAGE_TABLE)
+            _log.info('Fetching all images in database')
+            sc = table.scan(columns=['stats:num_times_seen'])
+            data = {}
+            for key, data in sc:
+                data[key] = counter_str_to_int(
+                    data.get('stats:num_times_seen', chr(0))) / 2
+            return data
+
     def check_active_ims(self):
+        """
+        DEPRECIATED - checked whether we should activate more images
+        or not.
+
+        :return: None
+        """
         if self._all_ims_act:
             return
         if self._im_ids is None:
@@ -371,6 +430,8 @@ class Get(object):
 
     def cache_im_keys(self):
         """
+        DEPRICATED
+
         Fetches *all* keys in the image database and stores them. When using
         this, it will assume that all images are 'active.' It also means that
         attributes cannot be used.
@@ -432,6 +493,36 @@ class Get(object):
             return True
         else:
             return False
+
+    def worker_demo_needs_validation(self, worker_id):
+        """
+        Indicates whether or not the worker needs demographic information
+        to be validated.
+
+        :param worker_id: The Worker ID (from MTurk), as a string.
+        :return: True if we need demographic information from the worker. False
+                 otherwise.
+        """
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            row_data = table.row(worker_id, include_timestamp=True)
+
+        if len(row_data.get('demographics:validated', ('', ''))[0]):
+            # we don't know whether or not they successfully validated
+            # their demographics or not, but it doesn't matter -- they tried.
+            return False
+        demdat = row_data.get('demographics:gender', None)
+        if not demdat:
+            # they don't have demographics at all...although this shouldn't
+            # happen since this is only called if they don't need demographics.
+            return False
+        dem_time = time.mktime(time.localtime(demdat[1] / 1000))
+        cur_time = time.mktime(time.localtime())
+        if (cur_time - dem_time) > DEMOGRAPHIC_VALIDATION_INTERVAL:
+            # they have demographic information, they have NOT been validated,
+            # and enough time has passed.
+            return True
+        return False
 
     def get_all_workers(self):
         """
@@ -2407,6 +2498,47 @@ class Set(object):
             table.put(worker_id,
                       {'location:'+k: str(v) for k, v in location_info.to_dict(
                       ).iteritems()})
+
+    def validate_demographics(self, resp_json):
+        """
+        Validates a worker's demographic resonse. In this case, they've
+        previously responded to the demographics questionaire, and now we're
+        having them respond again to validate them. This doesn't actually
+        inform the invoking frame whether or not the worker's demographic
+        information has been validated but sets the demographics:validated
+        field to either TRUE or FALSE.
+
+        :param resp_json: The response JSON of a task from MTurk.
+        :param worker_ip: The worker IP address.
+        :return: None
+        """
+        worker_id = resp_json[0]['workerId']
+        dem_json = _find_demographics_element_in_json(resp_json)
+        if dem_json is None:
+            return
+        birthyear = dem_json['birthyear']
+        gender = dem_json['gender']
+        # fetch the worker information
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            row_data = table.row(worker_id)
+        cgender = str(gender)
+        pgender = row_data.get('demographics:gender', '')
+        cbirthyear = str(birthyear)
+        pbirthyear = row_data.get('demographics:birthyear', '')
+        if cgender != pgender or cbirthyear != pbirthyear:
+            _log.info('Worker %s failed demographic validation.\n'
+                      'Previous / Current Gender:     %s %s\n'
+                      'Previous / Current Birthyear:  %s %s\n',
+                      worker_id, pgender, cgender, pbirthyear, cbirthyear)
+            is_valid = FALSE
+        else:
+            _log.info('Worker %s demographic information has been validated',
+                      worker_id)
+            is_valid = TRUE
+        with self.pool.connection() as conn:
+            table = conn.table(WORKER_TABLE)
+            table.put(worker_id, {'demographics:validated': is_valid})
 
     def practice_pass(self, resp_json):
         """

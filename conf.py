@@ -228,14 +228,17 @@ LOCALES = [
     'US',  # United States
     'CA'  # Canada
 ]
-
+# the interval that must elapse between acquisition of the demographic data
+# and validation of the demographic data.
+DEMOGRAPHIC_VALIDATION_INTERVAL = 3 * 24 * 60 * 60  # 3 days, in seconds
 
 """
 WEBSERVER CONFIGURATION
 """
 NUM_THREADS = 1  # the number of threads to use on the webserver.
 ENABLE_BANNING = True  # whether or not to ban poor-performing workers.
-
+SAMPLE_COUNT_REFRESH_RATE = 100000  # how many samples until you rebuild sampler
+SAMPLING_LIMIT = 3  # how many samples to obtain per task before stopping
 
 if LOCAL:
     # change a bunch of the '_global' parameters
