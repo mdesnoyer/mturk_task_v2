@@ -50,8 +50,24 @@ def _s3sourcer(bucket_name, filter_func=None):
         if filter_func(item.key):
             image_id = item.key.split('.')[0]
             image_url = base_url % (bucket_name, item.key)
-            yield (image_id, image_url)
+            yield (image_id, image_url, item)
     return
+
+
+def is_public_read(obj):
+    """
+    Determines if an object is public read or not.
+
+    :param obj: An S3 object as yielded from boto3.
+    :return: True if the object is public-read, False otherwise.
+    """
+    for grant in obj.Acl().grants:
+        if 'URI' in grant['Grantee']:
+            if (grant['Grantee']['URI'] ==
+                    'http://acs.amazonaws.com/groups/global/AllUsers'):
+                if grant['Permission'] == 'READ':
+                    return True
+    return False
 
 
 def update(dbset, dbget, dry_run=False):
@@ -72,7 +88,7 @@ def update(dbset, dbget, dry_run=False):
         known_ims = set(dbget.get_items(table))
         print 'Searching for new images.'
         for n, source in enumerate(sources):
-            for m, (imid, imurl) in enumerate(source):
+            for m, (imid, imurl, obj) in enumerate(source):
                 if not m % 1000:
                     v1 = locale.format("%d", m, grouping=True)
                     v2 = locale.format("%d", len(to_add_ids), grouping=True)
@@ -80,6 +96,8 @@ def update(dbset, dbget, dry_run=False):
                 if imid in known_ims:
                     known_ims.remove(imid)
                     continue
+                if not dry_run:
+                    obj.Acl().put(ACL='public-read')
                 to_add_ids.append(imid)
                 to_add_urls.append(imurl)
     num_to_add = locale.format("%d", len(to_add_ids), grouping=True)
