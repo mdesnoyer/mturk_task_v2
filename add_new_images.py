@@ -96,7 +96,9 @@ def update(dbset, dbget, dry_run=False):
                     known_ims.remove(imid)
                     continue
                 if not dry_run:
-                    obj.Acl().put(ACL='public-read')
+                    #obj.Acl().put(ACL='public-read')
+                    pass
+                    # all the 'bad' ones should be changed at this point
                 tot += 1
                 to_add_ids.append(imid)
                 to_add_urls.append(imurl)
