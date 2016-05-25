@@ -9,7 +9,7 @@ import time
 
 _log = logger.setup_logger(__name__)
 
-pool = happybase.ConnectionPool(size=2, host=DATABASE_LOCATION, port=9000)
+pool = happybase.ConnectionPool(size=2, host=DATABASE_LOCATION)
 dbget = Get(pool)
 
 print 'Setting up the sampler object'
