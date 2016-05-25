@@ -350,8 +350,6 @@ class Get(object):
         with self.pool.connection() as conn:
             table = conn.table(IMAGE_TABLE)
             _log.info('Fetching all images in database')
-            #sc = table.scan(columns=['stats:num_times_seen'])
-            #sc = table.scan()
             sc = table.scan(columns=['stats:num_times_seen',
                                      'metadata:width'])
             count_data = {}
