@@ -12,5 +12,5 @@ _log = logger.setup_logger(__name__)
 pool = happybase.ConnectionPool(size=2, host=DATABASE_LOCATION, port=9000)
 dbget = Get(pool)
 
-_log.info('Setting up the sampler object')
+print 'Setting up the sampler object'
 dbget.update_sampling()

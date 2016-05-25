@@ -362,7 +362,7 @@ def establish_tunnel(local_port=9000,
     if sock is None:
         raise Exception('Could not connect to the database')
 
-    _log.info('Connection made to the database')
+    _log.info('Connection made to the database at %s on %i', db_ip, db_port)
     sock.shutdown(socket.SHUT_RDWR)
     sock.close()
 
