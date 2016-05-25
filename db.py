@@ -350,6 +350,9 @@ class Get(object):
         with self.pool.connection() as conn:
             table = conn.table(IMAGE_TABLE)
             _log.info('Fetching all images in database')
+            # the metadata:width is necessary because it's defined for all
+            # working images, otherwise it will filter out images for which
+            # we do not have num_times_seen defined.
             sc = table.scan(columns=['stats:num_times_seen',
                                      'metadata:width'])
             count_data = {}

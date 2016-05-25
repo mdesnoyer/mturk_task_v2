@@ -14,5 +14,6 @@ dbget = Get(pool)
 
 print 'Setting up the sampler object'
 dbget.update_sampling()
+samp_obj = dbget._sampl_obj
 
 
