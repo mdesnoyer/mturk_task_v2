@@ -16,7 +16,6 @@ NOTES:
     For the mturk connection, make sure to export the AWS connection credentials
     in ~/.boto.
 
-
     To start HBase:
         start-hbase.sh
     which is is in
