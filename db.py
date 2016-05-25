@@ -351,11 +351,11 @@ class Get(object):
             table = conn.table(IMAGE_TABLE)
             _log.info('Fetching all images in database')
             sc = table.scan(columns=['stats:num_times_seen'])
-            data = {}
+            count_data = {}
             for key, data in sc:
-                data[key] = counter_str_to_int(
+                count_data[key] = counter_str_to_int(
                     data.get('stats:num_times_seen', chr(0))) / 2
-            return data
+            return count_data
 
     def check_active_ims(self):
         """
