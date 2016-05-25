@@ -351,7 +351,9 @@ class Get(object):
             table = conn.table(IMAGE_TABLE)
             _log.info('Fetching all images in database')
             #sc = table.scan(columns=['stats:num_times_seen'])
-            sc = table.scan()
+            #sc = table.scan()
+            sc = table.scan(columns=['stats:num_times_seen',
+                                     'metadata:width'])
             count_data = {}
             for key, data in sc:
                 count_data[key] = counter_str_to_int(
