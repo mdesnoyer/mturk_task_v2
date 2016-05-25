@@ -648,12 +648,40 @@ class Get(object):
         """
         with self.pool.connection() as conn:
             table = conn.table(TASK_TABLE)
-            s = table.scan(columns=['metadata:worker_id'])
+            f1 = "SingleColumnValueFilter('metadata', 'is_practice', =, " \
+                 "'regexstring:^0$', true, true)"
+            f2 = "SingleColumnValueFilter('status', 'accepted', =, " \
+                 "'regexstring:^1$', " \
+                 "true, true)"
+            fstring = "%s AND %s" % (f1, f2)
+            s = table.scan(columns=['completion_data:response_json'],
+                           filter=fstring)
             times = []
-            for id, _ in s:
-                data = table.row(id, columns=['completion_data:response_json',
-                                              'status:accepted',
-                                              'metadata:is_practice'])
+            for id, data in s:
+                jsn_str = data.get('completion_data:response_json', None)
+                if jsn_str is None:
+                    continue
+                jsn = json.loads(jsn_str)
+                times.append(float(jsn[-1]['time_elapsed']) / 1000)
+        if not len(times):
+            _log.info('No task time information found! Calculating it by rote')
+            return DEF_NUM_IMAGES_PER_TASK / 3. * \
+                   DEF_NUM_IMAGE_APPEARANCE_PER_TASK * 2 * 2014. / 1000
+        return np.mean(times)
+
+    def _get_mean_task_time_old(self):
+        """
+        Computes the average task time for all accepted HITs.
+
+        :return: The mean task time, in seconds.
+        """
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_TABLE)
+            s = table.scan(columns=['completion_data:response_json',
+                                    'status:accepted',
+                                    'metadata:is_practice'])
+            times = []
+            for id, data in s:
                 if data.get('metadata:is_practice', FALSE) == TRUE:
                     continue
                 if data.get('status:accepted', FALSE) == FALSE:
