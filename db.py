@@ -340,7 +340,7 @@ class Get(object):
         samp_cnt_dict = self._build_samp_counts()
         self._sampl_obj = OrderedSampler(samp_cnt_dict)
 
-    def _buld_samp_counts(self):
+    def _build_samp_counts(self):
         """
         Constructs a sample count.
 
