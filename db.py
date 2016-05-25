@@ -300,6 +300,7 @@ class Get(object):
         self._practice_time = None
         self._all_ims_act = False
         self._refresh_rate = SAMPLE_COUNT_REFRESH_RATE
+        self._halt = False
         self._sampl_obj = None
         try:
             _log.info('Fetching active workers')
@@ -314,9 +315,12 @@ class Get(object):
 
         :return: Boolean.
         """
+        if self._halt:
+            return True
         if self._sampl_obj:
             if self._sampl_obj.lim_reached:
-                _log.info_n('Sampling limit reached.', 1)
+                _log.info('Sampling limit reached.')
+                self._halt = True
                 return True
         return False
 
@@ -433,29 +437,6 @@ class Get(object):
             _log.info('Fetching all images in database')
             sc = table.scan(filter='FirstKeyOnlyFilter() AND KeyOnlyFilter()')
             self._im_ids = [y[0] for y in sc]
-
-    def compute_sample_counts(self):
-        """
-        Computes the number of times every image has been sampled,
-        and returns it as a dict.
-
-        NOTE:
-            Because of how the sampler works, this actually returns the
-            number of tasks an image has participated in (i.e., the "keep" and
-            the "reject" segments count collectively as one sample).
-
-        :return: The sample counts as an {id: samples} dict.
-        """
-
-        with self.pool.connection() as conn:
-            table = conn.table(IMAGE_TABLE)
-            _log.info('Fetching all image sample counts in database')
-            sc = table.scan(columns=['stats:num_times_seen'])
-            sample_counts = dict()
-            for key, data in sc:
-                sample_counts[key] = \
-                    counter_str_to_int(data.get('stats:num_times_seen', ''))
-            return sample_counts
     
     def worker_exists(self, worker_id):
         """
@@ -1212,81 +1193,8 @@ class Get(object):
         :param image_attributes: The image attributes.
         :return: A list of image IDs
         """
-        if self._im_ids is not None:
-            return list(np.random.choice(self._im_ids[:self._n_active],
-                                         n, replace=False))
-        ret_set = set()
-        fltr = attribute_image_filter(image_attributes)
-        with self.pool.connection() as conn:
-            table = conn.table(IMAGE_TABLE)
-            # because of an error in the flask documentation, I deleted
-            # something like 2000 of the initial images in the database,
-            # the first key is actually pretty large, starting with 25. I
-            #  mean large in the lexicographic sense. Therefore, we will
-            # reject candidate keys that are substantially less than the
-            # first key (messy, I know)
-            fkey = table.scan(limit=1).next()[0]  # get the first key
-            while len(ret_set) < n:
-                # get a random ID. An 10-digit random ID is more than enough to
-                # to uniquely specify an image, as the probability of a
-                # collision is essentially zero.
-                rid = rand_id_gen(10)
-                if rid[:2] < fkey[:2]:
-                    continue  # i.e., reject this key
-                if len(fltr):
-                    item = table.scan(
-                        row_start=rid,
-                        filter=attribute_image_filter(image_attributes),
-                        limit=1).next()
-                else:
-                    item = table.scan(
-                        row_start=rid,
-                        limit=1).next()
-                if item is None:
-                    continue
-                ret_set.add(item[0])
-        return list(ret_set)
-
-    def get_n_images_seq(self, n, image_attributes=IMAGE_ATTRIBUTES,
-                         is_practice=False):
-        """
-        Randomly samples n active images from the database and returns their
-        IDs in accordance with their sampling surplus (or not, if it's a
-        practice)
-
-        :param n: Number of images to choose.
-        :param image_attributes: The image attributes that the images return
-                                 must satisfy.
-        :param is_practice: Boolean indicating whether or not the images are
-                            for a practice or a real task. If its for a
-                            practice, it will ignore the sampling deficit.
-        :return: A list of image IDs, unless it cannot get enough images --
-                 then returns None.
-        """
-        count = self.get_n_active_images_count(
-            image_attributes=image_attributes)
-        with self.pool.connection() as conn:
-            table = conn.table(IMAGE_TABLE)
-            if n > count:
-                _log.warning('Insufficient number of active images, '
-                             'activating %i more.' % ACTIVATION_CHUNK_SIZE)
-                return None
-            generator = \
-                self.get_active_image_scanner(image_attributes=image_attributes)
-            prob = float(n) / count
-            images = set()
-            while len(images) < n:
-                im_id = generator.next()
-                if np.random.rand() > prob:
-                    continue
-                if is_practice:
-                    images.add(im_id)
-                sd = table.counter_get(im_id, 'stats:sampling_surplus')
-                if sd <= 0:
-                    images.add(im_id)
-                else:
-                    table.counter_dec(im_id, 'stats:sampling_surplus')
-        return list(images)
+        self.update_sampling()
+        return self._sampl_obj.sample(n)
 
     # TASK DESIGN STUFF
 
