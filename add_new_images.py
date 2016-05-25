@@ -69,6 +69,7 @@ def is_public_read(obj):
                     return True
     return False
 
+
 def update(dbset, dbget, dry_run=False):
     sources = [_s3sourcer('neon-image-library'),
                _s3sourcer('mturk-youtube-thumbs',

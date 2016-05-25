@@ -277,20 +277,6 @@ def _shuffle_tuples(image_tuples):
     return n_tuples, list(tup_indices)
 
 
-def counter_str_to_int(cstring):
-    """
-    Converts the string representation of a counter to an integer value.
-
-    :param cstring: The string representing the value of a counter,
-    for instance the value of a table.row(...) call under the field
-    representing a counter.
-    :return: An integer, the value of the counter.
-    """
-    tot = 0
-    for i in cstring:
-        tot = (tot << 8) + ord(i)
-    return tot
-
 """
 Main Classes - GET
 """

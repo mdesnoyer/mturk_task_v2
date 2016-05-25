@@ -14,7 +14,7 @@ from _utils import *
 """
 For debugging
 """
-TESTING = False
+TESTING = True
 _MTURK_SANDBOX = False
 LOCAL = False  # True if you're running on a local machine, False if AWS
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
@@ -23,7 +23,11 @@ _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 CONTINUOUS_MODE = True  # whether or not to run the task continuously.
 AUTO_RESAMPLE = True  # if true, will activate more images dynamically.
 
+# ensure that if testing, you're using the mturk sandbox.
+_MTURK_SANDBOX = _MTURK_SANDBOX or TESTING
 
+if TESTING:
+    DATABASE_LOCATION = TEST_DATABASE_LOCATION
 """
 AWS STUFF
 """

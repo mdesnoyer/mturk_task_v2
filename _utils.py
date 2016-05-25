@@ -15,6 +15,9 @@ import logger
 from PIL import Image
 from _globals import *
 import re
+import socket
+import subprocess
+import time
 
 _log = logger.setup_logger(__name__)
 
@@ -109,6 +112,21 @@ def practice_id_gen():
 """
 GET utils (for db.get)
 """
+
+
+def counter_str_to_int(cstring):
+    """
+    Converts the string representation of a counter to an integer value.
+
+    :param cstring: The string representing the value of a counter,
+    for instance the value of a table.row(...) call under the field
+    representing a counter.
+    :return: An integer, the value of the counter.
+    """
+    tot = 0
+    for i in cstring:
+        tot = (tot << 8) + ord(i)
+    return tot
 
 
 def pair_to_tuple(image1, image2):
@@ -304,3 +322,49 @@ def get_design(n, t, j):
     if not np.min(occ) >= j:
         return None
     return combs
+
+"""
+TESTING UTILITIES
+"""
+
+
+def establish_tunnel(local_port=9000,
+                     db_ip=DATABASE_LOCATION,
+                     db_port=9090,
+                     ssh_key='mturk_stack_access.pem'):
+    """
+    Establishes an ssh tunnel to the database or instance of
+    your choice.
+
+    :param local_port: The local port you want to forward.
+    :param db_ip: The database / instance IP address.
+    :param db_port: The port on the instance to forward to.
+    :param ssh_key: The ssh key to use.
+    :return: The subprocess representing the connection.
+    """
+    cmd = ('ssh -i ~/.ssh/{ssh_key} -L {local}:localhost:{db_port} ubuntu@{'
+           'db_addr}').format(
+        ssh_key=ssh_key,
+        local=local_port,
+        db_port=db_port,
+        db_addr=db_ip)
+    _log.info('Forwarding port %s to the database' % local_port)
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            stdin=subprocess.PIPE)
+    # Wait until we can connect to the db
+    sock = None
+    for i in range(12):
+        try:
+            sock = socket.create_connection(('localhost', local_port), 3600)
+        except socket.error:
+            time.sleep(5)
+    if sock is None:
+        raise Exception('Could not connect to the database')
+
+    _log.info('Connection made to the database')
+    sock.shutdown(socket.SHUT_RDWR)
+    sock.close()
+
+    # ensure that proc is terminated with proc.terminate() before you exit!
+    return proc
