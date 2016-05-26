@@ -17,6 +17,8 @@ For debugging
 TESTING = True
 _MTURK_SANDBOX = False
 LOCAL = False  # True if you're running on a local machine, False if AWS
+MIN_THREADS = False  # if True, will minimize thread use (or try to) and run as
+                     # much as possible in a single thread
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
 # tunnel opened! (see intro notes in webserver.py)
@@ -25,6 +27,7 @@ AUTO_RESAMPLE = True  # if true, will activate more images dynamically.
 
 # ensure that if testing, you're using the mturk sandbox.
 _MTURK_SANDBOX = _MTURK_SANDBOX or TESTING
+MIN_THREADS = True
 
 if TESTING:
     DATABASE_LOCATION = TEST_DATABASE_LOCATION

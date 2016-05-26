@@ -858,9 +858,14 @@ if __name__ == '__main__':
             mt.register_hit_type_mturk(reward=task_payment)
         dbset.register_hit_type(TASK_HIT_TYPE_ID, reward=task_payment)
         dbset.register_hit_type(PRACTICE_HIT_TYPE_ID, is_practice=True)
-    scheduler.add_job(check_practices,
-                      args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID])
-    scheduler.add_job(check_tasks, args=[mt, dbget, dbset, TASK_HIT_TYPE_ID])
+    if MIN_THREADS:
+        check_practices(mt, dbget, dbset, PRACTICE_HIT_TYPE_ID)
+        check_tasks(mt, dbget, dbset, TASK_HIT_TYPE_ID)
+    else:
+        scheduler.add_job(check_practices,
+                          args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID])
+        scheduler.add_job(check_tasks,
+                          args=[mt, dbget, dbset, TASK_HIT_TYPE_ID])
     # note that this must be done *after* the tasks are generated, since it
     # is the tasks that actually activate new images.
     scheduler.add_job(unban_workers, 'interval', hours=24,
