@@ -843,7 +843,7 @@ if __name__ == '__main__':
     TASK_HIT_TYPE_ID = dbget.get_active_hit_type_for(
         task_attribute=ATTRIBUTE,
         image_attributes=IMAGE_ATTRIBUTES)
-    if not PRACTICE_HIT_TYPE_ID or not TASK_HIT_TYPE_ID:
+    if not PRACTICE_HIT_TYPE_ID or not TASK_HIT_TYPE_ID or TESTING:
         _log.info('Calculating payment')
         _task_payment = ((1./60) * dbget.task_time) * PAYMENT_PER_MIN
         task_payment = float(int(_task_payment * 100))/100
