@@ -19,23 +19,14 @@ _log = logger.setup_logger(__name__)
 
 conn = happybase.Connection(host=DATABASE_LOCATION)
 table = conn.table(TASK_TABLE)
-s = table.scan(columns=['completion_data:response_json',
-                        'status:accepted',
-                        'metadata:is_practice'],
-               batch_size=50)
+s = table.scan(columns=['completion_data:response_json'],
+               batch_size=10)
 for n, (id, data) in enumerate(s):
     print n
-    if data.get('metadata:is_practice', FALSE) == TRUE:
-        table.put(id, {'completion_data:total_time': '0'})
-        continue
-    if data.get('status:accepted', FALSE) == FALSE:
-        table.put(id, {'completion_data:total_time': '0'})
-        continue
     jsn_str = data.get('completion_data:response_json', None)
     if jsn_str is None:
-        table.put(id, {'completion_data:total_time': '0'})
         continue
     jsn = json.loads(jsn_str)
-    tot_time = float(jsn[-1]['time_elapsed']) / 1000
-    table.put(id, {'completion_data:total_time': str(int(tot_time))})
+    tot_time = jsn[-1]['time_elapsed']
+    table.put(id, {'completion_data:total_time': str(jsn[-1]['time_elapsed'])})
 
