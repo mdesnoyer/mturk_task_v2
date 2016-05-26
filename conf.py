@@ -26,6 +26,7 @@ CONTINUOUS_MODE = True  # whether or not to run the task continuously.
 AUTO_RESAMPLE = True  # if true, will activate more images dynamically.
 FORCE_DEMOGRAPHICS = True  # if true, will always collect demographics.
 FORCE_VALIDATION = True  # if true, will always validate demographics.
+DISABLE_BANNING = True  # obvi
 
 # ensure that if testing, you're using the mturk sandbox.
 _MTURK_SANDBOX = _MTURK_SANDBOX or TESTING

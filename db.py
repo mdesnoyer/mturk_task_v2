@@ -40,6 +40,8 @@ mon = statemon.state
 statemon.define("val_mean_image_seen", float)
 statemon.define("n_images_activated")
 statemon.define("n_workers_registered")
+statemon.define("demographics_valid", int)
+statemon.define("demographics_invalid", int)
 
 """
 PRIVATE METHODS
@@ -458,6 +460,7 @@ class Get(object):
                  otherwise.
         """
         if FORCE_DEMOGRAPHICS:
+            _log.warn('Demographic collection is being forced.')
             return True
         with self.pool.connection() as conn:
             table = conn.table(WORKER_TABLE)
@@ -477,6 +480,7 @@ class Get(object):
                  otherwise.
         """
         if FORCE_VALIDATION:
+            _log.warn('Demographic validation is being forced.')
             return True
         with self.pool.connection() as conn:
             table = conn.table(WORKER_TABLE)
@@ -1408,6 +1412,9 @@ class Get(object):
         :param worker_id: The worker ID, as a string.
         :return: True if the worker should be autobanned, False otherwise.
         """
+        if DISABLE_BANNING:
+            _log.warn('Banning is disabled.')
+            return False
         if self.worker_weekly_rejected(worker_id) > MIN_REJECT_AUTOBAN_ELIGIBLE:
             if self.worker_weekly_reject_accept_ratio(worker_id) > \
                     AUTOBAN_REJECT_ACCEPT_RATIO:
@@ -2435,10 +2442,12 @@ class Set(object):
                       'Previous / Current Birthyear:  %s %s\n',
                       worker_id, pgender, cgender, pbirthyear, cbirthyear)
             is_valid = FALSE
+            mon.increment("demographics_invalid")
         else:
             _log.info('Worker %s demographic information has been validated',
                       worker_id)
             is_valid = TRUE
+            mon.increment("demographics_valid")
         with self.pool.connection() as conn:
             table = conn.table(WORKER_TABLE)
             table.put(worker_id, {'demographics:validated': is_valid})
