@@ -365,6 +365,7 @@ class Get(object):
             for key, data in sc:
                 count_data[key] = counter_str_to_int(
                     data.get('stats:num_times_seen', chr(0))) / 2
+            _log.info('Found %i images', len(count_data))
             return count_data
 
     def check_active_ims(self):
