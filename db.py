@@ -495,6 +495,7 @@ class Get(object):
         if not demdat:
             # they don't have demographics at all...although this shouldn't
             # happen since this is only called if they don't need demographics.
+            _log.warn('Worker doesnt have demographics, somehow.')
             return False
         dem_time = time.mktime(time.localtime(demdat[1] / 1000))
         cur_time = time.mktime(time.localtime())
