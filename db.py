@@ -654,39 +654,12 @@ class Get(object):
                  "'regexstring:^1$', " \
                  "true, true)"
             fstring = "%s AND %s" % (f1, f2)
-            s = table.scan(columns=['completion_data:response_json'],
+            s = table.scan(columns=['metadata:is_practice',
+                                    'status:accepted',
+                                    'completion_data:total_time'],
                            filter=fstring)
             times = []
             for id, data in s:
-                jsn_str = data.get('completion_data:response_json', None)
-                if jsn_str is None:
-                    continue
-                jsn = json.loads(jsn_str)
-                times.append(float(jsn[-1]['time_elapsed']) / 1000)
-        if not len(times):
-            _log.info('No task time information found! Calculating it by rote')
-            return DEF_NUM_IMAGES_PER_TASK / 3. * \
-                   DEF_NUM_IMAGE_APPEARANCE_PER_TASK * 2 * 2014. / 1000
-        return np.mean(times)
-
-    def _get_mean_task_time_old(self):
-        """
-        Computes the average task time for all accepted HITs.
-
-        :return: The mean task time, in seconds.
-        """
-        with self.pool.connection() as conn:
-            table = conn.table(TASK_TABLE)
-            s = table.scan(columns=['completion_data:response_json',
-                                    'status:accepted',
-                                    'metadata:is_practice'])
-            times = []
-            for n, (id, data) in enumerate(s):
-                print n
-                if data.get('metadata:is_practice', FALSE) == TRUE:
-                    continue
-                if data.get('status:accepted', FALSE) == FALSE:
-                    continue
                 jsn_str = data.get('completion_data:response_json', None)
                 if jsn_str is None:
                     continue
