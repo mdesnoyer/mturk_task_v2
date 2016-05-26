@@ -14,7 +14,7 @@ from _utils import *
 """
 For debugging
 """
-TESTING = False
+TESTING = True
 _MTURK_SANDBOX = False
 LOCAL = False  # True if you're running on a local machine, False if AWS
 MIN_THREADS = False  # if True, will minimize thread use (or try to) and run as
@@ -256,4 +256,4 @@ SAMPLING_LIMIT = 4  # how many samples to obtain per task before stopping
 # DISABLE_BANNING = False  # obvi
 # NUM_PRACTICES = 0
 # NUM_TASKS = 0
-# DATABASE_LOCATION = '10.0.53.47'
+DATABASE_LOCATION = '10.0.53.47'
