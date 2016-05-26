@@ -58,7 +58,7 @@
 
   var validdemo = {
     type: 'html',
-    pages = [{url: "static/html/validate_demographics.html", cont_btn: "start", check_fn: check_demographics}]
+    pages: [{url: "static/html/validate_demographics.html", cont_btn: "start", check_fn: check_demographics}]
   }
 
   {{ preload }}
@@ -78,7 +78,7 @@ if (collect_demo) {
 }
 
 if (collect_validating_demo) {
-    experiment_structure.split(0, 0, validdemo);
+    experiment_structure.splice(0, 0, validdemo);
 }
 
 if (practice) {
