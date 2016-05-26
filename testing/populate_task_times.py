@@ -20,8 +20,13 @@ _log = logger.setup_logger(__name__)
 conn = happybase.Connection(host=DATABASE_LOCATION)
 table = conn.table(TASK_TABLE)
 
+num = 0
+print 'Counting rows'
 s = table.scan(filter=b'KeyOnlyFilter() AND FirstKeyOnlyFilter()')
-num = len([x for x in s])
+for n, (id, _) in enumerate(s):
+    if not n % 10:
+        print n
+    num += 1
 
 s = table.scan(columns=['completion_data:response_json'],
                batch_size=10)
