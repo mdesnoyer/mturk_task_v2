@@ -660,11 +660,10 @@ class Get(object):
                            filter=fstring)
             times = []
             for id, data in s:
-                jsn_str = data.get('completion_data:response_json', None)
-                if jsn_str is None:
+                cts = data.get('completion_data:total_time', None)
+                if cts is None:
                     continue
-                jsn = json.loads(jsn_str)
-                times.append(float(jsn[-1]['time_elapsed']) / 1000)
+                times.append(float(cts) / 1000)
         if not len(times):
             _log.info('No task time information found! Calculating it by rote')
             return DEF_NUM_IMAGES_PER_TASK / 3. * \

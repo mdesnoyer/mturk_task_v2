@@ -856,6 +856,8 @@ if __name__ == '__main__':
             dbset.deactivate_hit_type(TASK_HIT_TYPE_ID)
         TASK_HIT_TYPE_ID, PRACTICE_HIT_TYPE_ID = \
             mt.register_hit_type_mturk(reward=task_payment)
+        _log.info('Created new HIT Types, obtained %s and %s',
+                  PRACTICE_HIT_TYPE_ID, TASK_HIT_TYPE_ID)
         dbset.register_hit_type(TASK_HIT_TYPE_ID, reward=task_payment)
         dbset.register_hit_type(PRACTICE_HIT_TYPE_ID, is_practice=True)
     if MIN_THREADS:
