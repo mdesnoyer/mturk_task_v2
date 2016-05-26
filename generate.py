@@ -257,7 +257,7 @@ def make_html(blocks, task_id=None, box_size=BOX_SIZE, hit_size=HIT_SIZE,
     arg_dict['blocknames'] = blocknames
     arg_dict['practice'] = p_val
     arg_dict['collect_demo'] = d_val
-    arg_dict['collect_demo_valid'] = dv_val
+    arg_dict['collect_validating_demo'] = dv_val
     arg_dict['taskId'] = str(task_id)
     return base.render(jg=jg, **arg_dict)
 
