@@ -24,13 +24,16 @@ _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # tunnel opened! (see intro notes in webserver.py)
 CONTINUOUS_MODE = True  # whether or not to run the task continuously.
 AUTO_RESAMPLE = True  # if true, will activate more images dynamically.
+FORCE_DEMOGRAPHICS = False  # if true, will always collect demographics.
+FORCE_VALIDATION = False  # if true, will always validate demographics.
 
 # ensure that if testing, you're using the mturk sandbox.
 _MTURK_SANDBOX = _MTURK_SANDBOX or TESTING
-MIN_THREADS = True
+
 
 if TESTING:
     DATABASE_LOCATION = TEST_DATABASE_LOCATION
+    MIN_THREADS = True
 """
 AWS STUFF
 """

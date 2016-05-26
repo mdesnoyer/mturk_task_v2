@@ -457,6 +457,8 @@ class Get(object):
         :return: True if we need demographic information from the worker. False
                  otherwise.
         """
+        if FORCE_DEMOGRAPHICS:
+            return True
         with self.pool.connection() as conn:
             table = conn.table(WORKER_TABLE)
             row_data = table.row(worker_id)
@@ -474,6 +476,8 @@ class Get(object):
         :return: True if we need demographic information from the worker. False
                  otherwise.
         """
+        if FORCE_VALIDATION:
+            return True
         with self.pool.connection() as conn:
             table = conn.table(WORKER_TABLE)
             row_data = table.row(worker_id, include_timestamp=True)
