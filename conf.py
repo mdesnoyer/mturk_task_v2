@@ -247,15 +247,13 @@ WEBSERVER CONFIGURATION
 NUM_THREADS = 1  # the number of threads to use on the webserver.
 ENABLE_BANNING = True  # whether or not to ban poor-performing workers.
 SAMPLE_COUNT_REFRESH_RATE = 400000  # how many samples until you rebuild sampler
-SAMPLING_LIMIT = 3  # how many samples to obtain per task before stopping
+SAMPLING_LIMIT = 5  # how many samples to obtain per task before stopping
 
-if LOCAL:
-    # change a bunch of the '_global' parameters
-    WEBSERVER_PORT = 12344
-    WEBSERVER_URL = "127.0.0.1"  # mturk.neon-lab.com
-    EXTERNAL_QUESTION_ENDPOINT = \
-        'https://%s:%i/task' % (WEBSERVER_URL, WEBSERVER_PORT)
-    EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = \
-        'https://%s:%i/submit' % (WEBSERVER_URL,  WEBSERVER_PORT)
-    if not _USE_OPSWORKS_DB:
-        DATABASE_LOCATION = "localhost"
+
+# convenience overrides
+FORCE_DEMOGRAPHICS = False  # if true, will always collect demographics.
+FORCE_VALIDATION = False  # if true, will always validate demographics.
+DISABLE_BANNING = False  # obvi
+NUM_PRACTICES = 0
+NUM_TASKS = 0
+DATABASE_LOCATION = '10.0.53.47'
