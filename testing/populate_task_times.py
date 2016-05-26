@@ -19,10 +19,15 @@ _log = logger.setup_logger(__name__)
 
 conn = happybase.Connection(host=DATABASE_LOCATION)
 table = conn.table(TASK_TABLE)
+
+s = table.scan(filter=b'KeyOnlyFilter() AND FirstKeyOnlyFilter()')
+num = len([x for x in s])
+
 s = table.scan(columns=['completion_data:response_json'],
                batch_size=10)
 for n, (id, data) in enumerate(s):
-    print n
+    if not n % 10:
+        print '%i / %i' % (n, num)
     jsn_str = data.get('completion_data:response_json', None)
     if jsn_str is None:
         continue
