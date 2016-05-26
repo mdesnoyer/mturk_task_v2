@@ -656,6 +656,7 @@ class Get(object):
 
         :return: The mean task time, in seconds.
         """
+        times = []
         with self.pool.connection() as conn:
             table = conn.table(TASK_TABLE)
             f1 = "SingleColumnValueFilter('metadata', 'is_practice', =, " \
@@ -667,8 +668,8 @@ class Get(object):
             s = table.scan(columns=['metadata:is_practice',
                                     'status:accepted',
                                     'completion_data:total_time'],
-                           filter=fstring)
-            times = []
+                           filter=fstring,
+                           batch_size=10)
             for id, data in s:
                 cts = data.get('completion_data:total_time', None)
                 if cts is None:
