@@ -345,6 +345,7 @@ class Get(object):
             self._sampl_obj = None
         samp_cnt_dict = self._build_samp_counts()
         self._sampl_obj = OrderedSampler(samp_cnt_dict)
+        _log.info('Sampling object constructed.')
 
     def _build_samp_counts(self):
         """
@@ -670,7 +671,9 @@ class Get(object):
                                     'completion_data:total_time'],
                            filter=fstring,
                            batch_size=10)
-            for id, data in s:
+            for n, (id, data) in enumerate(s):
+                if not n % 2000:
+                    print n
                 cts = data.get('completion_data:total_time', None)
                 if cts is None:
                     continue
