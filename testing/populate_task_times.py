@@ -21,7 +21,8 @@ conn = happybase.Connection(host=DATABASE_LOCATION)
 table = conn.table(TASK_TABLE)
 s = table.scan(columns=['completion_data:response_json',
                         'status:accepted',
-                        'metadata:is_practice'])
+                        'metadata:is_practice'],
+               batch_size=50)
 for n, (id, data) in enumerate(s):
     print n
     if data.get('metadata:is_practice', FALSE) == TRUE:
