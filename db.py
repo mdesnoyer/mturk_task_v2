@@ -681,7 +681,8 @@ class Get(object):
                                     'status:accepted',
                                     'metadata:is_practice'])
             times = []
-            for id, data in s:
+            for n, (id, data) in enumerate(s):
+                print n
                 if data.get('metadata:is_practice', FALSE) == TRUE:
                     continue
                 if data.get('status:accepted', FALSE) == FALSE:
