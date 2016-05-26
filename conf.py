@@ -24,9 +24,9 @@ _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # tunnel opened! (see intro notes in webserver.py)
 CONTINUOUS_MODE = True  # whether or not to run the task continuously.
 AUTO_RESAMPLE = True  # if true, will activate more images dynamically.
-FORCE_DEMOGRAPHICS = True  # if true, will always collect demographics.
-FORCE_VALIDATION = True  # if true, will always validate demographics.
-DISABLE_BANNING = True  # obvi
+FORCE_DEMOGRAPHICS = False  # if true, will always collect demographics.
+FORCE_VALIDATION = False  # if true, will always validate demographics.
+DISABLE_BANNING = False  # obvi
 
 # ensure that if testing, you're using the mturk sandbox.
 _MTURK_SANDBOX = _MTURK_SANDBOX or TESTING
@@ -73,8 +73,7 @@ MARGIN_SIZE = 2  # the default margin size, for formatting.
 ANNOUNCEMENT = "Please only accept one HIT at a time; new ones are posted " \
                "automatically, but only a fixed amount are allowed to be up " \
                "at once so if you accept too many you will prevent others " \
-               "from participating. Also please be aware that we are no " \
-               "longer accepting new workers due to exploitation."
+               "from participating."
 
 """
 GLOBAL WITHIN-TASK TIMING CONFIGURATION
@@ -212,7 +211,7 @@ BAD_DATA_TOO_MANY_UNANSWERED = 'You are responding too slowly or choosing ' \
 WORKER OPTIONS
 """
 # the maximum number of tasks a worker can complete per day
-MAX_SUBMITS_PER_DAY = 5
+MAX_SUBMITS_PER_DAY = 20
 # the weekly number of practices a worker can complete
 WEEKLY_PRACTICE_LIM = 5
 # the default reason for a ban
@@ -247,7 +246,7 @@ WEBSERVER CONFIGURATION
 """
 NUM_THREADS = 1  # the number of threads to use on the webserver.
 ENABLE_BANNING = True  # whether or not to ban poor-performing workers.
-SAMPLE_COUNT_REFRESH_RATE = 100000  # how many samples until you rebuild sampler
+SAMPLE_COUNT_REFRESH_RATE = 400000  # how many samples until you rebuild sampler
 SAMPLING_LIMIT = 3  # how many samples to obtain per task before stopping
 
 if LOCAL:

@@ -605,7 +605,7 @@ def task():
         assert val_hit_info.HITStatus == 'Unassignable'
     except:
         body = 'HIT %s accepted but is not unassignable. status: %s'
-        body  = body % (str(hit_id), str(val_hit_info.HITStatus))
+        body = body % (str(hit_id), str(val_hit_info.HITStatus))
         subject = body
         dispatch_notification(body, subject)
         return 'Apologies, this HIT is %s' % str(val_hit_info.HITStatus)
