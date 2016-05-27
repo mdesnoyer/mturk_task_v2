@@ -2257,7 +2257,7 @@ class Set(object):
         with self.pool.connection() as conn:
             table = conn.table(TASK_JSON_TABLE)
             table.put(task_id,
-                      {'completion_data:response_json': json.dumps(resp_json)})
+                      {'data:json': json.dumps(resp_json)})
         _log.info('Stored task data for task %s, worker %s.', task_id,
                   worker_id)
         return frac_contradictions, frac_unanswered, frac_too_fast, p_value
