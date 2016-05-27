@@ -236,7 +236,7 @@ PAIR_TABLE = 'pairs'
 WIN_TABLE = 'wins'
 HIT_TYPE_TABLE = 'hittypes'
 STATISTICS_TABLE = 'imagestats'
-
+TASK_JSON_TABLE = 'taskjson'
 
 """
 COLUMN NAMES, BY FAMILY
@@ -253,6 +253,7 @@ TASK_FAMILIES = {'metadata': dict(max_versions=1),
                  'validation_statistics': dict(max_versions=1),
                  'blocks': dict(max_versions=1),
                  'html': dict(max_versions=1)}
+TASK_JSON_FAIMILIES = {'data': dict(max_versons=1)}
 IMAGE_FAMILIES = {'metadata': dict(max_versions=1),
                   'stats': dict(max_versions=1),
                   'phash': dict(max_versions=1),
