@@ -18,18 +18,19 @@ import json
 _log = logger.setup_logger(__name__)
 
 conn = happybase.Connection(host=DATABASE_LOCATION)
-table = conn.table(TASK_TABLE)
+dst_table = conn.table(TASK_TABLE)
+src_table = conn.table(TASK_JSON_TABLE)
 
 num = 0
 print 'Counting rows'
-s = table.scan(filter=b'KeyOnlyFilter() AND FirstKeyOnlyFilter()')
+s = dst_table.scan(filter=b'KeyOnlyFilter() AND FirstKeyOnlyFilter()')
 for n, (id, _) in enumerate(s):
     if not n % 10:
         print n
     num += 1
 
-s = table.scan(columns=['completion_data:response_json'],
-               batch_size=10)
+s = src_table.scan(columns=['completion_data:response_json'],
+                   batch_size=10)
 for n, (id, data) in enumerate(s):
     if not n % 10:
         print '%i / %i' % (n, num)
@@ -38,5 +39,5 @@ for n, (id, data) in enumerate(s):
         continue
     jsn = json.loads(jsn_str)
     tot_time = jsn[-1]['time_elapsed']
-    table.put(id, {'completion_data:total_time': str(jsn[-1]['time_elapsed'])})
+    dst_table.put(id, {'completion_data:total_time': str(tot_time)})
 
