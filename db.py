@@ -672,9 +672,6 @@ class Get(object):
                            filter=fstring,
                            batch_size=10)
             for n, (id, data) in enumerate(s):
-                if not n % 2000:
-                    print n
-                    print times[-100:]
                 cts = data.get('completion_data:total_time', None)
                 if cts is None:
                     continue
