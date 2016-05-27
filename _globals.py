@@ -155,7 +155,7 @@ PRACTICE_PREFIX = 'p_'
 DATABASE OPTIONS
 """
 # DATABASE_LOCATION = "10.0.36.202"
-DATABASE_LOCATION = "10.0.37.104"  # new database
+DATABASE_LOCATION = "10.0.43.96"  # new database
 TEST_DATABASE_LOCATION = "10.0.53.47"
 # if True, will store all practice pairs as if they were in real trials.
 STORE_PRACTICE_PAIRS = False
