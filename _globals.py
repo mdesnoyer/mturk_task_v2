@@ -253,7 +253,7 @@ TASK_FAMILIES = {'metadata': dict(max_versions=1),
                  'validation_statistics': dict(max_versions=1),
                  'blocks': dict(max_versions=1),
                  'html': dict(max_versions=1)}
-TASK_JSON_FAIMILIES = {'data': dict(max_versons=1)}
+TASK_JSON_FAMILIES = {'data': dict(max_versons=1)}
 IMAGE_FAMILIES = {'metadata': dict(max_versions=1),
                   'stats': dict(max_versions=1),
                   'phash': dict(max_versions=1),
