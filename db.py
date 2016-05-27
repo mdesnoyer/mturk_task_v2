@@ -2220,8 +2220,6 @@ class Set(object):
                       'completion_data:choices': dumps(choices),
                       'completion_data:action': dumps(actions),
                       'completion_data:reaction_times': dumps(rts),
-                      'completion_data:response_json': json.dumps(
-                          resp_json),
                       'metadata:hit_type_id': str(hit_type_id),
                       'validation_statistics:prob_random': '%.4f' % p_value,
                       'validation_statistics:frac_contradictions':
@@ -2246,6 +2244,10 @@ class Set(object):
                                      'user_agent:platform': user_agent.platform,
                                      'user_agent:version': user_agent.version,
                                      'user_agent:string': user_agent.string}))
+        with self.pool.connection() as conn:
+            table = conn.table(TASK_JSON_TABLE)
+            table.put(task_id,
+                      {'completion_data:response_json': json.dumps(resp_json)})
         _log.info('Stored task data for task %s, worker %s.', task_id,
                   worker_id)
         return frac_contradictions, frac_unanswered, frac_too_fast, p_value
