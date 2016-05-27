@@ -34,7 +34,7 @@ s = src_table.scan(columns=['completion_data:response_json'],
 for n, (id, data) in enumerate(s):
     if not n % 10:
         print '%i / %i' % (n, num)
-    jsn_str = data.get('completion_data:response_json', None)
+    jsn_str = data.get('data:json', None)
     if jsn_str is None:
         continue
     jsn = json.loads(jsn_str)
