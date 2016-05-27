@@ -29,7 +29,7 @@ for n, (id, _) in enumerate(s):
         print n
     num += 1
 
-s = src_table.scan(columns=['completion_data:response_json'],
+s = src_table.scan(columns=['data:json'],
                    batch_size=10)
 for n, (id, data) in enumerate(s):
     if not n % 10:
