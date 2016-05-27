@@ -1578,6 +1578,19 @@ class Set(object):
         with self.pool.connection() as conn:
             return _create_table(conn, TASK_TABLE, TASK_FAMILIES, clobber)
 
+    def create_task_json_table(self, clobber=False):
+        """
+        Creates a task JSON table, with names based on conf.
+
+        :param clobber: Boolean, if true will erase old task json table if it
+               exists. [def: False]
+        :return: True if table was created. False otherwise.
+        """
+        _log.info('Creating task table.')
+        with self.pool.connection() as conn:
+            return _create_table(conn, TASK_JSON_TABLE, TASK_JSON_FAMILIES,
+                                 clobber)
+
     def create_image_table(self, clobber=False):
         """
         Creates a images table, with names based on conf.
