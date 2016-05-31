@@ -92,7 +92,7 @@ MTURK OPTIONS
 """
 LOW_FUNDS_WARNING = 300  # if the funds drop below this amount
 NUM_PRACTICES = 5  # 10  # how many practices to post at once
-NUM_TASKS = 40  # how many tasks to maintain online
+NUM_TASKS = 100  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
@@ -213,7 +213,7 @@ BAD_DATA_TOO_MANY_UNANSWERED = 'You are responding too slowly or choosing ' \
 WORKER OPTIONS
 """
 # the maximum number of tasks a worker can complete per day
-MAX_SUBMITS_PER_DAY = 20
+MAX_SUBMITS_PER_DAY = 30
 # the weekly number of practices a worker can complete
 WEEKLY_PRACTICE_LIM = 5
 # the default reason for a ban

@@ -637,8 +637,8 @@ def task():
         try:
             mtconn.get_qualification_score(pq_id, worker_id)
         except:  # ahh this isn't a real worker! KILL THEM!
-            body = 'Unknown worker %s tried to request a practice.'
-            body = body % worker_id
+            body = 'Unknown worker %s (ip: %s) tried to request a practice.'
+            body = body % (worker_id, str(src))
             subject = body
             dispatch_notification(body, subject)
             return 'Could not confirm request with MTurk.'

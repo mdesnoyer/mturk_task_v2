@@ -6,7 +6,10 @@ from collections import defaultdict as ddict
 import numpy as np
 import sys
 from conf import *
+import statemon
 
+mon = statemon.state
+statemon.define("n_num_unsampled", int)
 
 class OrderedSampler():
     def __init__(self, items, limit=SAMPLING_LIMIT, inc=1):
@@ -78,6 +81,8 @@ class OrderedSampler():
                 continue  # don't bother updating.
             self._bins[min(cbin+self._inc, self._lim)].insert(
                 np.random.randint(len(self._bins[cbin])+1), item)
+        if 0 in self._bins:
+            mon.n_num_unsampled = len(self._bins[0])
 
     def sample(self, N):
         """
