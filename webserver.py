@@ -752,11 +752,18 @@ def submit():
                               args=[mt, dbget, dbset, hit_type_id])
     else:
         # ---------- Handle submitted task ---------- #
-        try:
-            dbset.validate_demographics(request.json)
-        except Exception as e:
-            tb = traceback.format_exc()
-            dispatch_err(e, tb, request)
+        if dbget.worker_need_demographics(worker_id):
+            try:
+                dbset.register_demographics(request.json, worker_ip)
+            except Exception as e:
+                tb = traceback.format_exc()
+                dispatch_err(e, tb, request)
+        else:
+            try:
+                dbset.validate_demographics(request.json)
+            except Exception as e:
+                tb = traceback.format_exc()
+                dispatch_err(e, tb, request)
         try:
             to_return = make_success(hit_id=hit_id,
                                      task_id=task_id)

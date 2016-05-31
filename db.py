@@ -496,7 +496,7 @@ class Get(object):
         if not demdat:
             # they don't have demographics at all...although this shouldn't
             # happen since this is only called if they don't need demographics.
-            _log.warn('Worker doesnt have demographics, somehow.')
+            _log.warn('Worker %s doesnt have demographics, somehow.', worker_id)
             return False
         dem_time = time.mktime(time.localtime(demdat[1] / 1000))
         cur_time = time.mktime(time.localtime())
@@ -2430,7 +2430,7 @@ class Set(object):
 
     def validate_demographics(self, resp_json):
         """
-        Validates a worker's demographic resonse. In this case, they've
+        Validates a worker's demographic response. In this case, they've
         previously responded to the demographics questionaire, and now we're
         having them respond again to validate them. This doesn't actually
         inform the invoking frame whether or not the worker's demographic
@@ -2438,7 +2438,6 @@ class Set(object):
         field to either TRUE or FALSE.
 
         :param resp_json: The response JSON of a task from MTurk.
-        :param worker_ip: The worker IP address.
         :return: None
         """
         worker_id = resp_json[0]['workerId']

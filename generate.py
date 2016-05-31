@@ -612,8 +612,13 @@ def fetch_task(dbget, dbset, task_id, worker_id=None, is_practice=None):
             dbset.register_worker(worker_id)
         _log.info('Serving practice %s to worker %s' % (task_id, worker_id))
     else:
-        if dbget.worker_demo_needs_validation(worker_id):
-            collect_demo_val = True
+        if dbget.worker_need_demographics(worker_id):
+            _log.warn('Worker %s does not have demographic information but is'
+                      ' requesting a task? Will attempt to collect.', worker_id)
+            collect_demo = True
+        else:
+            if dbget.worker_demo_needs_validation(worker_id):
+                collect_demo_val = True
         _log.info('Serving task %s served to %s' % (task_id, worker_id))
     blocks = dbget.get_task_blocks(task_id)
     if blocks is None:
