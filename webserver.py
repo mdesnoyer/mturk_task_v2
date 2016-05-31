@@ -631,13 +631,20 @@ def task():
             _log.debug('Returning task preview request from %s' % str(src))
         return make_preview_page(is_practice, task_time)
     worker_id = request.values.get('workerId', '')
+    if dbget.worker_is_banned(worker_id):
+        body = 'Banned worker %s (ip: %s) tried to request a task or practice.'
+        body = body % (worker_id, str(src))
+        subject = body
+        dispatch_notification(body, subject)
+        return 'You have been banned.'
     if is_practice:
         # check if they have the practice quota qualification
         pq_id = mt.practice_quota_id
         try:
             mtconn.get_qualification_score(pq_id, worker_id)
         except:  # ahh this isn't a real worker! KILL THEM!
-            body = 'Unknown worker %s (ip: %s) tried to request a practice.'
+            body = 'Unknown worker %s (ip: %s) tried to request a task or ' \
+                   'practice.'
             body = body % (worker_id, str(src))
             subject = body
             dispatch_notification(body, subject)
@@ -692,6 +699,12 @@ def submit():
         tb = traceback.format_exc()
         dispatch_err(e, tb, request)
         return make_error('Problem fetching submission information.')
+    if dbget.worker_is_banned(worker_id):
+        body = 'Banned worker %s (ip: %s) tried to submit a task or practice.'
+        body = body % (worker_id, str(worker_ip))
+        subject = body
+        dispatch_notification(body, subject)
+        return 'You have been banned.'
     err_dict = {'HIT ID': hit_id, 'WORKER ID': worker_id, 'TASK ID': task_id,
                 'ASSIGNMENT ID': assignment_id}
     try:
@@ -726,7 +739,7 @@ def submit():
                 tb = traceback.format_exc()
                 dispatch_err(e, tb, request)
                 return make_error('Error creating practice passed page',
-                                  error_data=err_dict, hit_id=hit_id,   
+                                  error_data=err_dict, hit_id=hit_id,
                                   task_id=task_id, allow_submit=True)
             mt.grant_worker_practice_passed(worker_id)
             try:
