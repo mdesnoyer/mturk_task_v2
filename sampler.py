@@ -81,8 +81,10 @@ class OrderedSampler():
                 continue  # don't bother updating.
             self._bins[min(cbin+self._inc, self._lim)].insert(
                 np.random.randint(len(self._bins[cbin])+1), item)
-        if 0 in self._bins:
+        try:
             mon.n_num_unsampled = len(self._bins[0])
+        except:
+            pass
 
     def sample(self, N):
         """
