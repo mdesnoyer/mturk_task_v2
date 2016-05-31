@@ -27,7 +27,7 @@ AUTO_RESAMPLE = True  # if true, will activate more images dynamically.
 FORCE_DEMOGRAPHICS = False  # if true, will always collect demographics.
 FORCE_VALIDATION = False  # if true, will always validate demographics.
 DISABLE_BANNING = False  # obvi
-FORCE_HIT_TYPE_REGEN = True  # force hit type regeneration
+FORCE_HIT_TYPE_REGEN = False  # force hit type regeneration
 
 # ensure that if testing, you're using the mturk sandbox.
 _MTURK_SANDBOX = _MTURK_SANDBOX or TESTING
@@ -213,7 +213,7 @@ BAD_DATA_TOO_MANY_UNANSWERED = 'You are responding too slowly or choosing ' \
 WORKER OPTIONS
 """
 # the maximum number of tasks a worker can complete per day
-MAX_SUBMITS_PER_DAY = 15
+MAX_SUBMITS_PER_DAY = 20
 # the weekly number of practices a worker can complete
 WEEKLY_PRACTICE_LIM = 5
 # the default reason for a ban
