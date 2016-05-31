@@ -14,7 +14,7 @@ from _utils import *
 """
 For debugging
 """
-TESTING = True
+TESTING = False
 _MTURK_SANDBOX = False
 LOCAL = False  # True if you're running on a local machine, False if AWS
 MIN_THREADS = False  # if True, will minimize thread use (or try to) and run as
@@ -83,7 +83,7 @@ GLOBAL WITHIN-TASK TIMING CONFIGURATION
 TIMING_POST_TRIAL = 200  # Sets the time, in milliseconds, between the current
                          # trial and the next trial.
 DEF_FEEDBACK_TIME = 100  # the amount of time to display feedback
-DEF_TRIAL_TIME = 3500  # the maximum amount of time each trial is allowed to
+DEF_TRIAL_TIME = 2800  # the maximum amount of time each trial is allowed to
                        # go for
 
 
@@ -248,7 +248,8 @@ WEBSERVER CONFIGURATION
 """
 NUM_THREADS = 1  # the number of threads to use on the webserver.
 ENABLE_BANNING = True  # whether or not to ban poor-performing workers.
-SAMPLE_COUNT_REFRESH_RATE = 400000  # how many samples until you rebuild sampler
+SAMPLE_COUNT_REFRESH_RATE = 1000000  # how many samples until you rebuild
+# sampler
 SAMPLING_LIMIT = 4  # how many samples to obtain per task before stopping
 
 
@@ -258,4 +259,4 @@ SAMPLING_LIMIT = 4  # how many samples to obtain per task before stopping
 # DISABLE_BANNING = False  # obvi
 # NUM_PRACTICES = 0
 # NUM_TASKS = 0
-DATABASE_LOCATION = '10.0.53.47'
+# DATABASE_LOCATION = '10.0.53.47'
