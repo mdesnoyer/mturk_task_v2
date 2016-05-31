@@ -726,7 +726,7 @@ def submit():
                 tb = traceback.format_exc()
                 dispatch_err(e, tb, request)
                 return make_error('Error creating practice passed page',
-                                  error_data=err_dict, hit_id=hit_id,
+                                  error_data=err_dict, hit_id=hit_id,   
                                   task_id=task_id, allow_submit=True)
             mt.grant_worker_practice_passed(worker_id)
             try:
