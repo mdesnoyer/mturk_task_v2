@@ -653,13 +653,21 @@ def task():
         # check that they have the daily quota qualification
         pt_id = mt.quota_id
         try:
-            mtconn.get_qualification_score(pt_id, worker_id)
+            pt_val = mtconn.get_qualification_score(pt_id, worker_id)
         except:  # ahh this isn't a real worker! KILL THEM!
             body = 'Unknown worker %s tried to request a task.'
             body = body % worker_id
             subject = body
             dispatch_notification(body, subject)
             return 'Could not confirm request with MTurk.'
+        if pt_val <= 0:
+            return 'You have taken as many tasks as possible today.'
+        try:
+            mt.decrement_worker_daily_quota(worker_id)
+        except Exception as e:
+            _log.error('Problem decrementing daily quota: %s' % e.message)
+            tb = traceback.format_exc()
+            dispatch_err(e, tb, request)
     try:
         response = fetch_task(dbget, dbset, task_id, worker_id, is_practice)
     except Exception as e:
@@ -786,12 +794,6 @@ def submit():
             return make_error('Error creating submit page.',
                               error_data=err_dict, hit_id=hit_id,
                               task_id=task_id, allow_submit=True)
-        try:
-            mt.decrement_worker_daily_quota(worker_id)
-        except Exception as e:
-            _log.error('Problem decrementing daily quota: %s' % e.message)
-            tb = traceback.format_exc()
-            dispatch_err(e, tb, request)
         try:
             frac_contradictions, frac_unanswered, frac_too_fast, prob_random = \
                 dbset.task_finished_from_json(request.json,
