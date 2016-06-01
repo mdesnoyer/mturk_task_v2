@@ -71,11 +71,8 @@ MARGIN_SIZE = 2  # the default margin size, for formatting.
 #     "the practice for that). Right now, though, we are trying to make " \
 #     "sure there are no serious bugs in our code.  If you encounter a bug, " \
 #     "please let us know! You will still be paid for these HITs, of course."
-ANNOUNCEMENT = "Please only accept one HIT at a time; new ones are posted " \
-               "automatically, but only a fixed amount are allowed to be up " \
-               "at once so if you accept too many you will prevent others " \
-               "from participating. NOTE: We are piloting some new changes " \
-               "(again!), please excuse and report ANY bugs."
+ANNOUNCEMENT = "DO NOT ACCEPT MORE THAN ONE HIT AT A TIME. Do NOT use " \
+               "automated methods to accept multiple HITs immediately."
 
 """
 GLOBAL WITHIN-TASK TIMING CONFIGURATION
