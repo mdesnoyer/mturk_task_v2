@@ -508,15 +508,20 @@ class Get(object):
 
     def get_all_workers(self):
         """
-        Iterates over all defined workers.
+        Iterates over all defined workers. Note, this had to be modified to
+        first fetch all workers then iterate over it, otherwise we could get
+        scanning timeouts.
 
         :return: An iterator over workers, which returns worker IDs.
         """
+        all = []
         with self.pool.connection() as conn:
             table = conn.table(WORKER_TABLE)
             scanner = table.scan(filter=b'KeyOnlyFilter() AND FirstKeyOnlyFilter()')
-            for row_key, data in scanner:
-                yield row_key
+            for row_key, _ in scanner:
+                all.append(row_key)
+        for row_key in all:
+            yield row_key
         return
 
     def worker_need_practice(self, worker_id):
