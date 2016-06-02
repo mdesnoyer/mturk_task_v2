@@ -21,11 +21,11 @@ mtconn = boto.mturk.connection.MTurkConnection(aws_access_key_id=MTURK_ACCESS_ID
 mt = mturk.MTurk(mtconn)
 mt.setup_quals()
 
-for worker_id in dbget.get_all_workers():
+for worker_id in [x for x in dbget.get_all_workers()]:
     print 'setting %s' % worker_id
     mt.reset_worker_daily_quota(worker_id)
 
-for worker_id in dbget.get_all_workers():
+for worker_id in [x for x in dbget.get_all_workers()]:
     print 'verifying %s' % worker_id
     qscore = mt.get_qualification_score(mt.quota_id,worker_id)
     if qscore != MAX_SUBMITS_PER_DAY:
