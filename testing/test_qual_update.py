@@ -22,9 +22,11 @@ mt = mturk.MTurk(mtconn)
 mt.setup_quals()
 
 for worker_id in dbget.get_all_workers():
+    print 'setting %s' % worker_id
     mt.reset_worker_daily_quota(worker_id)
 
 for worker_id in dbget.get_all_workers():
+    print 'verifying %s' % worker_id
     qscore = mt.get_qualification_score(mt.quota_id,worker_id)
     if qscore != MAX_SUBMITS_PER_DAY:
         print 'Bad qual score for %s, value %i' % (worker_id, qscore)
