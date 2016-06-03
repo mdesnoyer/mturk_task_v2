@@ -868,7 +868,7 @@ if __name__ == '__main__':
     if ((not PRACTICE_HIT_TYPE_ID) or (not TASK_HIT_TYPE_ID) or TESTING or
             FORCE_HIT_TYPE_REGEN):
         _log.info('Calculating payment')
-        _task_payment = ((1./60) * dbget.task_time) * PAYMENT_PER_MIN
+        _task_payment = 0.44 #((1./60) * dbget.task_time) * PAYMENT_PER_MIN
         task_payment = float(int(_task_payment * 100))/100
         mins, secs = divmod(dbget.task_time, 60)
         _log.info('Average task time is %i min, %i sec. Payment is %.2f',
