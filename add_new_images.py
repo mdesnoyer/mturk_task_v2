@@ -24,7 +24,7 @@ def _parse_key(key):
 
 def _yt_filt_func(key):
     _, sim, _ = _parse_key(key)
-    return sim < 0.027
+    return sim < 0.035 # from 0.027 to include more images.
 
 
 def _s3sourcer(bucket_name, filter_func=None):
