@@ -12,7 +12,12 @@ import boto3
 from conf import *
 import locale
 
-locale.setlocale(locale.LC_ALL, 'en_US.utf8')
+try:
+    # for linux
+    locale.setlocale(locale.LC_ALL, 'en_US.utf8')
+except:
+    # for mac
+    locale.setlocale(locale.LC_ALL, 'en_US')
 
 def _parse_key(key):
     vals = key.split('.')[0].split('_')
