@@ -8,6 +8,7 @@ import statemon
 
 mon = statemon.state
 statemon.define("n_num_unsampled", int)
+statemon.define("n_samples_remaining", int)
 
 class OrderedSampler():
     def __init__(self, items, limit=SAMPLING_LIMIT, inc=1):
@@ -49,6 +50,18 @@ class OrderedSampler():
         self._cur_bin = None
         self._cur_bin_key = None
 
+    def _get_n_samples_remaining(self):
+        """
+        Returns the number of samples that remain to be taken.
+
+        :return: An integer, the number of samples that remain to be taken.
+        """
+        tot = 0
+        for bin in self._bins:
+            if bin < self._lim:
+                tot += (self._lim - bin) * len(self._bins[bin])
+        return tot
+
     def _samp(self, n):
         """
         Hidden sampling method. Guaranteed to return at most n items.
@@ -78,6 +91,10 @@ class OrderedSampler():
         if self._cur_bin is not None:
             try:
                 mon.n_num_unsampled = len(self._bins[0])
+            except:
+                pass
+            try:
+                mon.n_samples_remaining = self._get_n_samples_remaining()
             except:
                 pass
         return c_samp

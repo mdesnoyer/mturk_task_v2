@@ -247,7 +247,7 @@ NUM_THREADS = 1  # the number of threads to use on the webserver.
 ENABLE_BANNING = True  # whether or not to ban poor-performing workers.
 SAMPLE_COUNT_REFRESH_RATE = 4000000  # how many samples until you rebuild
 # sampler
-SAMPLING_LIMIT = 4  # how many samples to obtain per task before stopping
+SAMPLING_LIMIT = 4  # how many times to sample in-order
 
 
 # # convenience overrides
