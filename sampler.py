@@ -93,10 +93,6 @@ class OrderedSampler():
                 mon.n_num_unsampled = len(self._bins[0])
             except:
                 pass
-            try:
-                mon.n_samples_remaining = self._get_n_samples_remaining()
-            except:
-                pass
         return c_samp
 
     def _update(self, to_update):
@@ -114,6 +110,10 @@ class OrderedSampler():
         while not self._bins[minbin]:
             self._bins.pop(minbin)
             minbin = min(self._bins.keys())
+        try:
+            mon.n_samples_remaining = self._get_n_samples_remaining()
+        except:
+            pass
 
     def sample(self, N):
         """
