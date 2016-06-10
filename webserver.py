@@ -852,6 +852,8 @@ if __name__ == '__main__':
     app.logger.addHandler(webhand)
     # start the monitoring agent
     dbget.update_sampling()
+    samp_rem = dbget._sampl_obj._get_n_samples_remaining()
+    _log.info('%i samples remain to be taken.', samp_rem)
     mins, secs = divmod(dbget.task_time, 60)  # prefetch the task time
     _log.info('Starting scheduler')
     scheduler.start()
