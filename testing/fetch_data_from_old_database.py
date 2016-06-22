@@ -70,7 +70,7 @@ with db_connection.cursor('server_side_cursor') as cd:
     cd.execute(exstr)
     cd.scroll(0)
     curiter = ResultIter(cd)
-    with open('/tmp/old_data','w') as f:
+    with open('/data/aquila_data/mturk_task_v1/data','w') as f:
         for n, (cid, aid, i1, i2, i3, choice, _, _, con, _, wid, _, _) in enumerate(curiter):
             if not n % 100:
                 print n, cid, cd.rownumber
