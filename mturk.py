@@ -542,6 +542,10 @@ class MTurk(object):
         try:
             self.mtconn.update_qualification_score(
                 self.quota_id, worker_id, value=MAX_SUBMITS_PER_DAY)
+            cqval = self.get_qualification_score(self.quota_id,
+                                                  worker_id)
+            if cqval != MAX_SUBMITS_PER_DAY:
+                _log.warn('Quota did not update properly for %s', worker_id)
             return
         except boto.mturk.connection.MTurkRequestError:
             _log.warn('No daily task quota for worker %s, trying to grant it' %

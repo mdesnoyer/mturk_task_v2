@@ -154,7 +154,9 @@ PRACTICE_PREFIX = 'p_'
 """
 DATABASE OPTIONS
 """
-DATABASE_LOCATION = "10.0.36.202"
+# DATABASE_LOCATION = "10.0.36.202"
+DATABASE_LOCATION = "10.0.43.96"  # new database
+TEST_DATABASE_LOCATION = "10.0.53.47"
 # if True, will store all practice pairs as if they were in real trials.
 STORE_PRACTICE_PAIRS = False
 # The number of images to activate in a chunk.
@@ -234,7 +236,7 @@ PAIR_TABLE = 'pairs'
 WIN_TABLE = 'wins'
 HIT_TYPE_TABLE = 'hittypes'
 STATISTICS_TABLE = 'imagestats'
-
+TASK_JSON_TABLE = 'taskjson'
 
 """
 COLUMN NAMES, BY FAMILY
@@ -251,6 +253,7 @@ TASK_FAMILIES = {'metadata': dict(max_versions=1),
                  'validation_statistics': dict(max_versions=1),
                  'blocks': dict(max_versions=1),
                  'html': dict(max_versions=1)}
+TASK_JSON_FAMILIES = {'data': dict(max_versions=1)}
 IMAGE_FAMILIES = {'metadata': dict(max_versions=1),
                   'stats': dict(max_versions=1),
                   'phash': dict(max_versions=1),

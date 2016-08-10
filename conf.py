@@ -17,13 +17,24 @@ For debugging
 TESTING = False
 _MTURK_SANDBOX = False
 LOCAL = False  # True if you're running on a local machine, False if AWS
+MIN_THREADS = False  # if True, will minimize thread use (or try to) and run as
+                     # much as possible in a single thread
 _USE_OPSWORKS_DB = True  # True if you're going to be using the opsworks
 # database (i.e., not the local one)...for which you will need to have an SSH
 # tunnel opened! (see intro notes in webserver.py)
 CONTINUOUS_MODE = True  # whether or not to run the task continuously.
 AUTO_RESAMPLE = True  # if true, will activate more images dynamically.
+FORCE_DEMOGRAPHICS = False  # if true, will always collect demographics.
+FORCE_VALIDATION = False  # if true, will always validate demographics.
+DISABLE_BANNING = False  # obvi
+FORCE_HIT_TYPE_REGEN = False  # force hit type regeneration
+
+# ensure that if testing, you're using the mturk sandbox.
+_MTURK_SANDBOX = _MTURK_SANDBOX or TESTING
 
 
+if TESTING:
+    DATABASE_LOCATION = TEST_DATABASE_LOCATION
 """
 AWS STUFF
 """
@@ -60,11 +71,8 @@ MARGIN_SIZE = 2  # the default margin size, for formatting.
 #     "the practice for that). Right now, though, we are trying to make " \
 #     "sure there are no serious bugs in our code.  If you encounter a bug, " \
 #     "please let us know! You will still be paid for these HITs, of course."
-ANNOUNCEMENT = "Please only accept one HIT at a time; new ones are posted " \
-               "automatically, but only a fixed amount are allowed to be up " \
-               "at once so if you accept too many you will prevent others " \
-               "from participating. Also please be aware that we are no " \
-               "longer accepting new workers due to exploitation."
+ANNOUNCEMENT = "DO NOT ACCEPT MORE THAN ONE HIT AT A TIME. Do NOT use " \
+               "automated methods to accept multiple HITs immediately."
 
 """
 GLOBAL WITHIN-TASK TIMING CONFIGURATION
@@ -72,16 +80,16 @@ GLOBAL WITHIN-TASK TIMING CONFIGURATION
 TIMING_POST_TRIAL = 200  # Sets the time, in milliseconds, between the current
                          # trial and the next trial.
 DEF_FEEDBACK_TIME = 100  # the amount of time to display feedback
-DEF_TRIAL_TIME = 3500  # the maximum amount of time each trial is allowed to
+DEF_TRIAL_TIME = 2800  # the maximum amount of time each trial is allowed to
                        # go for
 
 
 """
 MTURK OPTIONS
 """
-LOW_FUNDS_WARNING = 300  # if the funds drop below this amount
-NUM_PRACTICES = 5  # 10  # how many practices to post at once
-NUM_TASKS = 40 # how many tasks to maintain online
+LOW_FUNDS_WARNING = 100  # if the funds drop below this amount
+NUM_PRACTICES = 1  # 10  # how many practices to post at once
+NUM_TASKS = 10  # how many tasks to maintain online
 NUM_ASSIGNMENTS_PER_PRACTICE = 1      # how many people can take a given
                                       # practice?
 # HIT_LIFETIME_IN_SECONDS = 60*60*24*30  # How long a hit lasts. The current value
@@ -202,7 +210,7 @@ BAD_DATA_TOO_MANY_UNANSWERED = 'You are responding too slowly or choosing ' \
 WORKER OPTIONS
 """
 # the maximum number of tasks a worker can complete per day
-MAX_SUBMITS_PER_DAY = 5
+MAX_SUBMITS_PER_DAY = 10
 # the weekly number of practices a worker can complete
 WEEKLY_PRACTICE_LIM = 5
 # the default reason for a ban
@@ -228,22 +236,24 @@ LOCALES = [
     'US',  # United States
     'CA'  # Canada
 ]
-
+# the interval that must elapse between acquisition of the demographic data
+# and validation of the demographic data.
+DEMOGRAPHIC_VALIDATION_INTERVAL = 3 * 24 * 60 * 60  # 3 days, in seconds
 
 """
 WEBSERVER CONFIGURATION
 """
 NUM_THREADS = 1  # the number of threads to use on the webserver.
 ENABLE_BANNING = True  # whether or not to ban poor-performing workers.
+SAMPLE_COUNT_REFRESH_RATE = 4000000  # how many samples until you rebuild
+# sampler
+SAMPLING_LIMIT = 4  # how many times to sample in-order
 
 
-if LOCAL:
-    # change a bunch of the '_global' parameters
-    WEBSERVER_PORT = 12344
-    WEBSERVER_URL = "127.0.0.1"  # mturk.neon-lab.com
-    EXTERNAL_QUESTION_ENDPOINT = \
-        'https://%s:%i/task' % (WEBSERVER_URL, WEBSERVER_PORT)
-    EXTERNAL_QUESTION_SUBMISSION_ENDPOINT = \
-        'https://%s:%i/submit' % (WEBSERVER_URL,  WEBSERVER_PORT)
-    if not _USE_OPSWORKS_DB:
-        DATABASE_LOCATION = "localhost"
+# # convenience overrides
+# FORCE_DEMOGRAPHICS = False  # if true, will always collect demographics.
+# FORCE_VALIDATION = False  # if true, will always validate demographics.
+# DISABLE_BANNING = False  # obvi
+# NUM_PRACTICES = 0
+# NUM_TASKS = 0
+# DATABASE_LOCATION = '10.0.53.47'

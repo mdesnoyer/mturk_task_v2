@@ -16,7 +16,6 @@ NOTES:
     For the mturk connection, make sure to export the AWS connection credentials
     in ~/.boto.
 
-
     To start HBase:
         start-hbase.sh
     which is is in
@@ -30,7 +29,7 @@ locally you may wish to use an SSH Tunnel:
 
 ssh -i ~/.ssh/mturk_stack_access.pem -L 9000:localhost:9090 ubuntu@<ip_addr>
 
-where <ip_addr> is the location of the instance, i.e., 10.0.49.46
+where <ip_addr> is the location of the instance, i.e., 10.0.36.202
 
 then:
     happybase.Connection(host="localhost", port=9000)
@@ -157,7 +156,9 @@ def create_hit(mt, dbget, dbset, hit_type_id):
     """
     _log.info('JOB_STARTED create_hit')
     _log.info('Checking image statuses')
-    dbget.check_active_ims()
+    dbget.update_sampling()
+    if dbget.should_halt():
+        return
     # n_active = dbget.get_n_active_images_count(IMAGE_ATTRIBUTES)
     # mean_seen = dbget.image_get_mean_seen(IMAGE_ATTRIBUTES)
     # if mean_seen > MEAN_SAMPLES_REQ_PER_IMAGE(n_active):
@@ -255,6 +256,8 @@ def create_practice(mt, dbget, dbset, hit_type_id):
     :return: None.
     """
     _log.info('JOB_STARTED create_practice')
+    if dbget.should_halt():
+        return
     hit_cost = DEFAULT_PRACTICE_PAYMENT
     bal = mt.get_account_balance()
     if hit_cost > bal:
@@ -555,6 +558,7 @@ body = 'Stop Endpoint: %s\nHalt Endpoint: %s\nShutdown Endpoint: %s\n'
 body = body % (stopaddition_endpoint, halt_endpoint, shutdown_endpoint)
 dispatch_notification(body, subject='Control Endpoints')
 
+
 @app.route('/healthcheck', methods=['GET'])
 def healthcheck():
     """
@@ -601,7 +605,7 @@ def task():
         assert val_hit_info.HITStatus == 'Unassignable'
     except:
         body = 'HIT %s accepted but is not unassignable. status: %s'
-        body  = body % (str(hit_id), str(val_hit_info.HITStatus))
+        body = body % (str(hit_id), str(val_hit_info.HITStatus))
         subject = body
         dispatch_notification(body, subject)
         return 'Apologies, this HIT is %s' % str(val_hit_info.HITStatus)
@@ -627,14 +631,21 @@ def task():
             _log.debug('Returning task preview request from %s' % str(src))
         return make_preview_page(is_practice, task_time)
     worker_id = request.values.get('workerId', '')
+    if dbget.worker_is_banned(worker_id):
+        body = 'Banned worker %s (ip: %s) tried to request a task or practice.'
+        body = body % (worker_id, str(src))
+        subject = body
+        dispatch_notification(body, subject)
+        return 'You have been banned.'
     if is_practice:
         # check if they have the practice quota qualification
         pq_id = mt.practice_quota_id
         try:
             mtconn.get_qualification_score(pq_id, worker_id)
         except:  # ahh this isn't a real worker! KILL THEM!
-            body = 'Unknown worker %s tried to request a practice.'
-            body = body % worker_id
+            body = 'Unknown worker %s (ip: %s) tried to request a task or ' \
+                   'practice.'
+            body = body % (worker_id, str(src))
             subject = body
             dispatch_notification(body, subject)
             return 'Could not confirm request with MTurk.'
@@ -642,13 +653,21 @@ def task():
         # check that they have the daily quota qualification
         pt_id = mt.quota_id
         try:
-            mtconn.get_qualification_score(pt_id, worker_id)
+            pt_val = mtconn.get_qualification_score(pt_id, worker_id)
         except:  # ahh this isn't a real worker! KILL THEM!
             body = 'Unknown worker %s tried to request a task.'
             body = body % worker_id
             subject = body
             dispatch_notification(body, subject)
             return 'Could not confirm request with MTurk.'
+        if pt_val <= 0:
+            return 'You have taken as many tasks as possible today.'
+        try:
+            mt.decrement_worker_daily_quota(worker_id)
+        except Exception as e:
+            _log.error('Problem decrementing daily quota: %s' % e.message)
+            tb = traceback.format_exc()
+            dispatch_err(e, tb, request)
     try:
         response = fetch_task(dbget, dbset, task_id, worker_id, is_practice)
     except Exception as e:
@@ -688,6 +707,12 @@ def submit():
         tb = traceback.format_exc()
         dispatch_err(e, tb, request)
         return make_error('Problem fetching submission information.')
+    if dbget.worker_is_banned(worker_id):
+        body = 'Banned worker %s (ip: %s) tried to submit a task or practice.'
+        body = body % (worker_id, str(worker_ip))
+        subject = body
+        dispatch_notification(body, subject)
+        return 'You have been banned.'
     err_dict = {'HIT ID': hit_id, 'WORKER ID': worker_id, 'TASK ID': task_id,
                 'ASSIGNMENT ID': assignment_id}
     try:
@@ -747,7 +772,19 @@ def submit():
             scheduler.add_job(create_practice,
                               args=[mt, dbget, dbset, hit_type_id])
     else:
-        # ---------- Handle submitted task ----------
+        # ---------- Handle submitted task ---------- #
+        if dbget.worker_need_demographics(worker_id):
+            try:
+                dbset.register_demographics(request.json, worker_ip)
+            except Exception as e:
+                tb = traceback.format_exc()
+                dispatch_err(e, tb, request)
+        else:
+            try:
+                dbset.validate_demographics(request.json)
+            except Exception as e:
+                tb = traceback.format_exc()
+                dispatch_err(e, tb, request)
         try:
             to_return = make_success(hit_id=hit_id,
                                      task_id=task_id)
@@ -757,12 +794,6 @@ def submit():
             return make_error('Error creating submit page.',
                               error_data=err_dict, hit_id=hit_id,
                               task_id=task_id, allow_submit=True)
-        try:
-            mt.decrement_worker_daily_quota(worker_id)
-        except Exception as e:
-            _log.error('Problem decrementing daily quota: %s' % e.message)
-            tb = traceback.format_exc()
-            dispatch_err(e, tb, request)
         try:
             frac_contradictions, frac_unanswered, frac_too_fast, prob_random = \
                 dbset.task_finished_from_json(request.json,
@@ -820,8 +851,11 @@ if __name__ == '__main__':
     webhand = logger.config_root_logger(LOG_LOCATION, return_webserver=True)
     app.logger.addHandler(webhand)
     # start the monitoring agent
-    dbget.check_active_ims()
+    dbget.update_sampling()
+    samp_rem = dbget._sampl_obj._get_n_samples_remaining()
+    _log.info('%i samples remain to be taken.', samp_rem)
     mins, secs = divmod(dbget.task_time, 60)  # prefetch the task time
+    secs -= 14
     _log.info('Starting scheduler')
     scheduler.start()
     if not LOCAL:
@@ -834,9 +868,10 @@ if __name__ == '__main__':
     TASK_HIT_TYPE_ID = dbget.get_active_hit_type_for(
         task_attribute=ATTRIBUTE,
         image_attributes=IMAGE_ATTRIBUTES)
-    if not PRACTICE_HIT_TYPE_ID or not TASK_HIT_TYPE_ID:
+    if ((not PRACTICE_HIT_TYPE_ID) or (not TASK_HIT_TYPE_ID) or TESTING or
+            FORCE_HIT_TYPE_REGEN):
         _log.info('Calculating payment')
-        _task_payment = ((1./60) * dbget.task_time) * PAYMENT_PER_MIN
+        _task_payment = 0.41 #((1./60) * dbget.task_time) * PAYMENT_PER_MIN
         task_payment = float(int(_task_payment * 100))/100
         mins, secs = divmod(dbget.task_time, 60)
         _log.info('Average task time is %i min, %i sec. Payment is %.2f',
@@ -847,11 +882,18 @@ if __name__ == '__main__':
             dbset.deactivate_hit_type(TASK_HIT_TYPE_ID)
         TASK_HIT_TYPE_ID, PRACTICE_HIT_TYPE_ID = \
             mt.register_hit_type_mturk(reward=task_payment)
+        _log.info('Created new HIT Types, obtained %s and %s',
+                  PRACTICE_HIT_TYPE_ID, TASK_HIT_TYPE_ID)
         dbset.register_hit_type(TASK_HIT_TYPE_ID, reward=task_payment)
         dbset.register_hit_type(PRACTICE_HIT_TYPE_ID, is_practice=True)
-    scheduler.add_job(check_practices,
-                      args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID])
-    scheduler.add_job(check_tasks, args=[mt, dbget, dbset, TASK_HIT_TYPE_ID])
+    if MIN_THREADS:
+        check_practices(mt, dbget, dbset, PRACTICE_HIT_TYPE_ID)
+        check_tasks(mt, dbget, dbset, TASK_HIT_TYPE_ID)
+    else:
+        scheduler.add_job(check_practices,
+                          args=[mt, dbget, dbset, PRACTICE_HIT_TYPE_ID])
+        scheduler.add_job(check_tasks,
+                          args=[mt, dbget, dbset, TASK_HIT_TYPE_ID])
     # note that this must be done *after* the tasks are generated, since it
     # is the tasks that actually activate new images.
     scheduler.add_job(unban_workers, 'interval', hours=24,
